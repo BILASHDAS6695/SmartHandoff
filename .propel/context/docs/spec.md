@@ -1,80 +1,117 @@
-# SmartHandoff — Functional Requirements & Use Case Specification
+# SmartHandoff — Software Requirements Specification (SRS)
 
----
-
-| Field | Value |
-|---|---|
-| **Document ID** | SPEC-001 |
-| **Version** | 1.0 |
-| **Date** | 2026-07-10 |
-| **Status** | Draft |
-| **Source BRD** | BRD_DOCUMENT.md v1.0 |
-| **Owner** | SmartHandoff Project Team |
+> **Artifact:** spec | **Version:** 1.0 | **Status:** Draft  
+> **Date:** 2026-07-13 | **Source:** BRD v1.0 (July 10, 2026)  
+> **Workflow:** /create-spec
 
 ---
 
 ## Table of Contents
 
-1. [System Overview](#1-system-overview)
-2. [Scope Boundaries](#2-scope-boundaries)
-3. [Actors & Personas](#3-actors--personas)
+1. [Document Overview](#1-document-overview)
+2. [System Context & Scope](#2-system-context--scope)
+3. [Stakeholders & Personas](#3-stakeholders--personas)
 4. [Functional Requirements](#4-functional-requirements)
-   - [4.1 ADT Event Processing](#41-adt-event-processing)
-   - [4.2 Transition Coordinator Agent](#42-transition-coordinator-agent)
-   - [4.3 Documentation Agent](#43-documentation-agent)
-   - [4.4 Medication Reconciliation Agent](#44-medication-reconciliation-agent)
-   - [4.5 Bed Management Agent](#45-bed-management-agent)
-   - [4.6 Follow-up Care Agent](#46-follow-up-care-agent)
-   - [4.7 Patient Communication Agent](#47-patient-communication-agent)
-   - [4.8 Dashboard & Reporting](#48-dashboard--reporting)
-   - [4.9 Authentication & Authorization](#49-authentication--authorization)
 5. [Use Cases](#5-use-cases)
-6. [Business Rules](#6-business-rules)
-7. [Data Requirements](#7-data-requirements)
-8. [Acceptance Criteria](#8-acceptance-criteria)
-9. [Traceability Matrix](#9-traceability-matrix)
+6. [Non-Functional Requirements](#6-non-functional-requirements)
+7. [Business Rules](#7-business-rules)
+8. [Data Requirements](#8-data-requirements)
+9. [Integration Requirements](#9-integration-requirements)
+10. [Security & Compliance Requirements](#10-security--compliance-requirements)
+11. [UI / UX Requirements](#11-ui--ux-requirements)
+12. [Acceptance Criteria](#12-acceptance-criteria)
+13. [Assumptions & Constraints](#13-assumptions--constraints)
+14. [Requirements Traceability Matrix](#14-requirements-traceability-matrix)
+15. [Glossary](#15-glossary)
 
 ---
 
-## 1. System Overview
+## 1. Document Overview
 
-**SmartHandoff** is an AI-powered care transition orchestrator that automates and coordinates healthcare workflows during Admission, Discharge, and Transfer (ADT) events. The system deploys six specialized AI agents — Transition Coordinator, Documentation, Medication Reconciliation, Bed Management, Follow-up Care, and Patient Communication — that collaborate in real-time to reduce medication errors, decrease readmissions, and improve discharge documentation efficiency.
+### 1.1 Purpose
 
-### Technology Stack
+This Software Requirements Specification (SRS) translates the SmartHandoff Business Requirements Document (BRD v1.0) into structured, testable functional requirements (FR-XXX) and use cases (UC-XXX) ready for downstream design, development, and testing workflows.
 
-| Layer | Technology |
-|---|---|
-| Frontend | Angular 17 PWA |
-| Backend API | Python FastAPI with WebSockets |
-| AI Agents | LangChain multi-agent framework |
-| ML Models | Scikit-learn |
-| LLM | Google Vertex AI |
-| Database | Cloud SQL (PostgreSQL) |
-| Messaging | GCP Pub/Sub |
-| Real-time | SignalR |
-| Cloud | Google Cloud Platform (GCP) |
-| Notifications | Twilio (SMS), SendGrid (Email) |
+### 1.2 System Summary
+
+**SmartHandoff** is an AI-powered care transition orchestrator that automates and coordinates healthcare Admission, Discharge, and Transfer (ADT) workflows through six specialised LangChain AI agents deployed on Google Cloud Platform (GCP). The system consumes real-time HL7 ADT messages, fetches patient context via FHIR R4, and drives staff dashboards and patient portals built in Angular 17.
+
+### 1.3 Document Conventions
+
+| Prefix | Meaning |
+|--------|---------|
+| `FR-XXX` | Functional Requirement |
+| `NFR-XXX` | Non-Functional Requirement |
+| `UC-XXX` | Use Case |
+| `BR-XXX` | Business Rule |
+| `SEC-XXX` | Security Requirement |
+| `UI-XXX` | UI/UX Requirement |
+| `BO-XX` | Business Objective (from BRD) |
+
+Priority levels: **Must Have** · **Should Have** · **Could Have** · **Won't Have (Phase 1)**
 
 ---
 
-## 2. Scope Boundaries
+## 2. System Context & Scope
 
-### In Scope (Phase 1 — MVP)
+### 2.1 System Boundary
 
-- Real-time HL7 ADT event processing (A01, A02, A03, A04, A08, A11, A12, A13)
-- Six AI agent workflows (Transition Coordinator, Documentation, Medication Reconciliation, Bed Management, Follow-up Care, Patient Communication)
-- Care team dashboard and patient portal (Angular PWA)
-- Read-only FHIR R4 integration with EHR systems
-- Role-based access control (RBAC) with OAuth 2.0 / OIDC + MFA
-- Real-time notifications via SignalR
-- Readmission risk scoring (ML)
-- Multilingual discharge instructions (minimum 5 languages)
-- GCP Cloud infrastructure
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                         SMARTHANDOFF SYSTEM                            │
+│                                                                        │
+│  ┌──────────────┐   ┌─────────────────────────────────────────────┐   │
+│  │  Angular 17  │   │               FastAPI Backend                │   │
+│  │  PWA / Portal│◄──►  REST + WebSocket (SignalR)                  │   │
+│  └──────────────┘   │                                             │   │
+│                     │  ┌─────────────────────────────────────┐   │   │
+│                     │  │        AI Agent Orchestrator         │   │   │
+│                     │  │  (LangChain + Vertex AI / Gemini)    │   │   │
+│                     │  │                                     │   │   │
+│                     │  │  ┌──────────┐  ┌─────────────────┐ │   │   │
+│                     │  │  │Transition│  │  Documentation  │ │   │   │
+│                     │  │  │Coordinator  │     Agent       │ │   │   │
+│                     │  │  └──────────┘  └─────────────────┘ │   │   │
+│                     │  │  ┌──────────┐  ┌─────────────────┐ │   │   │
+│                     │  │  │Medication│  │  Bed Management │ │   │   │
+│                     │  │  │  Recon.  │  │     Agent       │ │   │   │
+│                     │  │  └──────────┘  └─────────────────┘ │   │   │
+│                     │  │  ┌──────────┐  ┌─────────────────┐ │   │   │
+│                     │  │  │Follow-up │  │    Patient      │ │   │   │
+│                     │  │  │  Care    │  │  Communication  │ │   │   │
+│                     │  │  └──────────┘  └─────────────────┘ │   │   │
+│                     │  └─────────────────────────────────────┘   │   │
+│                     │                                             │   │
+│                     │  ┌───────────┐   ┌────────────────────┐   │   │
+│                     │  │ Cloud SQL  │   │  GCP Pub/Sub       │   │   │
+│                     │  │(PostgreSQL)│   │  (Event Bus)       │   │   │
+│                     │  └───────────┘   └────────────────────┘   │   │
+│                     └─────────────────────────────────────────────┘   │
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+  ┌───────────┐        ┌──────────────┐       ┌─────────────┐
+  │ EHR System│        │  Identity    │       │Twilio/Send  │
+  │ HL7 ADT   │        │  Provider    │       │Grid (Notif) │
+  │ FHIR R4   │        │ OIDC/OAuth2  │       │             │
+  └───────────┘        └──────────────┘       └─────────────┘
+```
 
-### Out of Scope (Phase 1)
+### 2.2 In-Scope (Phase 1 / MVP)
+
+- Real-time HL7 ADT event ingestion and processing (A01, A02, A03, A04, A08, A11, A12, A13)
+- Six AI agent subsystems orchestrated by the Transition Coordinator Agent
+- Angular 17 PWA: care team dashboard + patient portal
+- FHIR R4 read-only EHR integration
+- GCP infrastructure: Cloud Run, Cloud SQL (PostgreSQL), Pub/Sub, Vertex AI
+- HIPAA-compliant audit logging, RBAC, AES-256 encryption
+
+### 2.3 Out-of-Scope (Phase 1)
 
 | Item | Deferred To |
-|---|---|
+|------|-------------|
 | EHR write-back integration | Phase 2 |
 | Voice-enabled interfaces | Phase 2 |
 | IoT bed sensors | Phase 3 |
@@ -83,787 +120,1045 @@
 
 ---
 
-## 3. Actors & Personas
+## 3. Stakeholders & Personas
 
-| Actor ID | Actor | Description | Primary Interaction |
-|---|---|---|---|
-| ACT-01 | Floor Nurse | Bedside care provider completing handoff tasks | Dashboard, patient list, task completion |
-| ACT-02 | Attending Physician | Clinician reviewing and approving patient transitions | Summaries, approvals, medication review |
-| ACT-03 | Clinical Pharmacist | Specialist reviewing medication safety | Medication reconciliation interface |
-| ACT-04 | Bed Manager | Coordinator managing patient flow and bed availability | Bed board, bed assignment |
-| ACT-05 | Patient | Discharged or transitioning patient | Patient portal, chatbot |
-| ACT-06 | IT Administrator | System configuration and user management | Admin settings |
-| ACT-07 | Supervisor / Manager | Oversight of system performance and KPIs | Analytics, agent monitor |
-| ACT-08 | EHR System | External source system sending HL7 ADT messages | HL7 MLLP feed |
-| ACT-09 | AI Agent (System) | Autonomous software agent performing AI-driven tasks | Backend agent workflows |
-| ACT-10 | Compliance Officer | Reviewer of audit trails and regulatory adherence | Audit logs, reports |
+### 3.1 Stakeholder Map
+
+| Stakeholder | Type | Primary Needs |
+|-------------|------|---------------|
+| Hospital Administration | Sponsor | ROI, compliance, reputation |
+| Chief Medical Officer | Decision Maker | Patient safety, clinical outcomes |
+| Chief Nursing Officer | Decision Maker | Staff efficiency, workflow fit |
+| IT Director | Technical Owner | Integration, security, maintainability |
+| Nursing Staff | Primary User | Ease of use, time savings |
+| Attending Physicians | Primary User | Clinical accuracy, alert precision |
+| Clinical Pharmacists | Primary User | Medication safety, interaction alerts |
+| Bed Management Team | Primary User | Real-time visibility, flow control |
+| Patients / Caregivers | Beneficiary | Clear communication, safe care |
+| Compliance Officer | Reviewer | HIPAA, HITECH, Joint Commission |
+
+### 3.2 User Personas
+
+| ID | Persona | Role | Key Goals | Primary Device |
+|----|---------|------|-----------|----------------|
+| P-01 | Nurse Nancy | Floor Nurse | Complete handoff tasks fast, view patient status | Desktop, Tablet |
+| P-02 | Dr. David | Attending Physician | Approve discharges, review AI summaries | Desktop, Mobile |
+| P-03 | Pharmacist Phil | Clinical Pharmacist | Reconcile medications, resolve conflicts | Desktop |
+| P-04 | Coordinator Carol | Bed Manager | Monitor bed map, manage patient flow | Desktop (dual) |
+| P-05 | Patient Pat | Discharged Patient | Understand instructions, ask questions | Mobile |
 
 ---
 
 ## 4. Functional Requirements
 
-> **Note:** FR-XXX IDs are stable and align with BRD Section 6. IDs FR-001–FR-074 are directly derived from BRD v1.0. Additional requirements introduced in this spec begin at FR-080.
-
----
-
 ### 4.1 ADT Event Processing
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-001 | The system shall receive and process HL7 ADT messages in real-time via MLLP/TCP. | Must Have | ADT message received and parsed within 5 seconds of arrival | BRD §6.1 |
-| FR-002 | The system shall support the following HL7 ADT event types: A01 (Admit), A02 (Transfer), A03 (Discharge), A04 (Register), A08 (Update), A11 (Cancel Admit), A12 (Cancel Transfer), A13 (Cancel Discharge). | Must Have | All 8 event types parsed without error; unknown types logged and rejected gracefully | BRD §6.1 |
-| FR-003 | The system shall trigger the appropriate AI agent workflows based on the received ADT event type. | Must Have | Correct agent(s) invoked for each event type per agent routing table | BRD §6.1 |
-| FR-004 | The system shall maintain a complete, immutable audit trail of all ADT events including event type, timestamp, source system, patient MRN, and processing status. | Must Have | Audit log record created for every ADT event; records are write-once | BRD §6.1 |
-| FR-005 | The system shall publish ADT events to GCP Pub/Sub for downstream agent consumption. | Must Have | Event published to topic within 1 second of parsing | BRD §10.1 |
-| FR-006 | The system shall deduplicate ADT events with the same message ID within a 60-second window. | Must Have | Duplicate messages within window do not trigger duplicate agent invocations | Derived |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-001 | System shall receive and process HL7 ADT messages via MLLP/TCP in real-time with end-to-end latency ≤5 seconds | Must Have | BRD §6.1 | All Staff |
+| FR-002 | System shall support ADT event types: A01 (Admit), A02 (Transfer), A03 (Discharge), A04 (Register), A08 (Update), A11 (Cancel Admit), A12 (Cancel Transfer), A13 (Cancel Discharge) | Must Have | BRD §6.1, §10.3 | All |
+| FR-003 | System shall parse HL7 v2.x message segments (MSH, EVN, PID, PV1, PV2) and map them to the internal `ADTEvent` domain model | Must Have | BRD §6.1 | System |
+| FR-004 | System shall trigger the appropriate AI agent workflow within 2 seconds of ADT event persistence | Must Have | BRD §6.1 | System |
+| FR-005 | System shall maintain a complete, immutable audit trail of all ADT events including source system, receipt timestamp, and processing outcome | Must Have | BRD §6.1, BR-023 | Compliance Officer |
+| FR-006 | System shall handle ADT cancellation events (A11, A12, A13) by halting in-progress agent workflows and updating encounter status accordingly | Must Have | BRD §10.3 | System |
 
 ### 4.2 Transition Coordinator Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-010 | The Transition Coordinator Agent shall orchestrate task assignment and sequencing across all other agents upon receiving an ADT trigger. | Must Have | All applicable agents receive tasks within 5 seconds of ADT event processing | BRD §6.2 |
-| FR-011 | The agent shall track task completion status for all active care transitions and escalate tasks overdue by more than 30 minutes to the assigned supervisor. | Must Have | Escalation notification sent at t+30 min for any incomplete task; supervisor receives in-app alert | BRD §6.2 |
-| FR-012 | The agent shall push real-time status updates to connected dashboard clients via SignalR within 1 second of a status change. | Must Have | SignalR message delivered to all subscribed clients within 1 second | BRD §6.2 |
-| FR-013 | The agent shall generate a context-aware handoff checklist for each patient based on ADT event type, patient acuity, and active conditions. | Should Have | Checklist generated within 10 seconds; items tailored to patient risk score and event type | BRD §6.2 |
-| FR-014 | The agent shall log all orchestration decisions and task assignments with timestamps for audit purposes. | Must Have | Orchestration log record created for each agent invocation | Derived |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-010 | Transition Coordinator Agent shall orchestrate task assignment across all five specialised agents upon receiving an ADT trigger | Must Have | BRD §6.2 | System |
+| FR-011 | Agent shall track completion status of each sub-task and escalate any task delayed beyond configured SLA thresholds | Must Have | BRD §6.2 | Nurse Nancy, Supervisor |
+| FR-012 | Agent shall publish real-time status updates to connected dashboard clients via SignalR WebSocket with latency ≤1 second | Must Have | BRD §6.2, NFR-006 | All Staff |
+| FR-013 | Agent shall generate context-aware handoff checklists tailored to patient diagnosis, care unit, and transition type | Should Have | BRD §6.2 | Nurse Nancy |
+| FR-014 | Agent shall expose a task status API endpoint (`GET /api/v1/encounters/{id}/tasks`) for dashboard polling and audit | Must Have | BRD §6.2 | All Staff |
 
 ### 4.3 Documentation Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-020 | The Documentation Agent shall auto-generate a draft discharge summary from patient encounter data (diagnoses, procedures, medications, vitals) within 30 seconds of a Discharge (A03) event. | Must Have | Draft summary generated within 30 seconds; summary includes all required clinical sections | BRD §6.3 |
-| FR-021 | The agent shall generate patient-friendly discharge instructions in plain language (6th-grade reading level) derived from the clinical discharge summary. | Must Have | Instructions generated; Flesch-Kincaid readability score ≥ 60; all discharge topics covered | BRD §6.3 |
-| FR-022 | The agent shall generate discharge instructions in a minimum of 5 languages: English, Spanish, French, Mandarin, and Arabic. | Should Have | Instructions generated in all 5 target languages; content accuracy validated by back-translation | BRD §6.3 |
-| FR-023 | The agent shall perform a pre-discharge documentation completeness check and block the discharge workflow if any required document is missing. | Must Have | Discharge blocked until all required fields are present; blocking reason displayed to user | BRD §6.3 |
-| FR-024 | The agent shall present all AI-generated document content for clinician review and enable inline editing before finalization. | Must Have | Clinician can view, edit, and approve/reject generated content; final version records reviewer identity | BRD §6.3 |
-| FR-025 | All AI-generated content shall be clearly labelled "AI-Assisted" in the UI and in the document metadata. | Must Have | Label present on all generated documents; metadata field `generatedBy` set to agent identifier | BRD §8.2 |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-020 | Documentation Agent shall auto-generate a draft discharge summary from encounter data, diagnosis codes, and clinical notes within 30 seconds of an A03 event | Must Have | BRD §6.3 | Dr. David |
+| FR-021 | Agent shall generate patient-friendly discharge instructions at a ≤6th-grade reading level, structured by medications, activity, diet, and follow-up | Must Have | BRD §6.3 | Patient Pat |
+| FR-022 | Agent shall support document generation in a minimum of 5 languages: English, Spanish, French, Mandarin, Portuguese | Should Have | BRD §6.3 | Patient Pat |
+| FR-023 | Agent shall perform a completeness check against a configurable required-fields checklist before marking documentation as ready for review | Must Have | BRD §6.3, BR-001 | Compliance Officer |
+| FR-024 | All AI-generated documents shall be presented in a dual-pane review interface allowing inline editing with change tracking; final approval requires a licensed clinician action | Must Have | BRD §6.3, BR-011 | Dr. David, Nurse Nancy |
+| FR-025 | Agent shall label all AI-generated content with a persistent "AI-Assisted — Review Required" watermark until clinician approval is recorded | Must Have | BR-011 | All Clinicians |
 
 ### 4.4 Medication Reconciliation Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-030 | The Medication Reconciliation Agent shall retrieve and compare pre-admission, current inpatient, and discharge medication lists for every active encounter. | Must Have | Three-list comparison populated within 30 seconds of trigger; discrepancies flagged | BRD §6.4 |
-| FR-031 | The agent shall detect and flag drug-drug interactions using a validated clinical drug database with sensitivity ≥ 99%. | Must Have | Interaction alert generated for all known major interactions; alert delivered to pharmacist in real-time | BRD §6.4 |
-| FR-032 | The agent shall identify and flag duplicate medications (same drug, different brand or dosage form). | Must Have | Duplicate flag raised when ≥2 entries map to the same RxNorm code | BRD §6.4 |
-| FR-033 | The agent shall highlight chronic medications that are absent from the current medication list. | Should Have | Alert generated for each chronic medication not present in the inpatient list | BRD §6.4 |
-| FR-034 | The agent shall generate a patient-readable medication change summary listing added, discontinued, and modified medications. | Must Have | Summary generated in plain language; lists all changes since admission | BRD §6.4 |
-| FR-035 | The agent shall send a priority alert to the responsible pharmacist when a reconciliation case involves ≥3 drug interactions, ≥10 medications, or any high-alert medication class. | Must Have | Alert delivered to pharmacist within 60 seconds of reconciliation completion | BRD §6.4 |
-| FR-036 | Medication reconciliation shall be completed within 24 hours of admission as required by CMS standards. | Must Have | System records reconciliation timestamp; SLA breach alert generated at t+22 hours if incomplete | BRD §8.1 |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-030 | Medication Reconciliation Agent shall retrieve and compare pre-admission medications (from EHR FHIR MedicationStatement), inpatient medications (MedicationAdministration), and discharge medications (MedicationRequest) | Must Have | BRD §6.4 | Pharmacist Phil |
+| FR-031 | Agent shall detect and flag drug-drug interactions using an integrated drug interaction database with ≥99% sensitivity for major interactions | Must Have | BRD §6.4 | Pharmacist Phil |
+| FR-032 | Agent shall identify and flag therapeutic duplicates across all medication lists | Must Have | BRD §6.4 | Pharmacist Phil |
+| FR-033 | Agent shall highlight chronic maintenance medications absent from the discharge prescription list and prompt prescriber action | Should Have | BRD §6.4 | Dr. David |
+| FR-034 | Agent shall generate a patient-readable medication change summary listing added, stopped, and changed medications with plain-language rationale | Must Have | BRD §6.4 | Patient Pat |
+| FR-035 | Agent shall generate real-time priority alerts to pharmacists for cases where: (a) ≥1 major drug interaction is detected, (b) ≥3 medications changed, or (c) high-risk drug classes (anticoagulants, insulin, opioids) are involved | Must Have | BRD §6.4, BR-005 | Pharmacist Phil |
+| FR-036 | Agent shall complete initial reconciliation within 24 hours of admission trigger (A01 event) | Must Have | BR-002 | Pharmacist Phil |
 
 ### 4.5 Bed Management Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-040 | The Bed Management Agent shall predict estimated discharge time for each inpatient encounter using an ML model trained on historical encounter data, with prediction accuracy within ±2 hours. | Should Have | Prediction generated within 60 seconds of admission; MAE ≤ 2 hours on held-out test set | BRD §6.5 |
-| FR-041 | The agent shall provide a real-time bed availability dashboard displaying bed status (Available, Occupied, Pending Discharge, Under Cleaning) for all units. | Must Have | Dashboard reflects current status; updates within 5 seconds of status change | BRD §6.5 |
-| FR-042 | The agent shall recommend the optimal bed assignment for incoming patients based on acuity, unit specialization, and isolation requirements. | Should Have | Recommendation generated within 10 seconds; rationale displayed to bed manager | BRD §6.5 |
-| FR-043 | The agent shall generate an alert when Emergency Department boarding time exceeds a configurable threshold (default: 2 hours). | Must Have | Alert generated and delivered to ED manager within 1 minute of threshold breach | BRD §6.5 |
-| FR-044 | The agent shall track bed turnaround time (discharge to next admission) and alert when turnaround exceeds the configured SLA. | Should Have | Metric tracked per bed; alert generated on SLA breach | Derived |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-040 | Bed Management Agent shall predict patient discharge time using a Scikit-learn regression model trained on LOS (length of stay) data, with predictions accurate to within ±2 hours | Should Have | BRD §6.5 | Coordinator Carol |
+| FR-041 | Agent shall maintain and serve a real-time bed availability map reflecting: bed status (clean/dirty/occupied/blocked), unit, room, and bed type | Must Have | BRD §6.5 | Coordinator Carol |
+| FR-042 | Agent shall score and recommend optimal bed assignments for incoming patients based on acuity level, required care type, isolation requirements, and gender | Should Have | BRD §6.5 | Coordinator Carol |
+| FR-043 | Agent shall generate an ED boarding alert when a patient has waited >2 hours for inpatient bed assignment, escalating to the bed manager and charge nurse | Must Have | BRD §6.5, BO-05 | Coordinator Carol |
+| FR-044 | Agent shall trigger automated bed turnover notification to environmental services upon an A03 (Discharge) event | Should Have | BRD §6.5 | Coordinator Carol |
 
 ### 4.6 Follow-up Care Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-050 | The Follow-up Care Agent shall schedule a post-discharge follow-up appointment with the patient's primary care provider or specialist before the patient leaves the hospital. | Should Have | Appointment booking confirmation generated before discharge; confirmation sent to patient via SMS/email | BRD §6.6 |
-| FR-051 | The agent shall send automated medication reminders to discharged patients via SMS and/or email at configured intervals (e.g., twice daily for 7 days). | Should Have | Reminder messages delivered via configured channel; patient can opt out | BRD §6.6 |
-| FR-052 | The agent shall calculate a 30-day readmission risk score (0.0–1.0) for each patient using an ML model upon discharge. | Must Have | Risk score computed within 60 seconds of discharge; score stored in encounter record | BRD §6.6 |
-| FR-053 | The agent shall automatically schedule a follow-up appointment within 7 days of discharge for patients with a readmission risk score ≥ 0.7. | Must Have | Appointment booked within 5 minutes of discharge for high-risk patients; care manager notified | BRD §6.6, §8.1 |
-| FR-054 | The agent shall escalate patient-reported symptoms or concerns received via the patient portal to the care team with severity classification within 5 minutes. | Must Have | Escalation notification delivered to assigned nurse within 5 minutes of concern submission | BRD §6.6 |
-| FR-055 | Escalations not addressed by the care team within 30 minutes shall automatically notify the supervisor. | Must Have | Supervisor alert generated at t+30 minutes for unacknowledged escalations | BRD §8.2 |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-050 | Follow-up Care Agent shall schedule follow-up appointments via FHIR Appointment resource before discharge is finalised, with scheduling completed within 30 minutes of A03 trigger | Should Have | BRD §6.6 | Discharge Planner |
+| FR-051 | Agent shall send automated medication reminder SMS/email messages to patients at prescribed intervals (configurable per medication schedule) using Twilio/SendGrid | Should Have | BRD §6.6 | Patient Pat |
+| FR-052 | Agent shall calculate a 30-day readmission risk score (0.0–1.0) using a Scikit-learn classification model at the time of discharge; scores ≥0.7 trigger high-risk care pathway | Must Have | BRD §6.6, BO-02, BR-003 | Care Manager |
+| FR-053 | Agent shall escalate patient-reported post-discharge concerns (received via chatbot) to the assigned care team within 15 minutes if flagged as clinical concerns | Must Have | BRD §6.6 | Nurse Nancy |
+| FR-054 | Agent shall schedule a 48-hour post-discharge automated check-in call/message for all patients with readmission risk score ≥0.5 | Should Have | BR-003 | Care Manager |
 
 ### 4.7 Patient Communication Agent
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-060 | The Patient Communication Agent shall provide a 24/7 chatbot interface accessible from the patient portal, with response time ≤ 3 seconds for standard queries. | Must Have | Chatbot available continuously; 95th-percentile response time ≤ 3 seconds | BRD §6.7 |
-| FR-061 | The chatbot shall answer questions about discharge instructions, medications, and follow-up appointments based on the patient's specific encounter data. | Must Have | Responses reference patient-specific data; no generic placeholder responses | BRD §6.7 |
-| FR-062 | The chatbot shall detect and escalate queries classified as urgent (e.g., chest pain, allergic reaction) to the on-call care team within 2 minutes. | Must Have | Escalation triggered within 2 minutes; patient notified that a human will contact them | BRD §6.7 |
-| FR-063 | The chatbot shall support voice-to-text input for accessibility. | Could Have | Voice input transcribed with ≥ 90% accuracy; text submitted to chatbot pipeline | BRD §6.7 |
-| FR-064 | The chatbot shall present responses in the patient's preferred language as recorded in their patient record. | Must Have | Language preference applied automatically; patient can switch language mid-session | Derived |
-
----
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-060 | Patient Communication Agent shall provide a 24/7 AI chatbot interface in the patient portal, accessible without app installation via mobile browser | Must Have | BRD §6.7 | Patient Pat |
+| FR-061 | Chatbot shall answer questions scoped to the patient's own discharge instructions, medications, follow-up appointments, and warning signs | Must Have | BRD §6.7 | Patient Pat |
+| FR-062 | Chatbot shall respond to patient queries within 3 seconds for standard questions; complex clinical queries shall be escalated to the on-call care team within 2 minutes | Must Have | BRD §6.7 | Patient Pat |
+| FR-063 | Chatbot shall detect urgency signals (e.g., "chest pain", "can't breathe", "bleeding") and immediately display emergency contact information and initiate care team alert | Must Have | Safety | Patient Pat |
+| FR-064 | Agent shall support voice-to-text input via Web Speech API for accessibility | Could Have | BRD §6.7 | Patient Pat |
+| FR-065 | All chatbot conversation transcripts shall be stored against the patient encounter record for care team review | Must Have | HIPAA | Care Team |
 
 ### 4.8 Dashboard & Reporting
 
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-070 | The system shall display a real-time ADT event feed on the care team dashboard, showing event type, patient MRN (masked), unit, and timestamp. | Must Have | New ADT events appear on dashboard within 2 seconds of processing | BRD §6.8 |
-| FR-071 | The dashboard shall display a readmission risk score and acuity flag for each current patient. | Must Have | Risk scores visible for all current inpatients; high-risk patients visually distinguished | BRD §6.8 |
-| FR-072 | The dashboard shall display agent task status (Pending, In Progress, Completed, Failed) for all active AI agent workflows. | Must Have | Agent monitor shows live status; failed tasks highlighted with error detail | BRD §6.8 |
-| FR-073 | The system shall provide an analytics module displaying transition metrics including average discharge time, readmission rate, medication reconciliation completion rate, and ED boarding time. | Should Have | All defined KPIs displayed with daily/weekly/monthly filters | BRD §6.8 |
-| FR-074 | The dashboard shall support role-based views: Nurse view, Physician view, Pharmacist view, Bed Manager view, Supervisor view, and Admin view. | Must Have | Each role sees only the widgets and data relevant to their role; RBAC enforced at data layer | BRD §6.8 |
-| FR-080 | The system shall provide a patient list screen with search and filter capabilities (by unit, attending physician, risk score, ADT event type). | Must Have | Search returns results within 500ms; filters applied correctly | Derived |
-| FR-081 | The system shall provide a patient detail screen displaying demographics, current medications, active tasks, generated documents, and risk score in a single view. | Must Have | All data sections populated within 2 seconds of page load | Derived |
-
----
-
-### 4.9 Authentication & Authorization
-
-| Req ID | Requirement | Priority | Acceptance Criterion | Source |
-|---|---|---|---|---|
-| FR-085 | The system shall authenticate all users via OAuth 2.0 / OIDC integrated with the hospital's existing SSO provider. | Must Have | Login succeeds using hospital SSO credentials; no separate password store | BRD §12.2 |
-| FR-086 | The system shall enforce Multi-Factor Authentication (MFA) for all user accounts. | Must Have | MFA challenge presented on every login; login rejected without successful MFA | BRD §12.2 |
-| FR-087 | The system shall enforce Role-Based Access Control (RBAC) restricting each user's data access and UI capabilities to their assigned role. | Must Have | Cross-role data access returns 403; RBAC enforced at API and UI layer | BRD §12.2 |
-| FR-088 | User sessions shall automatically time out after 30 minutes of inactivity. | Must Have | Session invalidated at t+30 min; user redirected to login | BRD §8.2 |
+| ID | Requirement | Priority | BRD Ref | Persona |
+|----|-------------|----------|---------|---------|
+| FR-070 | Dashboard shall display a live ADT event feed showing event type, patient MRN (masked), unit, and timestamp, auto-refreshed via SignalR | Must Have | BRD §6.8 | All Staff |
+| FR-071 | Dashboard shall display each patient's readmission risk score with colour-coded severity (green <0.3, amber 0.3–0.7, red >0.7) | Must Have | BRD §6.8 | Nurse Nancy |
+| FR-072 | Dashboard shall display per-agent task status (pending/in-progress/complete/failed) with elapsed time for all active encounters | Must Have | BRD §6.8 | Supervisor |
+| FR-073 | System shall provide an analytics module with configurable KPI dashboards: discharge time, readmission rate, medication error rate, bed utilisation, patient satisfaction | Should Have | BRD §6.8 | Manager |
+| FR-074 | Dashboard views shall be role-filtered: nurses see clinical tasks; pharmacists see medication queues; bed managers see bed board; physicians see approval queues | Must Have | BRD §6.8, SEC-002 | All Staff |
+| FR-075 | System shall support data export of analytics reports in CSV and PDF formats | Should Have | BRD §6.8 | Manager |
 
 ---
 
 ## 5. Use Cases
 
-> Use cases are numbered UC-001 through UC-020. Each use case maps to one or more Functional Requirements.
+### UC-001: Process Patient Admission (ADT A01)
+
+| Field | Value |
+|-------|-------|
+| **ID** | UC-001 |
+| **Title** | Process Patient Admission |
+| **Actors** | EHR System (Primary), Transition Coordinator Agent, Documentation Agent, Medication Reconciliation Agent, Bed Management Agent |
+| **Trigger** | HL7 ADT^A01 message received on MLLP listener |
+| **Preconditions** | MLLP listener active; FHIR endpoint accessible; patient MRN resolvable |
+| **BRD Refs** | FR-001, FR-003, FR-004, FR-010, FR-030, FR-036, FR-041 |
+
+**Main Flow:**
+
+1. MLLP listener receives `ADT^A01` message and ACKs within 200ms
+2. Parser extracts PID (patient identity), PV1 (visit info), DG1 (diagnosis) segments
+3. System creates `ADTEvent` record with status `RECEIVED`; publishes to GCP Pub/Sub topic `adt-events`
+4. Transition Coordinator Agent subscribes, creates `Encounter` record, initiates workflow
+5. Coordinator dispatches parallel tasks: (a) FHIR patient data fetch, (b) bed assignment, (c) initial med reconciliation
+6. Bed Management Agent assigns optimal bed and updates bed board
+7. Medication Reconciliation Agent fetches pre-admission medications from FHIR, begins 24-hour reconciliation window
+8. Dashboard notifies all connected staff via SignalR within 1 second
+9. All task statuses visible on care team dashboard
+
+**Alternate Flows:**
+
+- **A1 — Patient not found in FHIR:** Agent logs warning, creates partial encounter record, alerts admissions clerk
+- **A2 — No bed available:** Bed Management Agent places patient on waiting list and triggers capacity alert
+
+**Postconditions:** Encounter record created; bed assigned (or waitlisted); medication reconciliation initiated; staff notified
 
 ---
 
-### UC-001 — Receive and Route ADT Event
+### UC-002: Process Patient Transfer (ADT A02)
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-001 |
-| **Title** | Receive and Route ADT Event |
-| **Actors** | ACT-08 (EHR System), ACT-09 (AI Agent System) |
-| **Trigger** | EHR system transmits an HL7 ADT message |
-| **Preconditions** | HL7 MLLP connection is active; SmartHandoff API is running |
-| **Mapped FRs** | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-002 |
+| **Title** | Process Patient Unit Transfer |
+| **Actors** | EHR System, Transition Coordinator Agent, Documentation Agent, Bed Management Agent |
+| **Trigger** | HL7 ADT^A02 message received |
+| **Preconditions** | Active encounter exists for patient; destination unit has available bed |
+| **BRD Refs** | FR-001, FR-002, FR-010, FR-013, FR-041 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. EHR sends HL7 ADT message (A01/A02/A03/A04/A08/A11/A12/A13) over MLLP/TCP.
-2. System parses the HL7 message, extracts event type, patient MRN, timestamp, and source system.
-3. System performs deduplication check using message ID and 60-second window.
-4. System creates an immutable audit log entry for the ADT event.
-5. System publishes the parsed event to GCP Pub/Sub.
-6. Transition Coordinator Agent subscribes to the Pub/Sub topic and receives the event.
-7. Agent determines the applicable agent workflow(s) based on event type.
-8. Agent dispatches task assignments to applicable agents.
-9. SignalR pushes an event notification to all connected dashboard clients.
+1. MLLP listener receives `ADT^A02`; parser extracts source unit and destination unit from PV1
+2. System updates `Encounter.Unit`; publishes to Pub/Sub `adt-events`
+3. Coordinator Agent generates transfer-specific handoff checklist for receiving unit nurse
+4. Bed Management Agent marks source bed as dirty/available; marks destination bed as occupied
+5. Documentation Agent creates transfer note summarising active problems, pending orders, and care plan
+6. Dashboard notifies both sending and receiving unit nursing staff via SignalR
+7. Handoff checklist pushed to receiving nurse's task queue
 
-**Extensions:**
+**Alternate Flows:**
 
-| Step | Condition | Handling |
-|---|---|---|
-| 2a | Message format is invalid | System logs parse error; sends HL7 NAK acknowledgement; generates alert |
-| 3a | Duplicate message detected | Message discarded; deduplication counter incremented in audit log |
-| 5a | Pub/Sub publish fails | Retry up to 3 times with exponential backoff; dead-letter queue after 3 failures |
+- **A1 — Destination bed no longer available:** Bed Management Agent re-evaluates and proposes alternative
+
+**Postconditions:** Encounter unit updated; handoff checklist delivered; bed board current
 
 ---
 
-### UC-002 — Orchestrate Patient Admission
+### UC-003: Process Patient Discharge (ADT A03)
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-002 |
-| **Title** | Orchestrate Patient Admission |
-| **Actors** | ACT-01 (Floor Nurse), ACT-02 (Attending Physician), ACT-09 (AI Agent System) |
-| **Trigger** | ADT^A01 Admit event processed |
-| **Preconditions** | UC-001 completed successfully; patient record accessible via FHIR |
-| **Mapped FRs** | FR-003, FR-010, FR-013, FR-030, FR-036, FR-041, FR-052 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-003 |
+| **Title** | Process Patient Discharge |
+| **Actors** | EHR System, Transition Coordinator Agent, Documentation Agent, Medication Reconciliation Agent, Follow-up Care Agent, Patient Communication Agent, Bed Management Agent |
+| **Trigger** | HL7 ADT^A03 message received |
+| **Preconditions** | Active encounter exists; attending physician has approved discharge order |
+| **BRD Refs** | FR-001, FR-002, FR-010, FR-020, FR-021, FR-030, FR-050, FR-052, FR-060 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Transition Coordinator Agent receives A01 event.
-2. Agent retrieves patient demographics and clinical history from FHIR R4 endpoint.
-3. Agent generates a context-aware admission handoff checklist.
-4. Agent dispatches tasks to: Medication Reconciliation Agent (begin reconciliation), Bed Management Agent (confirm bed assignment), Follow-up Care Agent (record baseline risk data).
-5. Medication Reconciliation Agent retrieves pre-admission medications and begins three-list comparison.
-6. Bed Management Agent confirms bed assignment and updates bed board status.
-7. Nurse is notified via dashboard of admission and pending tasks.
-8. Readmission risk baseline is recorded for the encounter.
+1. MLLP listener receives `ADT^A03`; Coordinator Agent orchestrates full discharge workflow
+2. Documentation Agent generates draft discharge summary (≤30 seconds) and patient instructions
+3. Medication Reconciliation Agent produces final medication change summary
+4. Follow-up Care Agent calculates readmission risk score and schedules follow-up appointment
+5. All documents surfaced in physician approval queue on dashboard
+6. Physician reviews, edits if needed, and approves — triggering document finalisation
+7. Patient portal populated with finalised instructions; patient notified via SMS/email
+8. Patient Communication Agent activates chatbot for 30-day post-discharge window
+9. Bed Management Agent marks bed as dirty and notifies environmental services
+10. Encounter status set to `DISCHARGED`; audit record closed
 
-**Extensions:**
+**Alternate Flows:**
 
-| Step | Condition | Handling |
-|---|---|---|
-| 2a | FHIR endpoint unavailable | Agent retries 3 times; uses cached patient data if available; alert sent to IT |
-| 5a | Pre-admission medication list unavailable | Pharmacist alerted to obtain medication history manually |
+- **A1 — Documentation incomplete:** Completeness check fails; discharge blocked; nurse alerted
+- **A2 — High readmission risk (≥0.7):** Follow-up appointment mandatory within 7 days; care manager alerted
 
----
-
-### UC-003 — Orchestrate Patient Transfer
-
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-003 |
-| **Title** | Orchestrate Patient Transfer |
-| **Actors** | ACT-01 (Floor Nurse), ACT-04 (Bed Manager), ACT-09 (AI Agent System) |
-| **Trigger** | ADT^A02 Transfer event processed |
-| **Preconditions** | Patient has an active admission encounter |
-| **Mapped FRs** | FR-003, FR-010, FR-011, FR-012, FR-013, FR-041, FR-042 |
-
-**Main Success Scenario:**
-
-1. Transition Coordinator Agent receives A02 event.
-2. Agent creates a transfer handoff checklist for the receiving unit.
-3. Agent notifies the receiving unit nurse via SignalR alert.
-4. Bed Management Agent updates bed status in the sending unit (Pending Clean) and receiving unit (Occupied).
-5. Agent marks the transfer handoff as pending completion.
-6. Receiving nurse confirms patient receipt on the dashboard, completing the handoff.
-7. Audit log updated with transfer completion timestamp.
-
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 6a | Handoff not confirmed within 30 minutes | Escalation sent to supervisor per FR-011 |
+**Postconditions:** Encounter closed; documents signed; patient portal active; follow-up scheduled; bed available
 
 ---
 
-### UC-004 — Orchestrate Patient Discharge
+### UC-004: Generate AI Discharge Summary
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-004 |
-| **Title** | Orchestrate Patient Discharge |
-| **Actors** | ACT-01 (Floor Nurse), ACT-02 (Attending Physician), ACT-03 (Clinical Pharmacist), ACT-09 (AI Agent System) |
-| **Trigger** | ADT^A03 Discharge event processed |
-| **Preconditions** | Patient has an active admission encounter; discharge order entered in EHR |
-| **Mapped FRs** | FR-003, FR-010, FR-020, FR-021, FR-023, FR-030, FR-052, FR-053 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-004 |
+| **Title** | Generate and Review AI Discharge Summary |
+| **Actors** | Documentation Agent, Attending Physician (P-02), Nurse (P-01) |
+| **Trigger** | ADT A03 event or manual physician request |
+| **Preconditions** | Patient encounter active; FHIR data accessible; Vertex AI service available |
+| **BRD Refs** | FR-020, FR-023, FR-024, FR-025, BR-001, BR-011 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Transition Coordinator Agent receives A03 event.
-2. Agent dispatches tasks to: Documentation Agent (generate discharge summary and instructions), Medication Reconciliation Agent (finalize reconciliation), Follow-up Care Agent (compute risk score and schedule follow-up).
-3. Documentation Agent drafts discharge summary and patient instructions.
-4. Documentation completeness check runs; all required documents confirmed present.
-5. Physician receives review notification; reviews and approves documents via the dashboard.
-6. Medication Reconciliation Agent delivers reconciled medication list and patient change summary.
-7. Follow-up Care Agent computes readmission risk score.
-8. If risk score ≥ 0.7, a follow-up appointment is scheduled within 7 days.
-9. Patient receives discharge instructions and medication summary via portal and/or print.
-10. Bed Management Agent updates bed status to Pending Cleaning.
+1. Documentation Agent retrieves encounter data, diagnosis codes (ICD-10), and clinical notes from FHIR
+2. Agent constructs structured LLM prompt with patient context and discharge summary template
+3. Vertex AI LLM generates draft discharge summary within 30 seconds
+4. Agent runs completeness validation against required-fields checklist
+5. Draft presented in dual-pane review UI with "AI-Assisted — Review Required" label
+6. Physician edits inline; change tracking records all modifications
+7. Physician clicks "Approve & Sign" — document status changes to `FINAL`; clinician identity and timestamp recorded
+8. Final document stored in `Document` table and linked to encounter
 
-**Extensions:**
+**Alternate Flows:**
 
-| Step | Condition | Handling |
-|---|---|---|
-| 4a | Required document missing | Discharge workflow blocked; nurse and physician notified with specific missing items |
-| 5a | Physician rejects AI-generated summary | Document returned to Documentation Agent with revision notes; revised draft generated |
+- **A1 — Vertex AI timeout:** System falls back to template-based summary; physician alerted to manual completion required
+
+**Postconditions:** Signed discharge summary on record; audit entry created
 
 ---
 
-### UC-005 — Generate Discharge Summary
+### UC-005: Medication Reconciliation
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-005 |
-| **Title** | Generate Discharge Summary |
-| **Actors** | ACT-02 (Attending Physician), ACT-09 (Documentation Agent) |
-| **Trigger** | Discharge workflow triggered (UC-004 Step 2) |
-| **Preconditions** | Patient encounter data (diagnoses, medications, procedures) accessible via FHIR |
-| **Mapped FRs** | FR-020, FR-024, FR-025 |
-
-**Main Success Scenario:**
-
-1. Documentation Agent retrieves encounter data from FHIR: diagnoses (ICD-10), procedures (CPT), current medications, allergies, vitals, lab results.
-2. Agent sends structured data to Vertex AI LLM with a discharge summary prompt template.
-3. LLM generates a draft discharge summary within 30 seconds.
-4. Summary is labelled "AI-Assisted" and stored as a draft document.
-5. Physician receives in-app notification to review the draft.
-6. Physician reviews, edits if necessary, and approves the summary.
-7. Document status updated to Finalized; reviewer identity and timestamp recorded.
-
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 2a | Vertex AI API call fails | Agent retries once after 5 seconds; if second failure, physician notified to complete summary manually |
-| 6a | Physician requests revision | Physician enters notes; agent regenerates summary incorporating feedback |
-
----
-
-### UC-006 — Generate Patient Discharge Instructions
-
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-006 |
-| **Title** | Generate Patient Discharge Instructions |
-| **Actors** | ACT-05 (Patient), ACT-09 (Documentation Agent) |
-| **Trigger** | Discharge summary approved (UC-005 Step 7) |
-| **Preconditions** | Approved discharge summary exists; patient language preference recorded |
-| **Mapped FRs** | FR-021, FR-022, FR-024, FR-025, FR-064 |
-
-**Main Success Scenario:**
-
-1. Documentation Agent retrieves the approved discharge summary and patient language preference.
-2. Agent generates plain-language instructions (target: 6th-grade reading level) from the clinical summary.
-3. If patient language preference is not English, agent requests translation from Vertex AI.
-4. Instructions are stored and labelled "AI-Assisted".
-5. Clinician reviews and approves the instructions.
-6. Instructions are made available on the patient portal and optionally printed.
-
----
-
-### UC-007 — Perform Medication Reconciliation
-
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-007 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-005 |
 | **Title** | Perform Medication Reconciliation |
-| **Actors** | ACT-03 (Clinical Pharmacist), ACT-09 (Medication Reconciliation Agent) |
-| **Trigger** | Admission event (UC-002) or Discharge event (UC-004) |
-| **Preconditions** | Pre-admission and current medication lists available |
-| **Mapped FRs** | FR-030, FR-031, FR-032, FR-033, FR-034, FR-035, FR-036 |
+| **Actors** | Medication Reconciliation Agent, Pharmacist Phil (P-03), Physician (P-02) |
+| **Trigger** | ADT A01 (admission) or ADT A03 (discharge) event |
+| **Preconditions** | Patient FHIR MedicationStatement accessible; drug interaction database online |
+| **BRD Refs** | FR-030, FR-031, FR-032, FR-033, FR-034, FR-035, FR-036, BR-002, BR-005 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Medication Reconciliation Agent retrieves pre-admission, inpatient, and (for discharge) discharge medication lists from FHIR.
-2. Agent maps all medications to RxNorm codes.
-3. Agent performs three-list comparison, flagging: additions, discontinuations, dose changes, duplicates, missing chronic medications.
-4. Agent queries the drug interaction database for all active medication combinations.
-5. Agent generates interaction alerts for identified drug-drug interactions.
-6. Agent classifies the reconciliation case complexity (low/medium/high).
-7. If high complexity (≥3 interactions, ≥10 medications, or high-alert class), priority alert sent to pharmacist.
-8. Pharmacist reviews the reconciliation report, resolves flags, and approves the final medication list.
-9. Patient medication change summary generated for patient-facing use.
+1. Agent fetches three medication lists from FHIR: pre-admission, inpatient, discharge prescription
+2. Agent compares lists and categorises changes: continued, new, stopped, dose-changed
+3. Agent queries drug interaction database for all active medication combinations
+4. Agent flags: (a) drug-drug interactions by severity, (b) duplicates, (c) missing chronic medications
+5. Pharmacist receives priority-ranked reconciliation queue on dashboard
+6. Pharmacist reviews, resolves conflicts, documents rationale
+7. Agent generates patient-readable medication change summary
+8. High-risk cases (anticoagulants, insulin, opioids) generate immediate pharmacist alert (FR-035)
 
-**Extensions:**
+**Alternate Flows:**
 
-| Step | Condition | Handling |
-|---|---|---|
-| 1a | Medication list unavailable from FHIR | Pharmacist alerted; reconciliation marked incomplete pending manual input |
-| 8a | Pharmacist identifies additional issue | Pharmacist adds annotation; prescribing physician notified |
+- **A1 — Reconciliation not completed within 24 hours:** System escalates to charge pharmacist (BR-002)
+- **A2 — Critical interaction detected:** Immediate alert to pharmacist AND prescribing physician; discharge held pending resolution
 
----
-
-### UC-008 — Monitor Bed Availability
-
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-008 |
-| **Title** | Monitor Bed Availability |
-| **Actors** | ACT-04 (Bed Manager) |
-| **Trigger** | ADT event triggers bed status change; bed manager opens bed board |
-| **Preconditions** | Bed management module accessible; at least one unit configured |
-| **Mapped FRs** | FR-041, FR-043, FR-044 |
-
-**Main Success Scenario:**
-
-1. Bed Manager opens the Bed Board screen.
-2. System displays all beds across all units with current status (Available, Occupied, Pending Discharge, Under Cleaning).
-3. Discharge predictions are shown for occupied beds (ML-estimated time to available).
-4. Status updates appear in real-time as ADT events are processed.
-5. When ED boarding time exceeds the threshold, an alert badge appears and a notification is dispatched.
+**Postconditions:** Reconciliation record complete; patient medication summary generated; alerts resolved or escalated
 
 ---
 
-### UC-009 — Assign Bed to Incoming Patient
+### UC-006: Real-Time Bed Board Management
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-009 |
-| **Title** | Assign Bed to Incoming Patient |
-| **Actors** | ACT-04 (Bed Manager), ACT-09 (Bed Management Agent) |
-| **Trigger** | New patient admission or transfer requires bed assignment |
-| **Preconditions** | Patient acuity and isolation requirements known; bed board data current |
-| **Mapped FRs** | FR-040, FR-041, FR-042 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-006 |
+| **Title** | Monitor and Manage Bed Availability |
+| **Actors** | Bed Management Agent, Coordinator Carol (P-04) |
+| **Trigger** | ADT event (A01/A02/A03) or periodic refresh (every 60 seconds) |
+| **Preconditions** | Bed inventory seeded in system; unit configurations complete |
+| **BRD Refs** | FR-040, FR-041, FR-042, FR-043, FR-044 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Bed Management Agent receives patient acuity, diagnosis category, and isolation requirements.
-2. Agent queries real-time bed availability data.
-3. Agent applies matching rules (acuity vs. unit capability, isolation, proximity to nursing station for high-risk patients).
-4. Agent presents top 3 recommended beds with rationale to Bed Manager.
-5. Bed Manager selects the assignment and confirms.
-6. Bed status updated to Occupied; assigned nurse notified.
+1. Bed Board screen shows visual floor-plan grid with colour-coded bed status
+2. Agent updates bed status in real time on each ADT event via SignalR
+3. Agent's ML model generates predicted discharge times for all active patients
+4. On incoming admission (A01), Agent scores available beds and presents ranked recommendation to coordinator
+5. Coordinator assigns bed; Agent updates board; sends assignment notification to receiving unit
+6. On discharge (A03), Agent marks bed dirty and sends housekeeping notification
 
----
+**Alternate Flows:**
 
-### UC-010 — Assess Readmission Risk
+- **A1 — ED wait >2 hours:** Agent fires ED boarding alert with patient list to bed manager and ED charge nurse (FR-043)
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-010 |
-| **Title** | Assess Readmission Risk |
-| **Actors** | ACT-01 (Floor Nurse), ACT-07 (Supervisor), ACT-09 (Follow-up Care Agent) |
-| **Trigger** | Discharge event processed (UC-004) |
-| **Preconditions** | Patient encounter data complete; ML model deployed |
-| **Mapped FRs** | FR-052, FR-053 |
-
-**Main Success Scenario:**
-
-1. Follow-up Care Agent retrieves encounter features: diagnoses, length of stay, medication count, prior admissions, discharge destination, lab values.
-2. Agent invokes the Scikit-learn readmission risk model.
-3. Model returns a risk score between 0.0 and 1.0 with feature importance breakdown.
-4. Risk score stored in the encounter record and displayed on the dashboard.
-5. If score ≥ 0.7, agent triggers automatic follow-up scheduling (see UC-011).
-6. Care manager is notified of all high-risk patients for active follow-up.
+**Postconditions:** Bed board current within 60 seconds; assignments recorded; alerts dispatched
 
 ---
 
-### UC-011 — Schedule Post-Discharge Follow-up
+### UC-007: Post-Discharge Follow-up Scheduling
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-011 |
-| **Title** | Schedule Post-Discharge Follow-up |
-| **Actors** | ACT-05 (Patient), ACT-01 (Floor Nurse), ACT-09 (Follow-up Care Agent) |
-| **Trigger** | High-risk patient discharged (risk score ≥ 0.7) or nurse initiates follow-up |
-| **Preconditions** | Patient contact information present; provider availability accessible |
-| **Mapped FRs** | FR-050, FR-051, FR-053 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-007 |
+| **Title** | Schedule Post-Discharge Follow-up Care |
+| **Actors** | Follow-up Care Agent, Discharge Planner, Patient Pat (P-05) |
+| **Trigger** | ADT A03 (Discharge) event |
+| **Preconditions** | Readmission risk score calculated; FHIR Appointment endpoint available |
+| **BRD Refs** | FR-050, FR-051, FR-052, FR-054, BR-003 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Follow-up Care Agent identifies the patient's primary care provider (PCP) or relevant specialist.
-2. Agent checks provider availability and books the earliest appointment within 7 days.
-3. Appointment confirmation sent to patient via SMS and/or email.
-4. Appointment details recorded in the encounter record.
-5. Medication reminder schedule configured for the post-discharge period.
-6. Nurse notified of appointment booking confirmation.
+1. Agent calculates readmission risk score at time of A03 event
+2. For risk ≥0.7: schedules follow-up within 7 days, alerts care manager, initiates high-risk pathway
+3. For risk 0.3–0.7: schedules standard follow-up within 14 days
+4. Agent books FHIR Appointment and sends confirmation to patient via SMS and email
+5. Agent schedules medication reminder messages per discharge prescription
+6. For risk ≥0.5: 48-hour post-discharge check-in automated message queued
 
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 2a | No appointment available within 7 days | Nurse notified; manual scheduling task created |
+**Postconditions:** Follow-up appointment booked; reminders scheduled; care manager alerted if high-risk
 
 ---
 
-### UC-012 — Patient Chatbot Interaction
+### UC-008: Patient Chatbot Interaction
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-012 |
-| **Title** | Patient Chatbot Interaction |
-| **Actors** | ACT-05 (Patient), ACT-09 (Patient Communication Agent) |
-| **Trigger** | Patient opens the patient portal and initiates a chat session |
-| **Preconditions** | Patient authenticated; discharge instructions exist for the encounter |
-| **Mapped FRs** | FR-060, FR-061, FR-062, FR-063, FR-064 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-008 |
+| **Title** | Patient Engages Post-Discharge Chatbot |
+| **Actors** | Patient Communication Agent, Patient Pat (P-05), Care Team (escalation) |
+| **Trigger** | Patient opens chatbot in patient portal |
+| **Preconditions** | Patient authenticated; discharge complete; encounter record accessible |
+| **BRD Refs** | FR-060, FR-061, FR-062, FR-063, FR-064, FR-065 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Patient logs into the patient portal and opens the chat widget.
-2. Chatbot greets patient in their preferred language.
-3. Patient submits a query (text or voice-to-text).
-4. Patient Communication Agent retrieves the patient's encounter context (instructions, medications, appointments).
-5. Agent queries Vertex AI LLM with the patient context and question.
-6. LLM generates a contextual response within 3 seconds.
-7. Response displayed to patient in preferred language.
-8. Interaction logged for audit and quality review.
+1. Patient opens patient portal on mobile browser and authenticates
+2. Patient types (or dictates) question about discharge instructions
+3. Agent retrieves patient's finalised discharge documents from encounter record
+4. Vertex AI LLM generates contextual answer scoped to patient's own instructions within 3 seconds
+5. Response displayed with option to "Connect with Care Team" if unsatisfied
+6. Conversation transcript stored against encounter record
 
-**Extensions:**
+**Alternate Flows:**
 
-| Step | Condition | Handling |
-|---|---|---|
-| 3a | Patient submits urgency keywords (e.g., "chest pain", "can't breathe") | Escalation triggered; patient shown emergency contact instructions; on-call nurse alerted within 2 minutes |
-| 6a | LLM confidence below threshold | Chatbot recommends the patient call the nurse line; escalation option presented |
+- **A1 — Urgency signal detected:** Chatbot immediately shows 911 / emergency hotline and creates high-priority care team alert
+- **A2 — Clinical escalation requested:** Agent routes to on-call nurse within 2 minutes; patient shown wait time
+
+**Postconditions:** Question answered or escalated; transcript stored; alerts dispatched if urgent
 
 ---
 
-### UC-013 — Escalate Patient Concern to Care Team
+### UC-009: Clinician Reviews AI-Generated Content
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-013 |
-| **Title** | Escalate Patient Concern to Care Team |
-| **Actors** | ACT-05 (Patient), ACT-01 (Floor Nurse), ACT-07 (Supervisor), ACT-09 (Patient Communication Agent) |
-| **Trigger** | Patient submits an urgent query (UC-012 Extension 3a) or Follow-up Care Agent detects concern (FR-054) |
-| **Preconditions** | Patient has an active post-discharge encounter record; care team assigned |
-| **Mapped FRs** | FR-054, FR-055, FR-062 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-009 |
+| **Title** | Clinician Reviews and Approves AI-Generated Document |
+| **Actors** | Documentation Agent, Physician (P-02), Nurse (P-01) |
+| **Trigger** | AI-generated document enters pending-review state |
+| **Preconditions** | Document generated; clinician authenticated with review role |
+| **BRD Refs** | FR-024, FR-025, BR-001, BR-011 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Agent classifies the concern as urgent based on keyword detection or symptom pattern.
-2. Agent creates an escalation record with severity classification (Low / Medium / High / Critical).
-3. Escalation alert sent to the assigned nurse via dashboard and SMS within 5 minutes.
-4. Patient notified that a care team member will contact them.
-5. Nurse acknowledges the escalation on the dashboard within 30 minutes.
-6. Nurse records resolution action in the escalation record.
+1. Clinician sees notification badge on dashboard for pending approvals
+2. Opens review queue; sees AI-generated document with "AI-Assisted" label
+3. Reviews content in dual-pane editor (AI draft left, editable right)
+4. Makes inline edits; change tracking records author and timestamp
+5. Clicks "Approve & Sign" — document finalised; HIPAA audit entry created
+6. If rejected: document returned to agent with rejection reason; agent regenerates or flags for manual completion
 
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 5a | Escalation not acknowledged within 30 minutes | Supervisor alert sent automatically |
+**Postconditions:** Document finalised or returned; audit trail complete
 
 ---
 
-### UC-014 — Review and Approve AI-Generated Document
+### UC-010: Role-Based Dashboard Access
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-014 |
-| **Title** | Review and Approve AI-Generated Document |
-| **Actors** | ACT-02 (Attending Physician), ACT-01 (Floor Nurse), ACT-09 (Documentation Agent) |
-| **Trigger** | Documentation Agent completes a document draft |
-| **Preconditions** | AI-generated document exists in Draft status |
-| **Mapped FRs** | FR-024, FR-025 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-010 |
+| **Title** | Staff Member Accesses Role-Filtered Dashboard |
+| **Actors** | All Staff Personas (P-01 to P-04) |
+| **Trigger** | Staff member logs in via SSO |
+| **Preconditions** | User account provisioned; role assigned in IdP |
+| **BRD Refs** | FR-070, FR-071, FR-072, FR-074, SEC-001, SEC-002 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Clinician receives in-app notification of a document pending review.
-2. Clinician opens the document review screen.
-3. Document is displayed with "AI-Assisted" label and AI-generated sections highlighted.
-4. Clinician reads the document and makes inline edits as needed.
-5. Clinician approves the document; status changes to Finalized.
-6. Document metadata records the reviewer's identity, role, and approval timestamp.
+1. User navigates to SmartHandoff URL and is redirected to SSO login
+2. Authenticates with MFA; JWT issued with role claims
+3. Angular app loads role-specific dashboard layout
+4. Nurse: sees patient task list, risk scores, handoff checklists
+5. Pharmacist: sees medication reconciliation queue, interaction alerts
+6. Bed Manager: sees bed board, ED boarding alerts, discharge predictions
+7. Physician: sees approval queues, patient summaries, risk flags
+8. Real-time updates stream via SignalR for all panels
 
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 4a | Clinician rejects the document | Rejection reason entered; document returns to Documentation Agent for revision |
+**Postconditions:** User sees only role-appropriate data; session token active with 30-min idle timeout
 
 ---
 
-### UC-015 — View Care Team Dashboard
+### UC-011: Patient Portal Access
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-015 |
-| **Title** | View Care Team Dashboard |
-| **Actors** | ACT-01 (Floor Nurse), ACT-02 (Attending Physician), ACT-03 (Clinical Pharmacist), ACT-04 (Bed Manager), ACT-07 (Supervisor) |
-| **Trigger** | Staff member logs into SmartHandoff |
-| **Preconditions** | User authenticated with valid role |
-| **Mapped FRs** | FR-070, FR-071, FR-072, FR-074, FR-080, FR-081 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-011 |
+| **Title** | Patient Accesses Discharge Instructions |
+| **Actors** | Patient Pat (P-05) |
+| **Trigger** | Patient receives SMS/email notification with portal link post-discharge |
+| **Preconditions** | Discharge complete; patient portal link generated; patient email/phone on file |
+| **BRD Refs** | FR-021, FR-022, FR-060, FR-065, PRV-001, PRV-004 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. User authenticates and is directed to the dashboard home.
-2. System renders the role-specific dashboard layout within 2 seconds.
-3. Dashboard displays: real-time ADT event feed, patient list with risk scores, agent task status, pending actions, and relevant alerts.
-4. User selects a patient from the list to view the Patient Detail screen.
-5. Patient Detail screen shows demographics, medications, active tasks, generated documents, and risk score.
-6. Real-time updates (new ADT events, task completions, alerts) appear without page refresh.
+1. Patient receives personalised portal link via SMS/email
+2. Patient authenticates via one-time passcode (OTP) or magic link
+3. Portal displays discharge instructions in patient's preferred language
+4. Patient can view medications, follow-up appointments, warning signs
+5. Patient can download/print instructions as PDF
+6. Chatbot widget available for questions
 
----
-
-### UC-016 — Monitor AI Agent Activity
-
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-016 |
-| **Title** | Monitor AI Agent Activity |
-| **Actors** | ACT-07 (Supervisor), ACT-06 (IT Administrator) |
-| **Trigger** | Supervisor/Admin navigates to the Agent Monitor screen |
-| **Preconditions** | User has Supervisor or Admin role |
-| **Mapped FRs** | FR-072 |
-
-**Main Success Scenario:**
-
-1. User opens the Agent Monitor screen.
-2. System displays all active agent tasks with status: Agent type, patient encounter, task status (Pending / In Progress / Completed / Failed), start time, duration.
-3. Failed tasks are highlighted in red with error detail visible on hover/click.
-4. Supervisor can trigger a manual retry for failed tasks.
-5. Task history is filterable by agent type, date range, and status.
+**Postconditions:** Patient has access to instructions; chatbot available; access logged
 
 ---
 
-### UC-017 — Access Patient Portal
+### UC-012: Pharmacist Drug Interaction Alert Response
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-017 |
-| **Title** | Access Patient Portal |
-| **Actors** | ACT-05 (Patient) |
-| **Trigger** | Patient follows the portal link from their discharge communication |
-| **Preconditions** | Patient has received portal access credentials; encounter is linked |
-| **Mapped FRs** | FR-060, FR-061, FR-064 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-012 |
+| **Title** | Pharmacist Responds to Drug Interaction Alert |
+| **Actors** | Medication Reconciliation Agent, Pharmacist Phil (P-03), Physician (P-02) |
+| **Trigger** | Agent detects major drug-drug interaction |
+| **Preconditions** | Medication reconciliation in progress; pharmacist online |
+| **BRD Refs** | FR-031, FR-035, BR-005 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Patient opens the portal URL on a mobile or desktop browser.
-2. Patient authenticates (secure token from discharge communication or OTP).
-3. Patient portal home displays: discharge instructions, medication list, follow-up appointment details, and chat widget.
-4. Patient can download or print their instructions.
-5. Patient initiates a chat session (see UC-012).
+1. Agent detects major interaction (e.g., warfarin + NSAID); generates high-priority alert
+2. Alert pushed to pharmacist dashboard with severity, drug pair, and clinical rationale
+3. Pharmacist reviews interaction detail and patient clinical context
+4. Pharmacist contacts prescribing physician (tracked in system)
+5. Resolution recorded: (a) medication changed, (b) interaction accepted with monitoring plan, (c) escalated to CMO
+6. Alert closed with resolution note; audit entry created
 
----
+**Alternate Flows:**
 
-### UC-018 — View Analytics & KPI Dashboard
+- **A1 — Pharmacist unavailable >15 minutes:** Alert escalated to backup pharmacist and charge nurse (BR-014)
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-018 |
-| **Title** | View Analytics & KPI Dashboard |
-| **Actors** | ACT-07 (Supervisor / Manager) |
-| **Trigger** | Manager navigates to the Analytics screen |
-| **Preconditions** | User has Manager or Admin role |
-| **Mapped FRs** | FR-073 |
-
-**Main Success Scenario:**
-
-1. Manager opens the Analytics screen.
-2. System loads KPI dashboard with default view: current month.
-3. KPIs displayed: average discharge documentation time, 30-day readmission rate, medication reconciliation completion rate, ED boarding time, agent task success rate, patient satisfaction score.
-4. Manager applies date range and unit filters.
-5. KPIs recalculate and charts refresh within 2 seconds of filter change.
-6. Manager can export the report as CSV or PDF.
+**Postconditions:** Drug interaction resolved; audit record complete; discharge unblocked or held
 
 ---
 
-### UC-019 — Authenticate and Manage User Session
+### UC-013: Readmission Risk Escalation
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-019 |
-| **Title** | Authenticate and Manage User Session |
-| **Actors** | ACT-01–ACT-07 (all staff users) |
-| **Trigger** | User navigates to SmartHandoff URL |
-| **Preconditions** | Hospital SSO configured and reachable |
-| **Mapped FRs** | FR-085, FR-086, FR-087, FR-088 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-013 |
+| **Title** | High-Risk Patient Escalation Workflow |
+| **Actors** | Follow-up Care Agent, Care Manager, Nurse (P-01) |
+| **Trigger** | Readmission risk score ≥0.7 calculated at discharge |
+| **Preconditions** | ML model loaded; discharge event (A03) processed |
+| **BRD Refs** | FR-052, FR-053, FR-054, BR-003 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. User navigates to SmartHandoff URL; system redirects to hospital SSO login.
-2. User enters credentials; SSO validates identity.
-3. MFA challenge presented; user completes MFA.
-4. SSO issues OIDC ID token; SmartHandoff exchanges it for a session JWT.
-5. System loads user's RBAC role from the identity provider claims.
-6. User is directed to their role-specific dashboard.
-7. After 30 minutes of inactivity, session is invalidated and user is redirected to login.
+1. Agent calculates risk score ≥0.7 at A03 event
+2. System flags patient as HIGH RISK in dashboard with red indicator
+3. Care manager receives real-time alert with risk score and contributing factors
+4. System enforces mandatory follow-up scheduling within 7 days
+5. Post-discharge check-in scheduled for 48 hours
+6. Medication reminders set to daily frequency for high-risk patients
+7. Care manager documents care plan in system
 
-**Extensions:**
-
-| Step | Condition | Handling |
-|---|---|---|
-| 2a | SSO unreachable | Error message displayed; IT contact displayed |
-| 3a | MFA fails 3 consecutive times | Account locked for 15 minutes; IT notified |
+**Postconditions:** High-risk pathway activated; follow-up mandatory; care team notified
 
 ---
 
-### UC-020 — Administer System Configuration
+### UC-014: Multilingual Instruction Delivery
 
-| Field | Detail |
-|---|---|
-| **Use Case ID** | UC-020 |
-| **Title** | Administer System Configuration |
-| **Actors** | ACT-06 (IT Administrator) |
-| **Trigger** | Admin opens the Admin Settings screen |
-| **Preconditions** | User authenticated with IT Admin role |
-| **Mapped FRs** | FR-074, FR-087 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-014 |
+| **Title** | Generate Discharge Instructions in Patient's Language |
+| **Actors** | Documentation Agent, Patient Pat (P-05) |
+| **Trigger** | Discharge event; patient's preferred language ≠ English |
+| **Preconditions** | Patient language preference stored in FHIR Patient resource |
+| **BRD Refs** | FR-022, BR-004 |
 
-**Main Success Scenario:**
+**Main Flow:**
 
-1. Admin opens the Admin Settings screen.
-2. Admin views and manages: user accounts and roles, notification thresholds, ED boarding alert threshold, supported languages, agent configuration parameters.
-3. Admin makes a configuration change; change is logged in the audit trail.
-4. Configuration changes take effect within 60 seconds without requiring system restart.
+1. Documentation Agent reads `Patient.communication.language` from FHIR
+2. Agent generates instructions in patient's preferred language using LLM translation
+3. Instructions reviewed for medical terminology accuracy (automated quality check)
+4. Bilingual version (patient language + English) stored for care team reference
+5. Portal displays instructions in patient's preferred language by default
 
----
-
-## 6. Business Rules
-
-The following business rules constrain system behaviour and must be enforced in implementation.
-
-| Rule ID | Business Rule | Enforcement Point |
-|---|---|---|
-| BR-001 | All discharge summaries must be reviewed and approved by a licensed clinician before finalization. | Documentation Agent; document status gate |
-| BR-002 | Medication reconciliation must be completed within 24 hours of admission. | Follow-up Care Agent; SLA monitor |
-| BR-003 | Patients with readmission risk score ≥ 0.7 must have a follow-up appointment scheduled within 7 days of discharge. | Follow-up Care Agent; automatic booking |
-| BR-004 | Discharge instructions must be provided in the patient's preferred language. | Documentation Agent; patient preference lookup |
-| BR-005 | Critical drug-drug interactions must generate an immediate alert to the responsible pharmacist. | Medication Reconciliation Agent; real-time alert |
-| BR-006 | ADT events must be processed within 5 seconds of receipt. | API gateway; SLA monitoring |
-| BR-007 | All AI-generated content must be clearly labelled "AI-Assisted" in both the UI and document metadata. | Documentation Agent; all AI agent outputs |
-| BR-008 | All access to Protected Health Information (PHI) must be logged in an immutable audit trail. | API middleware; data access layer |
-| BR-009 | User sessions must time out after 30 minutes of inactivity. | Session management middleware |
-| BR-010 | Escalations not addressed within 30 minutes must automatically notify the supervisor. | Follow-up Care Agent; escalation monitor |
-| BR-011 | Patient identifiers must be encrypted at rest (AES-256) and in transit (TLS 1.3). | Data layer; network configuration |
-| BR-012 | PHI must not be written to application logs. | Logging middleware; log scrubbing |
-| BR-013 | Active patient records retained for 7 years; audit logs retained for 6 years. | Data retention policy; automated archival |
+**Postconditions:** Instructions available in patient's language; compliance with Joint Commission BR-004 met
 
 ---
 
-## 7. Data Requirements
+### UC-015: Audit Trail Query
 
-### Core Entities
+| Field | Value |
+|-------|-------|
+| **ID** | UC-015 |
+| **Title** | Compliance Officer Queries Audit Trail |
+| **Actors** | Compliance Officer |
+| **Trigger** | Compliance review request or security incident investigation |
+| **Preconditions** | User has Compliance role; audit logs intact |
+| **BRD Refs** | FR-005, BR-012, BR-023, SEC-006 |
 
-| Entity | Key Attributes | Source | Sensitivity |
-|---|---|---|---|
-| **Patient** | PatientId, MRN, Name, DOB, Gender, LanguagePreference, Phone, Email | EHR / FHIR | PHI — High |
-| **Encounter** | EncounterId, PatientId, AdmitDate, DischargeDate, Unit, AttendingMD, Status, RiskScore | EHR / FHIR | PHI — High |
-| **ADTEvent** | EventId, EncounterId, EventType, EventTime, SourceSystem, ProcessedTime, AgentTriggered | System Generated | PHI — Medium |
-| **Medication** | MedicationId, EncounterId, DrugName, RxNormCode, Dosage, Frequency, Route, Status, ConflictFlag | EHR / FHIR | PHI — High |
-| **AgentTask** | TaskId, EncounterId, AgentType, Status, StartTime, EndTime, Result, ErrorMessage | System Generated | Internal |
-| **Document** | DocumentId, EncounterId, DocumentType, Content, GeneratedBy, ReviewedBy, Status, CreatedAt | System Generated | PHI — High |
-| **AuditLog** | LogId, UserId, PatientId, Action, ResourceType, ResourceId, Timestamp, IPAddress | System Generated | PHI — High |
-| **User** | UserId, Name, Role, Email, UnitAssignment | Identity Provider | Internal |
+**Main Flow:**
 
-### Data Quality Rules
+1. Compliance Officer navigates to Audit Log module in Admin Settings
+2. Filters by date range, user, patient MRN (masked), event type, or data entity
+3. System returns paginated, immutable audit records with user identity, action, timestamp, and IP
+4. Officer exports report as CSV for external review
+5. PHI fields masked unless officer has elevated PHI-access role
 
-| Rule | Description |
-|---|---|
-| **Completeness** | MRN, EventType, EventTime, EncounterId required on all ADT events; null rejection enforced |
-| **Uniqueness** | MRN unique per patient; deduplication via MRN-matching algorithm |
-| **Accuracy** | Medication RxNorm codes validated against RXNORM vocabulary on ingest |
-| **Timeliness** | FHIR data refresh latency ≤ 60 seconds; ADT event processing ≤ 5 seconds |
-| **Integrity** | Foreign key relationships enforced at DB level; orphan record cleanup job scheduled daily |
-| **PHI Protection** | PHI fields encrypted at rest; PHI excluded from all log records |
+**Postconditions:** Audit report generated; no PHI exposed beyond role entitlement
 
 ---
 
-## 8. Acceptance Criteria
+### UC-016: Admin User Management
 
-### Feature-Level Acceptance
+| Field | Value |
+|-------|-------|
+| **ID** | UC-016 |
+| **Title** | IT Admin Provisions / Deprovisions User |
+| **Actors** | IT Admin, Identity Provider |
+| **Trigger** | New staff onboarding or staff departure |
+| **Preconditions** | IT Admin authenticated with admin role |
+| **BRD Refs** | FR-074, SEC-001, SEC-002 |
 
-| Feature Area | Acceptance Criteria |
-|---|---|
-| **ADT Processing** | All 8 event types (A01–A13) processed within 5 seconds; 100% audit coverage; duplicates rejected |
-| **Documentation Agent** | Discharge summary generated within 30 seconds; readability score ≥ 60; 5 languages available; AI label present |
-| **Medication Reconciliation** | Drug interaction detection sensitivity ≥ 99%; reconciliation completed within 24 hours of admission; pharmacist alert ≤ 60 seconds |
-| **Bed Management** | Bed board updates within 5 seconds of ADT event; ED boarding alert delivered within 1 minute of threshold breach |
-| **Follow-up Care** | Risk score computed within 60 seconds of discharge; high-risk follow-up booked within 5 minutes |
-| **Patient Communication** | Chatbot response ≤ 3 seconds (p95); urgent escalation ≤ 2 minutes; 24/7 availability |
-| **Dashboard** | Page load ≤ 2 seconds; real-time updates visible; all KPIs accurate; role-based views enforced |
-| **Authentication** | SSO + MFA login functional; session timeout at 30 minutes; RBAC enforced at API layer |
+**Main Flow:**
 
-### System-Level Acceptance
+1. IT Admin opens Admin Settings > User Management
+2. Creates new user account; assigns role (Nurse/Physician/Pharmacist/BedManager/Admin)
+3. System provisions account in Identity Provider via SCIM API
+4. User receives onboarding email with SSO link and MFA setup instructions
+5. For deprovisioning: IT Admin disables account; all active sessions immediately revoked
 
-| Category | Criterion |
-|---|---|
-| **Performance** | 95th-percentile API response time ≤ 500ms; page load ≤ 2 seconds |
-| **Scalability** | System handles 500 concurrent users and 5,000 ADT events/day without degradation |
-| **Availability** | 99.9% uptime over any rolling 30-day period |
-| **Security** | Pass third-party security assessment; zero critical OWASP findings |
-| **Usability** | ≥ 80% user satisfaction in UAT survey; user error rate ≤ 5% |
-| **Accessibility** | WCAG 2.1 AA compliance verified by automated and manual audit |
-| **Data Integrity** | Zero patient data loss; backup recovery verified within RPO of 15 minutes |
+**Postconditions:** User provisioned or deprovisioned; access enforced; audit entry created
 
 ---
 
-## 9. Traceability Matrix
+### UC-017: Cancel Admission / Transfer / Discharge
 
-| UC ID | Title | Mapped FR IDs |
-|---|---|---|
-| UC-001 | Receive and Route ADT Event | FR-001, FR-002, FR-003, FR-004, FR-005, FR-006 |
-| UC-002 | Orchestrate Patient Admission | FR-003, FR-010, FR-013, FR-030, FR-036, FR-041, FR-052 |
-| UC-003 | Orchestrate Patient Transfer | FR-003, FR-010, FR-011, FR-012, FR-013, FR-041, FR-042 |
-| UC-004 | Orchestrate Patient Discharge | FR-003, FR-010, FR-020, FR-021, FR-023, FR-030, FR-052, FR-053 |
-| UC-005 | Generate Discharge Summary | FR-020, FR-024, FR-025 |
-| UC-006 | Generate Patient Discharge Instructions | FR-021, FR-022, FR-024, FR-025, FR-064 |
-| UC-007 | Perform Medication Reconciliation | FR-030, FR-031, FR-032, FR-033, FR-034, FR-035, FR-036 |
-| UC-008 | Monitor Bed Availability | FR-041, FR-043, FR-044 |
-| UC-009 | Assign Bed to Incoming Patient | FR-040, FR-041, FR-042 |
-| UC-010 | Assess Readmission Risk | FR-052, FR-053 |
-| UC-011 | Schedule Post-Discharge Follow-up | FR-050, FR-051, FR-053 |
-| UC-012 | Patient Chatbot Interaction | FR-060, FR-061, FR-062, FR-063, FR-064 |
-| UC-013 | Escalate Patient Concern to Care Team | FR-054, FR-055, FR-062 |
-| UC-014 | Review and Approve AI-Generated Document | FR-024, FR-025 |
-| UC-015 | View Care Team Dashboard | FR-070, FR-071, FR-072, FR-074, FR-080, FR-081 |
-| UC-016 | Monitor AI Agent Activity | FR-072 |
-| UC-017 | Access Patient Portal | FR-060, FR-061, FR-064 |
-| UC-018 | View Analytics & KPI Dashboard | FR-073 |
-| UC-019 | Authenticate and Manage User Session | FR-085, FR-086, FR-087, FR-088 |
-| UC-020 | Administer System Configuration | FR-074, FR-087 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-017 |
+| **Title** | Handle ADT Cancellation Event |
+| **Actors** | EHR System, Transition Coordinator Agent |
+| **Trigger** | HL7 ADT^A11, A12, or A13 received |
+| **Preconditions** | Original ADT event processed; encounter record exists |
+| **BRD Refs** | FR-006, FR-002 |
+
+**Main Flow:**
+
+1. MLLP listener receives cancellation message; parser identifies cancel type
+2. Coordinator Agent immediately halts all in-progress agent workflows for the encounter
+3. Encounter status reverted to pre-event state; ADT event record updated to `CANCELLED`
+4. If beds were assigned, Bed Management Agent reverses assignment
+5. Dashboard updated; affected staff notified via SignalR
+
+**Postconditions:** Encounter in correct prior state; no orphaned tasks; staff notified
 
 ---
 
-## Document Revision History
+### UC-018: ED Boarding Alert
 
-| Version | Date | Author | Change |
-|---|---|---|---|
-| 1.0 | 2026-07-10 | SmartHandoff Project Team | Initial spec derived from BRD v1.0 |
+| Field | Value |
+|-------|-------|
+| **ID** | UC-018 |
+| **Title** | Trigger and Resolve ED Boarding Alert |
+| **Actors** | Bed Management Agent, Coordinator Carol (P-04), ED Charge Nurse |
+| **Trigger** | Patient has waited >2 hours for inpatient bed assignment |
+| **Preconditions** | Patient admitted; no bed assigned within 2-hour window |
+| **BRD Refs** | FR-043, BO-05 |
+
+**Main Flow:**
+
+1. Agent monitors time-to-bed-assignment for all pending admissions
+2. At 2-hour threshold, agent fires ED Boarding Alert
+3. Bed Manager and ED Charge Nurse receive push notification
+4. Bed Manager opens boarding resolution workflow; system shows available beds and predicted discharges
+5. Bed Manager manually or auto-assigns next available bed; alert cleared
+6. Alert duration and resolution tracked for KPI reporting
+
+**Postconditions:** Alert resolved; bed assigned; boarding time recorded for analytics
 
 ---
 
-*End of Specification*
+### UC-019: Analytics & KPI Dashboard
+
+| Field | Value |
+|-------|-------|
+| **ID** | UC-019 |
+| **Title** | Manager Reviews Transition KPI Dashboard |
+| **Actors** | Hospital Manager |
+| **Trigger** | Manager logs in; navigates to Analytics module |
+| **Preconditions** | Sufficient encounter data; manager role assigned |
+| **BRD Refs** | FR-073, FR-075 |
+
+**Main Flow:**
+
+1. Manager selects date range and unit filter
+2. System renders KPI charts: average discharge documentation time, 30-day readmission rate, medication reconciliation completion rate, bed utilisation, patient satisfaction scores
+3. Manager drills down into individual encounters for root-cause review
+4. Manager exports report as CSV or PDF
+
+**Postconditions:** KPI report generated; data de-identified for analytics per PRV-003
+
+---
+
+### UC-020: System Health & Agent Monitor
+
+| Field | Value |
+|-------|-------|
+| **ID** | UC-020 |
+| **Title** | Supervisor Monitors AI Agent Performance |
+| **Actors** | IT Supervisor |
+| **Trigger** | Routine monitoring or alert received |
+| **Preconditions** | Supervisor authenticated; Agent Monitor module accessible |
+| **BRD Refs** | FR-072, NFR-020 |
+
+**Main Flow:**
+
+1. Supervisor opens Agent Monitor screen
+2. Views per-agent metrics: tasks processed, success rate, average duration, current queue depth
+3. Failed tasks displayed with error details and retry options
+4. System health indicators show service uptime, Pub/Sub lag, Cloud SQL latency
+5. Supervisor can manually retry failed tasks or escalate to on-call engineer
+
+**Postconditions:** Agent performance visible; failed tasks identified and actioned
+
+---
+
+## 6. Non-Functional Requirements
+
+### 6.1 Performance
+
+| ID | Requirement | Target | Measurement Method |
+|----|-------------|--------|-------------------|
+| NFR-001 | Page load time (initial) | <2 seconds | Lighthouse, 4G network |
+| NFR-002 | API response time (p95) | <500ms | APM tooling (Cloud Monitoring) |
+| NFR-003 | ADT event to notification | <5 seconds end-to-end | Event timestamp delta |
+| NFR-004 | AI document generation | <30 seconds | Timer from trigger to draft-ready |
+| NFR-005 | Concurrent users | ≥500 simultaneous sessions | Load test (k6) |
+| NFR-006 | SignalR update latency | <1 second | Client-side delta measurement |
+| NFR-007 | Chatbot response time | <3 seconds (standard queries) | Client-side measurement |
+
+### 6.2 Scalability
+
+| ID | Requirement | Baseline | Target |
+|----|-------------|----------|--------|
+| NFR-010 | Daily ADT events processed | 500 | 5,000 (10× growth) |
+| NFR-011 | Active patient records | 10,000 | 100,000 |
+| NFR-012 | API requests/day | 50,000 | 500,000 |
+| NFR-013 | Data storage growth | 10 GB/month | 100 GB/month |
+
+*Architecture: GCP Cloud Run auto-scaling; Cloud SQL read replicas; Pub/Sub horizontal fan-out*
+
+### 6.3 Availability & Reliability
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-020 | System uptime | 99.9% (≤8.76 hours unplanned downtime/year) |
+| NFR-021 | Planned maintenance window | Sundays 02:00–04:00 local time |
+| NFR-022 | Recovery Time Objective (RTO) | <1 hour |
+| NFR-023 | Recovery Point Objective (RPO) | <15 minutes |
+| NFR-040 | Mean Time Between Failures (MTBF) | >720 hours |
+| NFR-041 | Mean Time To Recovery (MTTR) | <30 minutes |
+| NFR-042 | Data integrity | Zero data loss (transactional writes with WAL) |
+| NFR-043 | Backup frequency | Every 4 hours (Cloud SQL automated backups) |
+
+### 6.4 Usability
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-030 | New user training time to proficiency | <2 hours |
+| NFR-031 | Task completion rate (UAT) | >95% |
+| NFR-032 | User error rate (UAT) | <5% |
+| NFR-033 | Mobile responsiveness | Full functionality on iOS/Android ≥375px viewport |
+| NFR-034 | Accessibility | WCAG 2.1 Level AA — all screens |
+
+---
+
+## 7. Business Rules
+
+### 7.1 Clinical Rules
+
+| ID | Rule | Source | Enforcement Point |
+|----|------|--------|-------------------|
+| BR-001 | All AI-generated discharge summaries require licensed clinician review and electronic approval before finalisation | Regulatory | Documentation Agent / UI |
+| BR-002 | Medication reconciliation must be initiated within 24 hours of A01 admission event | CMS | Medication Reconciliation Agent |
+| BR-003 | Patients with readmission risk score ≥0.7 must have follow-up appointment within 7 days | Clinical Best Practice | Follow-up Care Agent |
+| BR-004 | Discharge instructions must be provided in the patient's preferred language (from FHIR `Patient.communication`) | Joint Commission | Documentation Agent |
+| BR-005 | Major drug-drug interactions must trigger immediate real-time alert to the responsible pharmacist | Patient Safety | Medication Reconciliation Agent |
+
+### 7.2 Operational Rules
+
+| ID | Rule | Source | Enforcement Point |
+|----|------|--------|-------------------|
+| BR-010 | ADT events must be fully processed (agent workflows triggered) within 5 seconds of receipt | SLA | MLLP Listener / Coordinator Agent |
+| BR-011 | All AI-generated content must display "AI-Assisted — Review Required" label until clinician approval | Transparency Policy | UI / Document Store |
+| BR-012 | All patient data access must be logged with user identity, timestamp, and action type | HIPAA | API Middleware / Audit Logger |
+| BR-013 | User sessions must timeout after 30 minutes of inactivity | Security Policy | Angular AuthGuard / Backend JWT |
+| BR-014 | Unacknowledged escalations must notify supervisor after 30 minutes | Operations | Follow-up Care Agent / Notification Service |
+
+### 7.3 Data Rules
+
+| ID | Rule | Source | Enforcement Point |
+|----|------|--------|-------------------|
+| BR-020 | All PHI fields must be encrypted at rest (AES-256) and in transit (TLS 1.3) | HIPAA | Cloud SQL CMEK / Cloud Run TLS |
+| BR-021 | PHI must not appear in application logs, error messages, or telemetry | HIPAA | Log sanitisation middleware |
+| BR-022 | Active patient records retained 7 years; thereafter archived to cold storage | Regulatory | Automated archival job |
+| BR-023 | Audit logs are immutable; retained for 6 years minimum | Compliance | Cloud SQL + Cloud Storage (WORM) |
+
+---
+
+## 8. Data Requirements
+
+### 8.1 Core Data Entities
+
+| Entity | Description | Source | Daily Volume |
+|--------|-------------|--------|--------------|
+| Patient | Demographics, contact info, language preference, MRN | FHIR R4 | 50,000 active |
+| Encounter | Admission/stay/discharge record linked to patient | FHIR R4 + Internal | 500/day |
+| ADTEvent | Raw and parsed ADT HL7 events | HL7 Interface | 1,500/day |
+| Medication | Pre-admission, inpatient, discharge medication lists | FHIR R4 | 10 per patient avg |
+| AgentTask | Individual agent task records with status and results | System | 5,000/day |
+| Document | AI-generated and clinician-approved documents | System | 2,000/day |
+| AuditLog | Immutable access and action log | System | 50,000/day |
+| User | Staff accounts, roles, preferences | Identity Provider | 1,000 total |
+
+### 8.2 Domain Model
+
+```
+┌────────────────┐     ┌────────────────────┐     ┌──────────────────┐
+│    Patient     │     │     Encounter      │     │    ADT Event     │
+├────────────────┤     ├────────────────────┤     ├──────────────────┤
+│ PatientId (PK) │1───N│ EncounterId (PK)   │1───N│ EventId (PK)     │
+│ MRN            │     │ PatientId (FK)     │     │ EncounterId (FK) │
+│ FirstName *    │     │ AdmitDate          │     │ EventType        │
+│ LastName *     │     │ DischargeDate      │     │ EventTime        │
+│ DOB *          │     │ Unit               │     │ SourceSystem     │
+│ Gender         │     │ AttendingMD        │     │ ProcessedTime    │
+│ Language       │     │ Status             │     │ AgentTriggered   │
+│ Phone *        │     │ RiskScore          │     │ ProcessingStatus │
+│ Email *        │     │ RiskTier           │     └──────────────────┘
+└────────────────┘     └────────────────────┘
+        * PHI — encrypted at rest                        │
+                                                         │
+              ┌──────────────────────────────────────────┤
+              │                     │                    │
+              ▼                     ▼                    ▼
+┌─────────────────┐   ┌─────────────────────┐  ┌──────────────────┐
+│   Medication    │   │     AgentTask       │  │    Document      │
+├─────────────────┤   ├─────────────────────┤  ├──────────────────┤
+│ MedicationId(PK)│   │ TaskId (PK)         │  │ DocumentId (PK)  │
+│ EncounterId(FK) │   │ EncounterId (FK)    │  │ EncounterId (FK) │
+│ DrugName        │   │ AgentType           │  │ DocumentType     │
+│ Dosage          │   │ Status              │  │ Content *        │
+│ Frequency       │   │ StartTime           │  │ Language         │
+│ Route           │   │ EndTime             │  │ GeneratedBy      │
+│ Status          │   │ Result              │  │ ReviewedBy       │
+│ ConflictFlag    │   │ ErrorMessage        │  │ ApprovedAt       │
+│ InteractionFlag │   │ RetryCount          │  │ Status           │
+└─────────────────┘   └─────────────────────┘  └──────────────────┘
+        * PHI — encrypted at rest
+```
+
+### 8.3 Data Quality Rules
+
+| Dimension | Requirement | Validation Mechanism |
+|-----------|-------------|---------------------|
+| Completeness | All required fields (MRN, AdmitDate, EventType) populated | API-layer validation; DB NOT NULL constraints |
+| Accuracy | Patient demographics match FHIR source of truth | Nightly FHIR reconciliation job |
+| Timeliness | ADT events processed within SLA; FHIR data refreshed on-demand | Monitoring alerts on processing lag |
+| Consistency | No duplicate encounters per MRN per admission date | Unique index on (MRN, AdmitDate); deduplication on ingest |
+| Uniqueness | One Patient record per MRN | MRN unique constraint; FHIR patient identity merge logic |
+
+---
+
+## 9. Integration Requirements
+
+### 9.1 Integration Inventory
+
+| Integration | Direction | Protocol | Frequency | Owner | Risk |
+|-------------|-----------|----------|-----------|-------|------|
+| EHR ADT Feed (HL7 v2.x) | Inbound | MLLP/TCP port 2575 | Real-time | Hospital IT | High |
+| EHR Patient Data (FHIR R4) | Inbound (read-only) | REST/HTTPS | On-demand | EHR Vendor | High |
+| Google Vertex AI (LLM) | Outbound | REST/HTTPS | Per agent request | Google | Medium |
+| GCP Pub/Sub (Event Bus) | Internal | gRPC | Real-time | DevOps | Low |
+| Twilio (SMS/Voice) | Outbound | REST/HTTPS | Event-driven | Twilio | Low |
+| SendGrid (Email) | Outbound | REST/HTTPS | Event-driven | SendGrid | Low |
+| Identity Provider (SSO) | Inbound | OIDC/OAuth2 | Per authentication | Hospital IT | Medium |
+| SignalR Hub | Internal | WebSocket | Real-time | Backend | Low |
+
+### 9.2 HL7 ADT Message Handling
+
+| Message Type | Description | Agent Triggered |
+|--------------|-------------|-----------------|
+| `ADT^A01` | Patient Admit | Coordinator → all agents |
+| `ADT^A02` | Patient Transfer | Coordinator → Documentation, Bed Management |
+| `ADT^A03` | Patient Discharge | Coordinator → all agents (discharge workflow) |
+| `ADT^A04` | Patient Registration | Coordinator → Documentation |
+| `ADT^A08` | Patient Info Update | Patient record sync only |
+| `ADT^A11` | Cancel Admit | Coordinator → halt all workflows |
+| `ADT^A12` | Cancel Transfer | Coordinator → revert transfer actions |
+| `ADT^A13` | Cancel Discharge | Coordinator → halt discharge workflow |
+
+### 9.3 FHIR R4 Resource Usage
+
+| FHIR Resource | Usage | Access Mode |
+|---------------|-------|-------------|
+| `Patient` | Demographics, language preference | Read |
+| `Encounter` | Admission details, stay info | Read |
+| `MedicationStatement` | Pre-admission medications | Read |
+| `MedicationAdministration` | Inpatient medications | Read |
+| `MedicationRequest` | Discharge prescriptions | Read |
+| `AllergyIntolerance` | Drug allergy checks | Read |
+| `DiagnosisCondition` | Diagnosis codes for summaries | Read |
+| `Appointment` | Follow-up scheduling | Read/Write (Phase 2) |
+
+---
+
+## 10. Security & Compliance Requirements
+
+### 10.1 Authentication & Authorisation
+
+| ID | Requirement | Implementation |
+|----|-------------|----------------|
+| SEC-001 | Authentication via OAuth 2.0 / OIDC with mandatory MFA for all staff roles | Hospital SSO integration; Angular AuthGuard |
+| SEC-002 | Role-Based Access Control (RBAC) with roles: Admin, Physician, Nurse, Pharmacist, BedManager, Patient, ReadOnly | JWT role claims; API-level policy enforcement |
+| SEC-003 | Patient portal authentication via OTP/magic link (no password stored) | Twilio Verify / email magic link |
+| SEC-009 | Session timeout: 30 minutes inactivity for staff; 60 minutes for patients | Angular idle timer + server-side JWT expiry |
+
+### 10.2 Data Security
+
+| ID | Requirement | Implementation |
+|----|-------------|----------------|
+| SEC-004 | Data encryption at rest: AES-256 | Cloud SQL Customer-Managed Encryption Keys (CMEK) |
+| SEC-005 | Data encryption in transit: TLS 1.3 minimum | Cloud Run + load balancer TLS termination |
+| SEC-006 | Immutable audit logging of all PHI access | Cloud SQL append-only audit table + Cloud Storage WORM backup |
+| SEC-007 | PHI never in logs or error messages | Log sanitisation middleware; structured logging |
+| SEC-010 | Input validation server-side for all API endpoints; parameterised queries only | FastAPI Pydantic validation; SQLAlchemy ORM |
+
+### 10.3 API Security
+
+| ID | Requirement | Implementation |
+|----|-------------|----------------|
+| SEC-011 | JWT bearer token required on all protected API endpoints | FastAPI dependency injection |
+| SEC-012 | Rate limiting: 1,000 req/min per authenticated user; 100 req/min per IP for public endpoints | Cloud Armor / API Gateway |
+| SEC-013 | Weekly automated vulnerability scanning of container images | Artifact Registry vulnerability scanning |
+| SEC-014 | Annual third-party penetration test | External vendor |
+
+### 10.4 Regulatory Compliance
+
+| Regulation | Key Requirements | Implementation |
+|------------|-----------------|----------------|
+| HIPAA Privacy Rule | Minimum necessary access; patient consent | RBAC + data-layer filtering |
+| HIPAA Security Rule | AES-256, audit logs, access controls | Covered by SEC-001–007 |
+| HITECH | Breach notification procedures; EHR interoperability | Incident response plan; FHIR integration |
+| Joint Commission | Standardised handoff protocols; language access | Handoff checklists; multilingual instructions |
+| CMS Conditions of Participation | Discharge planning requirements | Automated discharge workflow |
+
+---
+
+## 11. UI / UX Requirements
+
+### 11.1 Screen Inventory
+
+| Screen | Route | Primary Persona | Priority | Key Features |
+|--------|-------|-----------------|----------|--------------|
+| Login | `/login` | All | Must Have | SSO redirect, MFA |
+| Dashboard Home | `/dashboard` | All Staff | Must Have | ADT feed, risk scores, agent status |
+| Patient List | `/patients` | Nurse, Physician | Must Have | Search, filters, risk indicators |
+| Patient Detail | `/patients/:id` | All Staff | Must Have | Timeline, documents, tasks |
+| Medication Review | `/patients/:id/medications` | Pharmacist | Must Have | 3-list comparison, interaction flags |
+| Document Review | `/patients/:id/documents` | Physician, Nurse | Must Have | Dual-pane editor, approve/reject |
+| Bed Board | `/beds` | Bed Manager | Should Have | Visual floor plan, status colours |
+| Agent Monitor | `/admin/agents` | Supervisor | Should Have | Per-agent metrics, retry controls |
+| Analytics | `/analytics` | Manager | Should Have | KPI charts, date filters, export |
+| Patient Portal | `/portal` | Patient | Must Have | Instructions, chatbot, appointments |
+| Admin Settings | `/admin` | IT Admin | Must Have | User management, config |
+
+### 11.2 UI/UX Standards
+
+| ID | Requirement | Specification |
+|----|-------------|---------------|
+| UI-001 | Responsive design | 1024px–2560px; fluid grid layout |
+| UI-002 | Mobile support | ≥375px viewport; touch targets ≥44px |
+| UI-003 | Healthcare colour palette | Blues/greens for calm; red/amber only for alerts |
+| UI-004 | WCAG 2.1 AA accessibility | Screen reader compatible; 4.5:1 colour contrast ratio |
+| UI-005 | Real-time notifications | Toast (top-right, 5s auto-dismiss) + badge counts + optional sound |
+| UI-006 | Dark mode | System-preference-aware; manual toggle |
+| UI-007 | Loading states | Skeleton loaders for all async content panels |
+| UI-008 | Error handling | User-friendly error messages with recovery action; no stack traces exposed |
+
+---
+
+## 12. Acceptance Criteria
+
+### 12.1 Feature-Level Acceptance Criteria
+
+| Feature | Acceptance Criteria | BRD Ref |
+|---------|---------------------|---------|
+| ADT Event Processing | (1) A01/A02/A03/A04/A08/A11/A12/A13 all processed correctly; (2) End-to-end latency ≤5 seconds on load test; (3) 100% of events have audit trail entries | FR-001–006 |
+| Documentation Agent | (1) Discharge summary generated ≤30 seconds; (2) ≥95% clinical accuracy in physician UAT; (3) All 5 languages produce grammatically correct output | FR-020–025 |
+| Medication Reconciliation | (1) Drug interactions detected with ≥99% sensitivity on test dataset; (2) Reconciliation UI shows all 3 medication lists correctly; (3) Priority alerts delivered in real-time | FR-030–036 |
+| Bed Management | (1) Discharge time prediction within ±2 hours on test dataset; (2) Bed board updates within 60 seconds of ADT event; (3) ED boarding alerts fire at 2-hour threshold | FR-040–044 |
+| Follow-up Care | (1) Readmission risk score calculated ≤60 seconds of A03; (2) High-risk patients (≥0.7) have follow-up scheduled within 7 days; (3) Reminder messages delivered via SMS/email | FR-050–054 |
+| Patient Communication | (1) Chatbot responds ≤3 seconds; (2) Urgency signals trigger immediate emergency display; (3) Escalation to care team ≤2 minutes | FR-060–065 |
+| Dashboard | (1) Page load ≤2 seconds; (2) Role filtering verified for all 5 roles; (3) SignalR updates visible within 1 second | FR-070–075 |
+
+### 12.2 System Acceptance Criteria
+
+| Category | Criteria | Test Method |
+|----------|----------|-------------|
+| Performance | 95% of API requests ≤500ms under 500 concurrent users | k6 load test |
+| Availability | 99.9% uptime over 30-day period post-go-live | Cloud Monitoring uptime check |
+| Security | Pass external penetration test; zero OWASP Top 10 critical findings | Third-party assessment |
+| Usability | ≥80% satisfaction score in UAT survey across all staff personas | UAT survey |
+| Integration | 100% of HL7 test messages parsed correctly; FHIR data retrieved without error | Integration test suite |
+| Accessibility | WCAG 2.1 AA audit passes for all Must Have screens | axe-core automated + manual audit |
+
+---
+
+## 13. Assumptions & Constraints
+
+### 13.1 Assumptions
+
+| ID | Assumption | Impact if Invalid |
+|----|------------|-------------------|
+| A-01 | EHR system transmits HL7 v2.x ADT messages via MLLP | Custom integration adapter required |
+| A-02 | Hospital has FHIR R4 REST endpoint accessible from GCP network | Data access limited; manual CSV import fallback needed |
+| A-03 | Staff have basic computer literacy (web browser, email) | Extended training programme required |
+| A-04 | Reliable internet connectivity in hospital (≥10 Mbps) | Offline/PWA caching strategy required |
+| A-05 | GCP services (Cloud Run, Vertex AI) available in required region | Alternative LLM (open-source) or cloud region needed |
+| A-06 | Budget approved for Vertex AI API usage | Fall back to open-source LLM (e.g., LLaMA 3) |
+
+### 13.2 Constraints
+
+| ID | Constraint | Impact |
+|----|------------|--------|
+| C-01 | 2-week development sprint timeline | MVP scope strictly enforced; Must Have only |
+| C-02 | 6-developer team (2 FE, 2 BE, 1 AI/ML, 1 DevOps) | All workstreams must run in parallel |
+| C-03 | No EHR write-back in Phase 1 | Read-only FHIR; manual data entry for missing fields |
+| C-04 | HIPAA compliance mandatory from day 1 | All PHI handling reviewed before deployment |
+| C-05 | GCP-only infrastructure | No AWS/Azure services |
+| C-06 | Must integrate with existing hospital SSO | OAuth2/OIDC adapter required; no standalone auth |
+
+---
+
+## 14. Requirements Traceability Matrix
+
+| FR ID | Description (Summary) | UC Coverage | BO Ref | Priority |
+|-------|-----------------------|-------------|--------|----------|
+| FR-001 | HL7 ADT real-time processing | UC-001, UC-002, UC-003, UC-017 | BO-06 | Must Have |
+| FR-002 | All ADT event types supported | UC-001–003, UC-017, UC-018 | BO-06 | Must Have |
+| FR-003 | HL7 message parsing to domain model | UC-001–003 | BO-06 | Must Have |
+| FR-004 | Agent trigger within 2 seconds | UC-001–003 | BO-03, BO-06 | Must Have |
+| FR-005 | Immutable ADT audit trail | UC-015 | BO-07 | Must Have |
+| FR-006 | Cancellation event handling | UC-017 | BO-06 | Must Have |
+| FR-010 | Coordinator agent orchestration | UC-001–003 | BO-06 | Must Have |
+| FR-011 | Task tracking & SLA escalation | UC-009, UC-013 | BO-06 | Must Have |
+| FR-012 | SignalR real-time updates | UC-010 | BO-03 | Must Have |
+| FR-013 | Context-aware handoff checklists | UC-002 | BO-03, BO-06 | Should Have |
+| FR-020 | Auto-generate discharge summary | UC-004, UC-003 | BO-03 | Must Have |
+| FR-021 | Patient-friendly instructions | UC-003, UC-011 | BO-04 | Must Have |
+| FR-022 | Multilingual document support (5 languages) | UC-014 | BO-10 | Should Have |
+| FR-023 | Documentation completeness check | UC-004, UC-009 | BO-07 | Must Have |
+| FR-024 | Human review & inline editing | UC-009 | BO-07 | Must Have |
+| FR-025 | AI-Assisted label on documents | UC-009 | BO-07 | Must Have |
+| FR-030 | Medication list comparison | UC-005 | BO-01 | Must Have |
+| FR-031 | Drug-drug interaction detection (≥99%) | UC-005, UC-012 | BO-01 | Must Have |
+| FR-032 | Duplicate medication detection | UC-005 | BO-01 | Must Have |
+| FR-033 | Missing chronic medication alert | UC-005 | BO-01 | Should Have |
+| FR-034 | Patient medication change summary | UC-005, UC-003 | BO-04 | Must Have |
+| FR-035 | High-risk pharmacist alert | UC-012 | BO-01 | Must Have |
+| FR-036 | Reconciliation within 24 hours | UC-005 | BO-01 | Must Have |
+| FR-040 | Discharge time ML prediction | UC-006 | BO-05 | Should Have |
+| FR-041 | Real-time bed availability board | UC-006 | BO-05 | Must Have |
+| FR-042 | Optimal bed assignment scoring | UC-006 | BO-05 | Should Have |
+| FR-043 | ED boarding alert (>2 hours) | UC-018 | BO-05 | Must Have |
+| FR-044 | Housekeeping notification on discharge | UC-006 | BO-05 | Should Have |
+| FR-050 | Automated follow-up scheduling | UC-007 | BO-02 | Should Have |
+| FR-051 | Medication reminder SMS/email | UC-007, UC-011 | BO-04 | Should Have |
+| FR-052 | 30-day readmission risk score | UC-007, UC-013 | BO-02, BO-09 | Must Have |
+| FR-053 | Escalate post-discharge concerns | UC-008, UC-013 | BO-02 | Must Have |
+| FR-054 | 48-hour check-in for risk ≥0.5 | UC-013 | BO-02 | Should Have |
+| FR-060 | 24/7 patient chatbot | UC-008, UC-011 | BO-04 | Must Have |
+| FR-061 | Scoped chatbot Q&A | UC-008 | BO-04 | Must Have |
+| FR-062 | Chatbot escalation (≤2 minutes) | UC-008 | BO-04 | Must Have |
+| FR-063 | Emergency urgency signal detection | UC-008 | Safety | Must Have |
+| FR-064 | Voice-to-text input | UC-008 | BO-04 | Could Have |
+| FR-065 | Transcript storage against encounter | UC-008 | BO-07 | Must Have |
+| FR-070 | Live ADT event feed | UC-010 | BO-06 | Must Have |
+| FR-071 | Patient risk score display | UC-010 | BO-09 | Must Have |
+| FR-072 | Agent activity & task status | UC-020 | BO-06 | Must Have |
+| FR-073 | Analytics KPI dashboards | UC-019 | BO-02–05 | Should Have |
+| FR-074 | Role-based dashboard views | UC-010 | BO-06 | Must Have |
+| FR-075 | Report export (CSV/PDF) | UC-015, UC-019 | BO-07 | Should Have |
+
+---
+
+## 15. Glossary
+
+| Term | Definition |
+|------|------------|
+| ADT | Admission, Discharge, Transfer — core HL7 patient movement event types |
+| AI Agent | Autonomous LangChain-based software component performing a specialised care transition task |
+| FHIR | Fast Healthcare Interoperability Resources (R4) — REST-based healthcare data standard |
+| HL7 | Health Level Seven — healthcare messaging standard (v2.x used for ADT) |
+| LLM | Large Language Model — AI model powering document generation and chatbot responses |
+| MLLP | Minimal Lower Layer Protocol — TCP-based transport for HL7 v2 messages |
+| MRN | Medical Record Number — unique patient identifier within the hospital system |
+| PHI | Protected Health Information — patient data regulated under HIPAA |
+| LangChain | Python framework for building multi-agent AI orchestration workflows |
+| FastAPI | High-performance Python web framework used for SmartHandoff API backend |
+| Vertex AI | Google Cloud AI platform providing LLM (Gemini) API for agent tasks |
+| Scikit-learn | Python ML library used for readmission risk and discharge time prediction models |
+| SignalR | ASP.NET/Python WebSocket library for real-time dashboard push updates |
+| RTO | Recovery Time Objective — maximum acceptable downtime after failure |
+| RPO | Recovery Point Objective — maximum acceptable data loss window |
+| RBAC | Role-Based Access Control — permission model based on user roles |
+| WCAG | Web Content Accessibility Guidelines — international accessibility standard |
+| MTBF | Mean Time Between Failures |
+| MTTR | Mean Time To Recovery |
+
+---
+
+*End of SmartHandoff SRS — Version 1.0 | Generated: 2026-07-13*

@@ -1,0 +1,21 @@
+# Terraform runtime artefacts — never commit
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable files that may contain secrets
+# Commit only *.tfvars.example; never the actual file
+terraform.tfvars
+*.auto.tfvars
+
+# macOS / Windows noise
+.DS_Store
+Thumbs.db
