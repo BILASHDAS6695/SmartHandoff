@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCR-003 — Patient List | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root {
+      --color-brand-primary:#2563EB; --color-surface-page:#F9FAFB; --color-surface-card:#FFFFFF;
+      --color-text-primary:#111827; --color-text-secondary:#4B5563; --color-text-inverse:#FFFFFF;
+      --color-border-default:#E5E7EB; --color-grey-100:#F3F4F6; --color-grey-200:#E5E7EB;
+      --color-grey-700:#374151;
+      --color-risk-high:#DC2626; --color-risk-high-bg:#FEF2F2;
+      --color-risk-medium:#D97706; --color-risk-medium-bg:#FFFBEB;
+      --color-risk-low:#16A34A; --color-risk-low-bg:#F0FDF4;
+      --color-alert-info-bg:#EFF6FF; --color-alert-critical:#DC2626; --color-alert-warning:#D97706;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+      --radius-md:8px; --radius-lg:12px; --radius-full:9999px;
+      --font-family-base:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:var(--font-family-base); background:var(--color-surface-page); color:var(--color-text-primary); }
+    .wf-meta { background:#1E3A8A; color:#fff; padding:8px 20px; font-size:11px; display:flex; justify-content:space-between; align-items:center; }
+    .wf-badge { background:rgba(255,255,255,.2); border-radius:4px; padding:2px 8px; font-weight:600; font-size:10px; }
+
+    .layout { display:grid; grid-template-columns:240px 1fr; grid-template-rows:56px 1fr; min-height:calc(100vh - 32px); }
+    .topbar { grid-column:1/-1; background:var(--color-surface-card); border-bottom:1px solid var(--color-border-default); display:flex; align-items:center; padding:0 24px; gap:16px; }
+    .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:16px; }
+    .logo-mark { width:32px; height:32px; background:var(--color-brand-primary); border-radius:8px; display:flex; align-items:center; justify-content:center; }
+    .logo-mark svg { width:18px; height:18px; stroke:#fff; fill:none; stroke-width:2; }
+    .search { flex:1; margin:0 24px; display:flex; align-items:center; gap:8px; background:var(--color-grey-100); border:1px solid var(--color-border-default); border-radius:var(--radius-md); padding:8px 12px; font-size:13px; color:var(--color-text-secondary); }
+    .search svg { width:16px; height:16px; }
+    .avatar { width:32px; height:32px; border-radius:var(--radius-full); background:var(--color-brand-primary); display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; margin-left:auto; }
+
+    .sidebar { background:var(--color-surface-card); border-right:1px solid var(--color-border-default); padding:20px 0; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:13px; font-weight:500; color:var(--color-grey-700); cursor:pointer; border-left:3px solid transparent; }
+    .nav-item:hover { background:var(--color-grey-100); }
+    .nav-item.active { background:var(--color-alert-info-bg); color:var(--color-brand-primary); border-left-color:var(--color-brand-primary); font-weight:600; }
+    .nav-item svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.5; }
+
+    .main { padding:24px; display:flex; flex-direction:column; gap:20px; }
+    .page-header { display:flex; align-items:center; justify-content:space-between; }
+    .page-header h1 { font-size:20px; font-weight:700; }
+
+    /* Filter bar */
+    .filter-bar { display:flex; align-items:center; gap:12px; }
+    .filter-input { display:flex; align-items:center; gap:8px; background:var(--color-surface-card); border:1.5px solid var(--color-border-default); border-radius:var(--radius-md); padding:8px 14px; font-size:13px; flex:1; max-width:340px; }
+    .filter-input svg { width:16px; height:16px; stroke:var(--color-text-secondary); fill:none; }
+    .filter-select { padding:9px 14px; background:var(--color-surface-card); border:1.5px solid var(--color-border-default); border-radius:var(--radius-md); font-size:13px; cursor:pointer; }
+
+    /* Table */
+    .card { background:var(--color-surface-card); border:1px solid var(--color-border-default); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); overflow:hidden; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background:var(--color-grey-100); }
+    th { padding:12px 16px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--color-text-secondary); border-bottom:1px solid var(--color-border-default); }
+    th.sortable { cursor:pointer; }
+    th.sortable:hover { color:var(--color-brand-primary); }
+    td { padding:14px 16px; font-size:13px; border-bottom:1px solid var(--color-border-default); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--color-grey-100); }
+
+    /* MRN masked */
+    .mrn-masked { font-family:monospace; letter-spacing:2px; color:var(--color-text-secondary); display:flex; align-items:center; gap:6px; }
+    .reveal-btn { font-size:10px; color:var(--color-brand-primary); cursor:pointer; font-weight:600; }
+
+    /* Status chip */
+    .status-chip { padding:3px 10px; border-radius:var(--radius-full); font-size:11px; font-weight:600; }
+    .status-chip.admitted { background:var(--color-alert-info-bg); color:var(--color-brand-primary); }
+    .status-chip.discharging { background:var(--color-risk-medium-bg); color:var(--color-risk-medium); }
+    .status-chip.transferred { background:var(--color-grey-100); color:var(--color-grey-700); }
+
+    /* Risk chips */
+    .risk-chip { padding:2px 8px; border-radius:var(--radius-full); font-size:10px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
+    .risk-chip.high { background:var(--color-risk-high-bg); color:var(--color-risk-high); }
+    .risk-chip.med { background:var(--color-risk-medium-bg); color:var(--color-risk-medium); }
+    .risk-chip.low { background:var(--color-risk-low-bg); color:var(--color-risk-low); }
+    .risk-bar-wrap { width:64px; height:5px; background:var(--color-grey-200); border-radius:var(--radius-full); overflow:hidden; display:inline-block; margin-right:6px; vertical-align:middle; }
+    .risk-bar { height:100%; border-radius:var(--radius-full); }
+
+    .btn-view { padding:6px 14px; background:var(--color-brand-primary); color:#fff; border:none; border-radius:var(--radius-md); font-size:12px; font-weight:600; cursor:pointer; }
+    .btn-view:hover { background:#1D4ED8; }
+
+    /* Pagination */
+    .pagination { display:flex; align-items:center; justify-content:space-between; padding:16px; border-top:1px solid var(--color-border-default); }
+    .pagination-info { font-size:12px; color:var(--color-text-secondary); }
+    .pagination-controls { display:flex; align-items:center; gap:6px; }
+    .page-btn { padding:6px 12px; border:1.5px solid var(--color-border-default); border-radius:var(--radius-md); font-size:12px; background:#fff; cursor:pointer; }
+    .page-btn.active { background:var(--color-brand-primary); color:#fff; border-color:var(--color-brand-primary); }
+    .page-btn:hover:not(.active) { background:var(--color-grey-100); }
+    .rows-select { font-size:12px; color:var(--color-text-secondary); display:flex; align-items:center; gap:6px; }
+    .rows-select select { border:1px solid var(--color-border-default); border-radius:var(--radius-md); padding:4px 8px; font-size:12px; }
+
+    /* Annotations */
+    .ann { background:#FEFCE8; border:1px solid #FDE047; border-radius:4px; padding:3px 7px; font-size:10px; color:#713F12; display:inline-block; }
+    .ann::before { content:attr(data-id); font-weight:700; margin-right:4px; }
+
+    /* Meta panels */
+    .meta-panels { display:flex; gap:16px; flex-wrap:wrap; padding:0 24px 24px; }
+    .panel { background:#fff; border:1px solid var(--color-border-default); border-radius:var(--radius-lg); padding:14px; flex:1; min-width:300px; }
+    .panel-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--color-text-secondary); margin-bottom:10px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; border:1.5px solid var(--color-border-default); color:var(--color-text-secondary); }
+    .chip.on { background:var(--color-alert-info-bg); border-color:var(--color-brand-primary); color:var(--color-brand-primary); }
+    .uxr-tag { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:600; background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-003 — Patient List</strong>
+    &nbsp;|&nbsp; Route: <code>/patients</code>
+    &nbsp;|&nbsp; Personas: P-01 Nurse, P-02 Physician
+    &nbsp;|&nbsp; Priority: Must Have
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="layout">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+      SmartHandoff
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search patients by name or MRN…
+    </div>
+    <div class="avatar">NN</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard</div>
+    <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Patients</div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Patients</h1>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-input">
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <span style="color:var(--color-text-secondary)">Search by name or MRN…</span>
+      </div>
+      <select class="filter-select" title="UXR-024: Column filter">
+        <option>All Units</option><option>4-West</option><option>3-North</option><option>ICU</option>
+      </select>
+      <select class="filter-select" title="UXR-024: Status filter">
+        <option>All Status</option><option>Admitted</option><option>Discharging</option><option>Transferred</option>
+      </select>
+      <span class="ann" data-id="UXR-014">PHI masked by default — ● toggle to reveal</span>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable">MRN ↕</th>
+            <th class="sortable">Name ↕</th>
+            <th class="sortable">Unit ↕</th>
+            <th class="sortable">Admitted ↕</th>
+            <th class="sortable">Status ↕</th>
+            <th class="sortable">Risk Score ↕</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="mrn-masked">●●●●●●&nbsp;<span class="reveal-btn" title="UXR-014">👁</span></span></td>
+            <td><strong>Smith, John</strong></td>
+            <td>4-West</td>
+            <td>2026-07-10</td>
+            <td><span class="status-chip discharging">Discharging</span></td>
+            <td>
+              <span class="risk-bar-wrap"><div class="risk-bar" style="width:82%;background:var(--color-risk-high)"></div></span>
+              <span class="risk-chip high">⚠ 0.82 HIGH</span>
+            </td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+          <tr>
+            <td><span class="mrn-masked">●●●●●●</span></td>
+            <td><strong>Patel, Rita</strong></td>
+            <td>3-North</td>
+            <td>2026-07-12</td>
+            <td><span class="status-chip admitted">Admitted</span></td>
+            <td>
+              <span class="risk-bar-wrap"><div class="risk-bar" style="width:45%;background:var(--color-risk-medium)"></div></span>
+              <span class="risk-chip med">▲ 0.45 MED</span>
+            </td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+          <tr>
+            <td><span class="mrn-masked">●●●●●●</span></td>
+            <td><strong>Nguyen, Lee</strong></td>
+            <td>ICU</td>
+            <td>2026-07-13</td>
+            <td><span class="status-chip transferred">Transferred</span></td>
+            <td>
+              <span class="risk-bar-wrap"><div class="risk-bar" style="width:18%;background:var(--color-risk-low)"></div></span>
+              <span class="risk-chip low">✓ 0.18 LOW</span>
+            </td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+          <tr>
+            <td><span class="mrn-masked">●●●●●●</span></td>
+            <td><strong>Garcia, Maria</strong></td>
+            <td>3-North</td>
+            <td>2026-07-14</td>
+            <td><span class="status-chip admitted">Admitted</span></td>
+            <td>
+              <span class="risk-bar-wrap"><div class="risk-bar" style="width:75%;background:var(--color-risk-high)"></div></span>
+              <span class="risk-chip high">⚠ 0.75 HIGH</span>
+            </td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+          <tr style="opacity:.6">
+            <td><span class="mrn-masked">●●●●●●</span></td>
+            <td><strong>Lee, Kim</strong></td>
+            <td>5-East</td>
+            <td>2026-07-11</td>
+            <td><span class="status-chip admitted">Admitted</span></td>
+            <td>
+              <span class="risk-bar-wrap"><div class="risk-bar" style="width:30%;background:var(--color-risk-low)"></div></span>
+              <span class="risk-chip low">✓ 0.30 LOW</span>
+            </td>
+            <td><button class="btn-view">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <div class="pagination-info">Showing 1–25 of 142 patients</div>
+        <div class="pagination-controls">
+          <button class="page-btn">‹ Prev</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">…</button>
+          <button class="page-btn">6</button>
+          <button class="page-btn">Next ›</button>
+        </div>
+        <div class="rows-select">
+          Rows per page: <select><option>25</option><option>50</option><option>100</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Default (shown)</span>
+      <span class="chip">Skeleton — table placeholders on load</span>
+      <span class="chip">Search active — real-time filter</span>
+      <span class="chip">Empty search — no match message</span>
+      <span class="chip">MRN revealed — on toggle click</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-013 Role-Filtered Rendering</span>
+      <span class="uxr-tag">UXR-014 PHI Masking Toggle</span>
+      <span class="uxr-tag">UXR-023 Risk Score Chips</span>
+      <span class="uxr-tag">UXR-024 Sort / Filter / Pagination</span>
+      <span class="uxr-tag">UXR-026 Keyboard Navigation</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
