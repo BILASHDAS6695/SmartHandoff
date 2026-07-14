@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-010 — Patient Portal | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root{
+      --color-brand-primary:#2563EB;--color-surface-page:#F9FAFB;--color-surface-card:#FFFFFF;
+      --color-text-primary:#111827;--color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB;--color-grey-100:#F3F4F6;--color-grey-700:#374151;
+      --color-alert-critical:#DC2626;--color-alert-critical-bg:#FEF2F2;
+      --color-alert-warning:#D97706;--color-alert-warning-bg:#FFFBEB;
+      --color-alert-success:#16A34A;--color-alert-success-bg:#F0FDF4;
+      --color-alert-info:#2563EB;--color-alert-info-bg:#EFF6FF;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
+      --radius-md:8px;--radius-lg:12px;--radius-xl:16px;--radius-2xl:24px;--radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      --portal-text-base:18px;--portal-text-heading:22px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:#F0F9FF;color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    /* Mobile-first layout — 375px centred */
+    .viewport-wrap{display:flex;justify-content:center;align-items:flex-start;padding:24px;gap:32px;flex-wrap:wrap;}
+    .mobile-frame{width:375px;min-height:780px;background:#fff;border-radius:32px;box-shadow:var(--shadow-xl);overflow:hidden;position:relative;border:2px solid var(--color-border-default);}
+    .mobile-notch{height:28px;background:#111827;border-radius:32px 32px 0 0;display:flex;align-items:center;justify-content:center;}
+    .mobile-notch div{width:80px;height:4px;background:rgba(255,255,255,.3);border-radius:var(--radius-full);}
+
+    /* Portal header */
+    .portal-header{background:var(--color-brand-primary);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+    .portal-logo{color:#fff;font-size:14px;font-weight:700;}
+    .lang-sel{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:var(--radius-md);padding:4px 10px;font-size:12px;cursor:pointer;}
+    .portal-welcome{background:var(--color-brand-primary);padding:0 20px 20px;color:#fff;}
+    .portal-welcome h1{font-size:20px;font-weight:700;margin-bottom:2px;}
+    .portal-welcome p{font-size:13px;opacity:.8;}
+
+    /* Portal body */
+    .portal-body{padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--color-surface-page);}
+
+    /* Cards */
+    .portal-card{background:#fff;border-radius:var(--radius-2xl);box-shadow:var(--shadow-md);padding:16px;cursor:pointer;border:1px solid var(--color-border-default);transition:all .15s;}
+    .portal-card:hover{box-shadow:0 8px 16px -4px rgba(0,0,0,.12);transform:translateY(-1px);}
+    .card-icon-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+    .card-icon{width:36px;height:36px;border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;font-size:18px;}
+    .card-icon.med{background:#EEF2FF;}
+    .card-icon.doc{background:#F0FDF4;}
+    .card-icon.appt{background:#FFF7ED;}
+    .card-icon.warning{background:#FEF2F2;}
+    .card-title{font-size:15px;font-weight:700;flex:1;}
+    .card-arrow{font-size:16px;color:var(--color-text-secondary);}
+    .card-subtitle{font-size:13px;color:var(--color-text-secondary);}
+    .card-detail{font-size:12px;color:var(--color-text-secondary);margin-top:6px;}
+    .warning-card{background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-2xl);padding:16px;}
+    .warning-title{font-size:15px;font-weight:700;color:var(--color-alert-critical);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .warning-list{list-style:none;}
+    .warning-list li{font-size:13px;padding:5px 0;border-bottom:1px solid #FECACA;display:flex;align-items:center;gap:8px;}
+    .warning-list li:last-child{border-bottom:none;}
+    .warning-list li::before{content:'•';color:var(--color-alert-critical);font-size:16px;flex-shrink:0;}
+    .pdf-btn{width:100%;padding:14px;background:transparent;color:var(--color-brand-primary);border:1.5px solid var(--color-brand-primary);border-radius:var(--radius-xl);font-size:14px;font-weight:600;cursor:pointer;text-align:center;}
+
+    /* Chatbot FAB */
+    .chat-fab{position:absolute;bottom:20px;right:20px;width:56px;height:56px;background:var(--color-brand-primary);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,.4);cursor:pointer;}
+    .chat-fab svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.5;}
+
+    /* Chatbot open state panel (separate frame) */
+    .chat-frame{width:375px;min-height:600px;background:#fff;border-radius:32px;box-shadow:var(--shadow-xl);overflow:hidden;border:2px solid var(--color-border-default);}
+    .chat-header{background:var(--color-brand-primary);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+    .chat-header h3{color:#fff;font-size:15px;font-weight:600;}
+    .chat-close{color:#fff;font-size:20px;cursor:pointer;background:none;border:none;}
+    .chat-body{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:380px;background:var(--color-surface-page);}
+    .chat-bubble{max-width:85%;padding:12px 14px;border-radius:16px;font-size:14px;line-height:1.5;}
+    .chat-bubble.patient{background:var(--color-brand-primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+    .chat-bubble.bot{background:#fff;color:var(--color-text-primary);align-self:flex-start;border-bottom-left-radius:4px;box-shadow:var(--shadow-md);}
+    .chat-bubble .care-btn{display:block;margin-top:10px;padding:8px 14px;background:var(--color-alert-info-bg);color:var(--color-brand-primary);border:1.5px solid var(--color-brand-primary);border-radius:var(--radius-md);font-size:12px;font-weight:600;text-align:center;cursor:pointer;}
+    .chat-input-area{background:#fff;border-top:1px solid var(--color-border-default);padding:12px 16px;display:flex;align-items:center;gap:10px;}
+    .chat-input{flex:1;border:1.5px solid var(--color-border-default);border-radius:var(--radius-full);padding:10px 16px;font-size:14px;outline:none;}
+    .mic-btn{width:36px;height:36px;border-radius:var(--radius-full);background:var(--color-grey-100);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+    .send-btn{width:36px;height:36px;border-radius:var(--radius-full);background:var(--color-brand-primary);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+    .send-btn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+
+    /* Emergency state (third frame) */
+    .emergency-frame{width:375px;min-height:480px;background:var(--color-alert-critical);border-radius:32px;box-shadow:var(--shadow-xl);overflow:hidden;border:2px solid var(--color-alert-critical);display:flex;flex-direction:column;align-items:center;padding:32px 24px;text-align:center;}
+    .emergency-icon{font-size:56px;margin-bottom:16px;}
+    .emergency-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:8px;}
+    .emergency-sub{font-size:14px;color:rgba(255,255,255,.85);margin-bottom:24px;}
+    .emergency-btn{width:100%;padding:16px;border-radius:var(--radius-xl);border:none;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:12px;}
+    .emergency-btn.call{background:#fff;color:var(--color-alert-critical);}
+    .emergency-btn.hosp{background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.5);}
+    .emergency-note{font-size:12px;color:rgba(255,255,255,.7);margin-bottom:24px;}
+    .emergency-back{font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;text-decoration:underline;}
+
+    .frame-label{text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-secondary);margin-bottom:8px;}
+
+    .ann{background:#FEFCE8;border:1px solid #FDE047;border-radius:4px;padding:3px 7px;font-size:10px;color:#713F12;display:inline-block;}
+    .ann::before{content:attr(data-id);font-weight:700;margin-right:4px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-010 — Patient Portal</strong>
+    &nbsp;|&nbsp; Route: <code>/portal</code>
+    &nbsp;|&nbsp; Persona: P-05 Patient Pat (Mobile 375px)
+    &nbsp;|&nbsp; Priority: Must Have &nbsp;|&nbsp; UC: UC-008, UC-011, UC-014
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="viewport-wrap">
+
+  <!-- State 1: Portal home -->
+  <div>
+    <div class="frame-label">State 1 — Portal Home</div>
+    <div class="mobile-frame">
+      <div class="mobile-notch"><div></div></div>
+
+      <div class="portal-header">
+        <div class="portal-logo">SmartHandoff</div>
+        <select class="lang-sel" title="UXR-031: Always-visible language selector">
+          <option>EN</option><option>ES</option><option>FR</option><option>ZH</option><option>PT</option>
+        </select>
+      </div>
+
+      <div class="portal-welcome">
+        <h1>Welcome, John</h1>
+        <p>Discharged: July 14, 2026</p>
+      </div>
+
+      <div class="portal-body">
+
+        <div class="portal-card">
+          <div class="card-icon-row">
+            <div class="card-icon med">💊</div>
+            <span class="card-title" style="font-size:var(--portal-text-base)">My Medications</span>
+            <span class="card-arrow">›</span>
+          </div>
+          <div class="card-subtitle">5 medications — review your discharge list</div>
+        </div>
+
+        <div class="portal-card">
+          <div class="card-icon-row">
+            <div class="card-icon doc">📋</div>
+            <span class="card-title" style="font-size:var(--portal-text-base)">Discharge Instructions</span>
+            <span class="card-arrow">›</span>
+          </div>
+          <div class="card-subtitle">Activity · Diet · Warning Signs</div>
+        </div>
+
+        <div class="portal-card">
+          <div class="card-icon-row">
+            <div class="card-icon appt">📅</div>
+            <span class="card-title" style="font-size:var(--portal-text-base)">Follow-up Appointment</span>
+            <span class="card-arrow">›</span>
+          </div>
+          <div class="card-subtitle">Dr. Chen — July 21, 09:00 AM</div>
+          <div class="card-detail">Cardiology — Memorial Hospital</div>
+        </div>
+
+        <div class="warning-card">
+          <div class="warning-title">⚠️ Warning Signs — Go to ER</div>
+          <ul class="warning-list">
+            <li>Chest pain or tightness</li>
+            <li>Difficulty breathing</li>
+            <li>Sudden weight gain (&gt;2 lbs/day)</li>
+            <li>Swelling in legs or ankles</li>
+          </ul>
+        </div>
+
+        <button class="pdf-btn" title="UXR-035">📄 Download as PDF</button>
+
+      </div>
+
+      <!-- Chatbot FAB -->
+      <div class="chat-fab" title="UXR-032: Persistent chatbot FAB">
+        <svg viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Chatbot open -->
+  <div>
+    <div class="frame-label">State 2 — Chatbot Open</div>
+    <div class="chat-frame">
+      <div class="mobile-notch"><div></div></div>
+      <div class="chat-header">
+        <h3>SmartHandoff Assistant</h3>
+        <button class="chat-close">✕</button>
+      </div>
+      <div class="chat-body">
+        <div class="chat-bubble patient">How often do I take my Warfarin?</div>
+        <div class="chat-bubble bot">
+          Take <strong>Warfarin 5mg</strong> every day, at the same time each day.<br/><br/>
+          Your doctor may adjust the dose based on blood test results. Keep all follow-up appointments.
+          <span class="care-btn">🩺 Talk to Care Team</span>
+        </div>
+        <div class="chat-bubble patient">What should I do if I feel short of breath?</div>
+        <div class="chat-bubble bot" style="background:#FEF2F2;border:1px solid #FECACA;">
+          <strong style="color:var(--color-alert-critical)">This sounds serious.</strong><br/><br/>
+          Difficulty breathing is a warning sign. Please call <strong>911</strong> immediately or go to the nearest Emergency Room.
+          <span class="care-btn" style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-color:var(--color-alert-critical)">🚨 Emergency Help</span>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <button class="mic-btn" title="UXR-034: Voice to text">🎤</button>
+        <input class="chat-input" type="text" placeholder="Ask a question…"/>
+        <button class="send-btn"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 3: Emergency detected -->
+  <div>
+    <div class="frame-label">State 3 — Emergency Detected (UXR-033)</div>
+    <div class="emergency-frame">
+      <div class="emergency-icon">🚨</div>
+      <div class="emergency-title">EMERGENCY</div>
+      <div class="emergency-sub">You may need immediate medical attention. Please call for help right away.</div>
+      <button class="emergency-btn call">📞 Call 911</button>
+      <button class="emergency-btn hosp">📞 Hospital: (555) 000-0000</button>
+      <div class="emergency-note">Your care team has been notified. A nurse will call you within 2 minutes.</div>
+      <span class="emergency-back">Return to Portal</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Portal home (State 1)</span>
+      <span class="chip on">Chatbot open (State 2)</span>
+      <span class="chip on">Emergency detected (State 3)</span>
+      <span class="chip">Language selected — content re-renders</span>
+      <span class="chip">PDF download — spinner on button</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-001 Responsive 375px</span>
+      <span class="uxr-tag">UXR-002 WCAG AA Contrast</span>
+      <span class="uxr-tag">UXR-003 44px Touch Targets</span>
+      <span class="uxr-tag">UXR-030 6th-Grade Reading Level</span>
+      <span class="uxr-tag">UXR-031 Language Selector Always Visible</span>
+      <span class="uxr-tag">UXR-032 Persistent Chatbot FAB</span>
+      <span class="uxr-tag">UXR-033 Emergency Full-Screen Card</span>
+      <span class="uxr-tag">UXR-034 Voice-to-Text Input</span>
+      <span class="uxr-tag">UXR-035 PDF Download</span>
+      <span class="uxr-tag">UXR-036 Thumb-Reachable Layout</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

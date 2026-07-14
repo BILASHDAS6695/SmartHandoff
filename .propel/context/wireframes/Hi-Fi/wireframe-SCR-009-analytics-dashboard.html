@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-009 — Analytics Dashboard | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root{
+      --color-brand-primary:#2563EB;--color-surface-page:#F9FAFB;--color-surface-card:#FFFFFF;
+      --color-text-primary:#111827;--color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB;--color-grey-100:#F3F4F6;--color-grey-700:#374151;
+      --color-risk-high:#DC2626;--color-risk-high-bg:#FEF2F2;
+      --color-risk-medium:#D97706;--color-risk-medium-bg:#FFFBEB;
+      --color-risk-low:#16A34A;--color-risk-low-bg:#F0FDF4;
+      --color-alert-success:#16A34A;--color-alert-success-bg:#F0FDF4;
+      --color-alert-info:#2563EB;--color-alert-info-bg:#EFF6FF;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:var(--color-surface-page);color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    .shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;min-height:calc(100vh - 32px);}
+    .topbar{grid-column:1/-1;background:var(--color-surface-card);border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;padding:0 24px;gap:16px;}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;}
+    .logo-mark{width:32px;height:32px;background:var(--color-brand-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+    .logo-mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+    .avatar{width:32px;height:32px;border-radius:var(--radius-full);background:var(--color-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-left:auto;}
+    .sidebar{background:var(--color-surface-card);border-right:1px solid var(--color-border-default);padding:20px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-grey-700);cursor:pointer;border-left:3px solid transparent;}
+    .nav-item:hover{background:var(--color-grey-100);}
+    .nav-item.active{background:var(--color-alert-info-bg);color:var(--color-brand-primary);border-left-color:var(--color-brand-primary);font-weight:600;}
+    .nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;}
+
+    .main{padding:24px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+    .page-header h1{font-size:20px;font-weight:700;}
+    .filter-bar{display:flex;align-items:center;gap:10px;}
+    .filter-select{padding:8px 14px;background:#fff;border:1.5px solid var(--color-border-default);border-radius:var(--radius-md);font-size:13px;cursor:pointer;}
+
+    /* KPI tiles */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+    .kpi-card{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:20px;}
+    .kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:8px;}
+    .kpi-value{font-size:32px;font-weight:700;color:var(--color-text-primary);margin-bottom:6px;}
+    .kpi-trend{font-size:12px;display:flex;align-items:center;gap:4px;}
+    .kpi-trend.down-good{color:var(--color-alert-success);}
+    .kpi-trend.up-good{color:var(--color-alert-success);}
+    .kpi-trend.down-bad{color:var(--color-risk-high);}
+
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .chart-card{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:20px;}
+    .chart-card h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:16px;}
+
+    /* Simulated line chart */
+    .line-chart{width:100%;height:120px;position:relative;border-bottom:1px solid var(--color-border-default);}
+    .line-chart svg{width:100%;height:100%;}
+
+    /* Simulated donut */
+    .donut-wrap{display:flex;align-items:center;gap:20px;}
+    .donut-svg{width:100px;height:100px;flex-shrink:0;}
+    .donut-legend{display:flex;flex-direction:column;gap:8px;}
+    .donut-item{display:flex;align-items:center;gap:8px;font-size:12px;}
+    .donut-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+    /* Table */
+    .card{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;}
+    .card-header{padding:14px 18px;border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;justify-content:space-between;}
+    .card-header h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);}
+    table{width:100%;border-collapse:collapse;}
+    thead tr{background:var(--color-grey-100);}
+    th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);border-bottom:1px solid var(--color-border-default);}
+    td{padding:12px 16px;font-size:12px;border-bottom:1px solid var(--color-border-default);}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--color-grey-100);}
+
+    .risk-chip{padding:2px 8px;border-radius:var(--radius-full);font-size:10px;font-weight:700;}
+    .risk-chip.high{background:var(--color-risk-high-bg);color:var(--color-risk-high);}
+    .risk-chip.med{background:var(--color-risk-medium-bg);color:var(--color-risk-medium);}
+
+    /* Export */
+    .export-row{display:flex;gap:10px;justify-content:flex-end;}
+    .btn-export{padding:9px 18px;border:1.5px solid var(--color-brand-primary);color:var(--color-brand-primary);background:transparent;border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;}
+
+    .ann{background:#FEFCE8;border:1px solid #FDE047;border-radius:4px;padding:3px 7px;font-size:10px;color:#713F12;display:inline-block;}
+    .ann::before{content:attr(data-id);font-weight:700;margin-right:4px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-009 — Analytics Dashboard</strong>
+    &nbsp;|&nbsp; Route: <code>/analytics</code>
+    &nbsp;|&nbsp; Persona: Hospital Manager
+    &nbsp;|&nbsp; Priority: Should Have &nbsp;|&nbsp; UC: UC-019
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
+    <div class="avatar">MG</div>
+  </div>
+  <div class="sidebar">
+    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Analytics</div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Analytics</h1>
+      <div class="filter-bar">
+        <select class="filter-select"><option>Last 30 days</option><option>Last 7 days</option><option>Last 90 days</option></select>
+        <select class="filter-select"><option>All Units</option><option>4-West</option><option>3-North</option><option>ICU</option></select>
+      </div>
+    </div>
+
+    <!-- KPI Tiles -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Discharge Time</div>
+        <div class="kpi-value">4.2h</div>
+        <div class="kpi-trend down-good">↓ −0.8h vs prev period &nbsp;✓ Improving</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">30-Day Readmission Rate</div>
+        <div class="kpi-value">8.3%</div>
+        <div class="kpi-trend down-good">↓ −1.1% vs prev period &nbsp;✓ Improving</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Med Recon Completion</div>
+        <div class="kpi-value">96.4%</div>
+        <div class="kpi-trend up-good">↑ +2.1% vs prev period &nbsp;✓ Improving</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Bed Utilisation</div>
+        <div class="kpi-value">87%</div>
+        <div class="kpi-trend up-good">↑ +3% vs prev period</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Discharge Volume — Last 30 Days</h3>
+        <div class="line-chart">
+          <svg viewBox="0 0 400 120" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="0" y1="30" x2="400" y2="30" stroke="#E5E7EB" stroke-width="1"/>
+            <line x1="0" y1="60" x2="400" y2="60" stroke="#E5E7EB" stroke-width="1"/>
+            <line x1="0" y1="90" x2="400" y2="90" stroke="#E5E7EB" stroke-width="1"/>
+            <!-- Trend line -->
+            <polyline fill="none" stroke="#2563EB" stroke-width="2.5"
+              points="0,90 40,80 80,85 120,70 160,65 200,75 240,60 280,55 320,45 360,42 400,38"/>
+            <!-- Area fill -->
+            <polygon fill="rgba(37,99,235,0.08)"
+              points="0,90 40,80 80,85 120,70 160,65 200,75 240,60 280,55 320,45 360,42 400,38 400,120 0,120"/>
+            <!-- Data points -->
+            <circle cx="400" cy="38" r="4" fill="#2563EB"/>
+            <circle cx="320" cy="45" r="3" fill="#2563EB" opacity=".6"/>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-secondary);margin-top:6px;">
+          <span>Jun 14</span><span>Jun 21</span><span>Jun 28</span><span>Jul 7</span><span>Jul 14</span>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Readmission Risk Distribution</h3>
+        <div class="donut-wrap">
+          <!-- Simulated donut chart using SVG -->
+          <svg class="donut-svg" viewBox="0 0 36 36">
+            <circle r="15.9" cx="18" cy="18" fill="transparent" stroke="#F0FDF4" stroke-width="3.8" stroke-dasharray="100 0" transform="rotate(-90 18 18)"/>
+            <!-- LOW 64% -->
+            <circle r="15.9" cx="18" cy="18" fill="transparent" stroke="#16A34A" stroke-width="3.8" stroke-dasharray="64 36" transform="rotate(-90 18 18)"/>
+            <!-- MED 28% -->
+            <circle r="15.9" cx="18" cy="18" fill="transparent" stroke="#D97706" stroke-width="3.8" stroke-dasharray="28 72" transform="rotate(140.4 18 18)"/>
+            <!-- HIGH 8% -->
+            <circle r="15.9" cx="18" cy="18" fill="transparent" stroke="#DC2626" stroke-width="3.8" stroke-dasharray="8 92" transform="rotate(241.2 18 18)"/>
+            <text x="18" y="18" text-anchor="middle" dy=".3em" font-size="6" font-weight="700" fill="#111827">Risk</text>
+          </svg>
+          <div class="donut-legend">
+            <div class="donut-item"><div class="donut-dot" style="background:#16A34A"></div><span>Low risk (&lt;0.3): <strong>64%</strong></span></div>
+            <div class="donut-item"><div class="donut-dot" style="background:#D97706"></div><span>Medium (0.3–0.7): <strong>28%</strong></span></div>
+            <div class="donut-item"><div class="donut-dot" style="background:#DC2626"></div><span>High risk (&gt;0.7): <strong>8%</strong></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- High-risk table -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Top 10 High-Risk Encounters (Last 7 Days)</h2>
+        <span class="ann" data-id="UXR-024">Sortable table</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Patient (masked)</th>
+            <th>Unit</th>
+            <th>Risk Score</th>
+            <th>Discharge Date</th>
+            <th>Follow-up Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>●●● #2041</td><td>4-West</td>
+            <td><span class="risk-chip high">0.82 HIGH</span></td>
+            <td>2026-07-14</td><td><span style="color:#16A34A;font-weight:600">✓ Booked Jul 21</span></td>
+          </tr>
+          <tr>
+            <td>●●● #2038</td><td>ICU</td>
+            <td><span class="risk-chip high">0.79 HIGH</span></td>
+            <td>2026-07-13</td><td><span style="color:#16A34A;font-weight:600">✓ Booked Jul 20</span></td>
+          </tr>
+          <tr>
+            <td>●●● #2035</td><td>3-North</td>
+            <td><span class="risk-chip high">0.76 HIGH</span></td>
+            <td>2026-07-12</td><td><span style="color:#D97706;font-weight:600">⏳ Pending</span></td>
+          </tr>
+          <tr>
+            <td>●●● #2031</td><td>4-West</td>
+            <td><span class="risk-chip high">0.71 HIGH</span></td>
+            <td>2026-07-11</td><td><span style="color:#16A34A;font-weight:600">✓ Booked Jul 18</span></td>
+          </tr>
+          <tr>
+            <td>●●● #2027</td><td>5-East</td>
+            <td><span class="risk-chip med">0.68 MED</span></td>
+            <td>2026-07-10</td><td><span style="color:#16A34A;font-weight:600">✓ Booked Jul 24</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Export -->
+    <div class="export-row">
+      <button class="btn-export">Export CSV</button>
+      <button class="btn-export">Export PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Default (shown)</span>
+      <span class="chip">Skeleton — tile/chart placeholders</span>
+      <span class="chip">Drill-down — chart click filters table</span>
+      <span class="chip">Export loading — spinner on button</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-004 Skeleton Loaders</span>
+      <span class="uxr-tag">UXR-011 Last-Updated Timestamp</span>
+      <span class="uxr-tag">UXR-024 Sort / Filter / Pagination</span>
+      <span class="uxr-tag">UXR-025 Confirm Before Export</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

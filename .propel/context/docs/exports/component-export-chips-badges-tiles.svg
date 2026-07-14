@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <title>SmartHandoff — Component Exports: RiskScoreChip, AiBadge, AlertBanner, BedTile</title>
+
+  <!-- Background -->
+  <rect width="900" height="520" fill="#F9FAFB"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="900" height="48" fill="#1E3A8A"/>
+  <text x="20" y="30" fill="white" font-size="13" font-weight="700">SmartHandoff — Component Exports</text>
+  <text x="700" y="30" fill="rgba(255,255,255,0.6)" font-size="11">/generate-figma · v1.0 · 2026-07-14</text>
+
+  <!-- ═══ SECTION 1: RiskScoreChip ═══ -->
+  <text x="20" y="80" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em" text-transform="uppercase">RISKSCOROCHIP</text>
+
+  <!-- Low chip -->
+  <rect x="20" y="92" width="100" height="28" rx="14" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1"/>
+  <circle cx="38" cy="106" r="5" fill="#16A34A"/>
+  <text x="48" y="110" fill="#16A34A" font-size="11" font-weight="700">0.18  LOW</text>
+
+  <!-- Medium chip -->
+  <rect x="136" y="92" width="112" height="28" rx="14" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1"/>
+  <text x="152" y="110" fill="#D97706" font-size="16" dy="-2">▲</text>
+  <text x="172" y="110" fill="#D97706" font-size="11" font-weight="700">0.45  MED</text>
+
+  <!-- High chip -->
+  <rect x="264" y="92" width="116" height="28" rx="14" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+  <text x="280" y="112" fill="#DC2626" font-size="18" dy="-4">⚠</text>
+  <text x="302" y="110" fill="#DC2626" font-size="11" font-weight="700">0.82  HIGH</text>
+
+  <!-- Large variant -->
+  <text x="420" y="80" fill="#9CA3AF" font-size="10">Size=Large</text>
+  <rect x="420" y="88" width="140" height="36" rx="18" fill="#FEF2F2" stroke="#FECACA" stroke-width="1.5"/>
+  <text x="438" y="112" fill="#DC2626" font-size="20" dy="-2">⚠</text>
+  <text x="464" y="113" fill="#DC2626" font-size="14" font-weight="700">0.82  HIGH</text>
+
+  <!-- ═══ SECTION 2: AiBadge ═══ -->
+  <line x1="20" y1="140" x2="880" y2="140" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="162" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">AIBADGE</text>
+
+  <!-- Review Required -->
+  <rect x="20" y="172" width="240" height="32" rx="8" fill="#F0FDFA" stroke="#2DD4BF" stroke-width="1"/>
+  <text x="38" y="192" fill="#0D9488" font-size="13">✨</text>
+  <text x="58" y="192" fill="#0D9488" font-size="11" font-weight="600">AI-Assisted — Review Required</text>
+
+  <!-- Approved -->
+  <rect x="276" y="172" width="200" height="32" rx="8" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1"/>
+  <text x="294" y="192" fill="#16A34A" font-size="13">✓</text>
+  <text x="314" y="192" fill="#16A34A" font-size="11" font-weight="600">Approved by Dr. Chen</text>
+
+  <!-- ═══ SECTION 3: AlertBanner ═══ -->
+  <line x1="20" y1="224" x2="880" y2="224" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="246" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">ALERTBANNER</text>
+
+  <!-- Critical -->
+  <rect x="20" y="256" width="390" height="56" rx="8" fill="#FEF2F2" stroke="#FECACA" stroke-width="1"/>
+  <rect x="20" y="256" width="4" height="56" rx="4" fill="#DC2626"/>
+  <text x="36" y="280" fill="#DC2626" font-size="18">⚠</text>
+  <text x="60" y="278" fill="#DC2626" font-size="13" font-weight="700">MAJOR INTERACTION: Warfarin + Aspirin</text>
+  <text x="60" y="298" fill="#991B1B" font-size="11">Severity: Major | Risk: Increased bleeding risk</text>
+
+  <!-- Warning -->
+  <rect x="20" y="322" width="390" height="56" rx="8" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1"/>
+  <rect x="20" y="322" width="4" height="56" rx="4" fill="#D97706"/>
+  <text x="36" y="346" fill="#D97706" font-size="18">▲</text>
+  <text x="60" y="344" fill="#D97706" font-size="13" font-weight="700">CHRONIC MED MISSING: Metformin 500mg BD</text>
+  <text x="60" y="364" fill="#92400E" font-size="11">Not found on Discharge Rx. Patient has Type 2 Diabetes.</text>
+
+  <!-- Info -->
+  <rect x="430" y="256" width="390" height="56" rx="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+  <rect x="430" y="256" width="4" height="56" rx="4" fill="#2563EB"/>
+  <text x="446" y="280" fill="#2563EB" font-size="18">ℹ</text>
+  <text x="470" y="278" fill="#2563EB" font-size="13" font-weight="700">ADT Event Received</text>
+  <text x="470" y="298" fill="#1E40AF" font-size="11">ADT A03 — Smith, John — Discharge initiated</text>
+
+  <!-- Success -->
+  <rect x="430" y="322" width="390" height="56" rx="8" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+  <rect x="430" y="322" width="4" height="56" rx="4" fill="#16A34A"/>
+  <text x="446" y="346" fill="#16A34A" font-size="18">✓</text>
+  <text x="470" y="344" fill="#16A34A" font-size="13" font-weight="700">Reconciliation Complete</text>
+  <text x="470" y="364" fill="#166534" font-size="11">All medication conflicts resolved. Discharge unblocked.</text>
+
+  <!-- ═══ SECTION 4: BedTile ═══ -->
+  <line x1="20" y1="400" x2="880" y2="400" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="422" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">BEDTILE — All Status Variants</text>
+
+  <!-- Clean -->
+  <rect x="20" y="432" width="120" height="76" rx="12" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.5"/>
+  <text x="30" y="452" fill="#15803D" font-size="13" font-weight="700">4W-03</text>
+  <text x="30" y="467" fill="#15803D" font-size="9" font-weight="700" letter-spacing="0.05em">CLEAN</text>
+  <text x="30" y="484" fill="#16A34A" font-size="11" font-weight="600">AVAILABLE ✓</text>
+
+  <!-- Dirty -->
+  <rect x="156" y="432" width="120" height="76" rx="12" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/>
+  <text x="166" y="452" fill="#B45309" font-size="13" font-weight="700">4W-02</text>
+  <text x="166" y="467" fill="#B45309" font-size="9" font-weight="700" letter-spacing="0.05em">DIRTY</text>
+  <text x="166" y="484" fill="#B45309" font-size="11" font-weight="600">HK Notified</text>
+  <text x="166" y="498" fill="#92400E" font-size="10">14:29</text>
+
+  <!-- Occupied -->
+  <rect x="292" y="432" width="120" height="76" rx="12" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+  <text x="302" y="452" fill="#1D4ED8" font-size="13" font-weight="700">4W-01</text>
+  <text x="302" y="467" fill="#1D4ED8" font-size="9" font-weight="700" letter-spacing="0.05em">OCCUPIED</text>
+  <text x="302" y="482" fill="#111827" font-size="11" font-weight="500">Smith, J.</text>
+  <rect x="302" y="488" width="64" height="16" rx="8" fill="#FEF2F2"/>
+  <text x="310" y="500" fill="#DC2626" font-size="9" font-weight="700">0.82 HIGH</text>
+
+  <!-- Blocked -->
+  <rect x="428" y="432" width="120" height="76" rx="12" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1.5"/>
+  <text x="438" y="452" fill="#6B7280" font-size="13" font-weight="700">4W-06</text>
+  <text x="438" y="467" fill="#6B7280" font-size="9" font-weight="700" letter-spacing="0.05em">BLOCKED</text>
+  <text x="438" y="484" fill="#6B7280" font-size="11">Maintenance</text>
+</svg>

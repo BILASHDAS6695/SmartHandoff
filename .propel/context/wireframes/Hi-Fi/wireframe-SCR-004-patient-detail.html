@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-004 — Patient Detail | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root {
+      --color-brand-primary:#2563EB; --color-surface-page:#F9FAFB; --color-surface-card:#FFFFFF;
+      --color-text-primary:#111827; --color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB; --color-grey-100:#F3F4F6; --color-grey-700:#374151;
+      --color-risk-high:#DC2626; --color-risk-high-bg:#FEF2F2;
+      --color-risk-medium:#D97706; --color-risk-medium-bg:#FFFBEB;
+      --color-risk-low:#16A34A; --color-risk-low-bg:#F0FDF4;
+      --color-alert-critical:#DC2626; --color-alert-critical-bg:#FEF2F2;
+      --color-alert-warning:#D97706; --color-alert-warning-bg:#FFFBEB;
+      --color-alert-success:#16A34A; --color-alert-success-bg:#F0FDF4;
+      --color-alert-info:#2563EB; --color-alert-info-bg:#EFF6FF;
+      --color-ai-badge:#0D9488; --color-ai-badge-bg:#F0FDFA; --color-ai-badge-border:#2DD4BF;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --radius-md:8px; --radius-lg:12px; --radius-xl:16px; --radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:var(--color-surface-page);color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    /* Shell */
+    .shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;min-height:calc(100vh - 32px);}
+    .topbar{grid-column:1/-1;background:var(--color-surface-card);border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;padding:0 24px;gap:16px;}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;}
+    .logo-mark{width:32px;height:32px;background:var(--color-brand-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+    .logo-mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+    .back-btn{font-size:13px;color:var(--color-brand-primary);cursor:pointer;font-weight:500;display:flex;align-items:center;gap:6px;margin-left:24px;}
+    .avatar{width:32px;height:32px;border-radius:var(--radius-full);background:var(--color-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-left:auto;}
+
+    .sidebar{background:var(--color-surface-card);border-right:1px solid var(--color-border-default);padding:20px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-grey-700);cursor:pointer;border-left:3px solid transparent;}
+    .nav-item:hover{background:var(--color-grey-100);}
+    .nav-item.active{background:var(--color-alert-info-bg);color:var(--color-brand-primary);border-left-color:var(--color-brand-primary);font-weight:600;}
+    .nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;}
+
+    /* Main */
+    .main{padding:24px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+
+    /* Patient header */
+    .patient-header{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:20px 24px;}
+    .patient-name{font-size:22px;font-weight:700;margin-bottom:6px;}
+    .patient-meta{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--color-text-secondary);}
+    .patient-meta span{display:flex;align-items:center;gap:6px;}
+    .patient-meta strong{color:var(--color-text-primary);}
+    .risk-score-display{display:flex;align-items:center;gap:8px;margin-top:12px;}
+    .risk-label{font-size:13px;font-weight:600;}
+    .risk-bar-large{width:160px;height:8px;background:var(--color-grey-100);border-radius:var(--radius-full);overflow:hidden;}
+    .risk-bar-fill{height:100%;border-radius:var(--radius-full);}
+    .risk-chip-large{padding:4px 12px;border-radius:var(--radius-full);font-size:12px;font-weight:700;}
+    .risk-chip-large.high{background:var(--color-risk-high-bg);color:var(--color-risk-high);}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0;border-bottom:2px solid var(--color-border-default);}
+    .tab{padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+    .tab:hover{color:var(--color-brand-primary);}
+    .tab.active{color:var(--color-brand-primary);border-bottom-color:var(--color-brand-primary);font-weight:600;}
+
+    /* Grid */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    .card{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;}
+    .card-header{padding:14px 18px;border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;justify-content:space-between;}
+    .card-header h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);}
+    .card-body{padding:14px 18px;}
+
+    /* AI badge */
+    .ai-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--radius-md);background:var(--color-ai-badge-bg);border:1px solid var(--color-ai-badge-border);color:var(--color-ai-badge);font-size:11px;font-weight:600;}
+    .ai-badge svg{width:14px;height:14px;}
+
+    /* Agent tasks */
+    .agent-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border-default);}
+    .agent-row:last-child{border-bottom:none;}
+    .agent-name{font-size:13px;flex:1;}
+    .agent-status-badge{font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;}
+    .dot{width:8px;height:8px;border-radius:50%;}
+    .dot.ok{background:var(--color-alert-success);}
+    .dot.warn{background:var(--color-alert-warning);}
+    .dot.pending{background:var(--color-grey-700);}
+
+    /* Alerts */
+    .alert-item{padding:12px;border-radius:var(--radius-md);margin-bottom:10px;border-left:4px solid;}
+    .alert-item:last-child{margin-bottom:0;}
+    .alert-item.critical{background:var(--color-alert-critical-bg);border-left-color:var(--color-alert-critical);}
+    .alert-item.warning{background:var(--color-alert-warning-bg);border-left-color:var(--color-alert-warning);}
+    .alert-header{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:4px;}
+    .alert-text{font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;}
+    .alert-link{font-size:12px;color:var(--color-brand-primary);font-weight:600;cursor:pointer;}
+
+    /* Pending approvals */
+    .approval-card{border:2px solid var(--color-brand-primary);border-radius:var(--radius-lg);padding:16px;background:var(--color-alert-info-bg);position:relative;}
+    .approval-card::before{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 4px rgba(37,99,235,.15);pointer-events:none;}
+    .approval-title{font-size:14px;font-weight:600;margin:8px 0 4px;}
+    .approval-meta{font-size:11px;color:var(--color-text-secondary);margin-bottom:12px;}
+    .btn-review{padding:8px 16px;background:var(--color-brand-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;}
+
+    /* Risk detail */
+    .risk-factors{list-style:none;margin-top:10px;}
+    .risk-factors li{font-size:12px;padding:4px 0;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--color-border-default);}
+    .risk-factors li:last-child{border-bottom:none;}
+    .rf-dot{width:6px;height:6px;border-radius:50%;background:var(--color-risk-high);flex-shrink:0;}
+    .view-plan{font-size:12px;color:var(--color-brand-primary);font-weight:600;cursor:pointer;display:block;margin-top:12px;}
+
+    .ann{background:#FEFCE8;border:1px solid #FDE047;border-radius:4px;padding:3px 7px;font-size:10px;color:#713F12;display:inline-block;}
+    .ann::before{content:attr(data-id);font-weight:700;margin-right:4px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-004 — Patient Detail</strong>
+    &nbsp;|&nbsp; Route: <code>/patients/:id</code>
+    &nbsp;|&nbsp; Personas: All Staff (Physician view shown)
+    &nbsp;|&nbsp; Priority: Must Have
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
+    <span class="back-btn">← Back to Patients</span>
+    <div class="avatar">DD</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Patients</div>
+  </div>
+
+  <div class="main">
+
+    <!-- Patient header -->
+    <div class="patient-header">
+      <div class="patient-name">
+        Smith, John &nbsp;
+        <span class="ann" data-id="UXR-014" style="font-size:11px;">MRN: ●●●●●● <span style="color:#2563EB;cursor:pointer">👁 Reveal</span></span>
+      </div>
+      <div class="patient-meta">
+        <span>DOB: <strong>●●/●●/●●●●</strong></span>
+        <span>Unit: <strong>4-West</strong></span>
+        <span>Bed: <strong>4W-12</strong></span>
+        <span>Attending: <strong>Dr. Chen</strong></span>
+        <span>Admitted: <strong>2026-07-10</strong></span>
+      </div>
+      <div class="risk-score-display">
+        <span class="risk-label">Readmission Risk:</span>
+        <div class="risk-bar-large"><div class="risk-bar-fill" style="width:82%;background:var(--color-risk-high)"></div></div>
+        <strong style="color:var(--color-risk-high)">0.82</strong>
+        <span class="risk-chip-large high">⚠ HIGH RISK</span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active">Overview</div>
+      <div class="tab">Medications</div>
+      <div class="tab">Documents</div>
+      <div class="tab">Tasks</div>
+      <div class="tab">Timeline</div>
+    </div>
+
+    <!-- Overview content -->
+    <div class="grid-2">
+
+      <!-- Agent Task Status -->
+      <div class="card">
+        <div class="card-header"><h3>Agent Task Status</h3></div>
+        <div class="card-body">
+          <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Transition Coordinator</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Complete</span></div>
+          <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Documentation Agent</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Draft ready</span></div>
+          <div class="agent-row"><div class="dot warn"></div><span class="agent-name">Medication Reconciliation</span><span class="agent-status-badge" style="color:var(--color-alert-warning)">⚠ 2 alerts</span></div>
+          <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Bed Management</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Assigned</span></div>
+          <div class="agent-row"><div class="dot pending"></div><span class="agent-name">Follow-up Care</span><span class="agent-status-badge" style="color:var(--color-grey-700)">● Pending</span></div>
+          <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Patient Communications</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Active</span></div>
+        </div>
+      </div>
+
+      <!-- Pending Approvals -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Pending Approvals</h3>
+          <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">1</span>
+        </div>
+        <div class="card-body">
+          <div class="approval-card">
+            <div class="ai-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l3.057-3 11.943 12-11.943 12-3.057-3 9-9z"/></svg>
+              <span class="ann" data-id="UXR-007">AI-Assisted — Review Required</span>
+            </div>
+            <div class="approval-title">Discharge Summary — Draft</div>
+            <div class="approval-meta">Generated 14:32 · Documentation Agent · 30 seconds</div>
+            <button class="btn-review">Review &amp; Approve →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Active Alerts -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Active Alerts</h3>
+          <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">2</span>
+        </div>
+        <div class="card-body">
+          <div class="alert-item critical">
+            <div class="alert-header">
+              <span style="font-size:16px">🔴</span>
+              Drug Interaction: Warfarin + Aspirin
+            </div>
+            <div class="alert-text">Severity: Major | Risk: Increased bleeding — pharmacodynamic synergy</div>
+            <span class="alert-link" title="UXR-006: Opens modal interrupt">Resolve →</span>
+          </div>
+          <div class="alert-item warning">
+            <div class="alert-header">
+              <span style="font-size:16px">🟡</span>
+              Chronic Medication Missing: Metformin
+            </div>
+            <div class="alert-text">Metformin 500mg BD not found on Discharge Rx. Patient has Type 2 Diabetes.</div>
+            <span class="alert-link">Review →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Readmission Risk Detail -->
+      <div class="card">
+        <div class="card-header"><h3>Readmission Risk Detail</h3></div>
+        <div class="card-body">
+          <div style="font-size:32px;font-weight:700;color:var(--color-risk-high)">0.82</div>
+          <div class="risk-bar-large" style="width:100%;margin:8px 0;"><div class="risk-bar-fill" style="width:82%;background:var(--color-risk-high)"></div></div>
+          <div style="font-size:12px;font-weight:700;color:var(--color-risk-high);margin-bottom:10px">HIGH RISK — Follow-up mandatory within 7 days</div>
+          <ul class="risk-factors">
+            <li><div class="rf-dot"></div>Prior admission within last 30 days</li>
+            <li><div class="rf-dot"></div>≥3 medications changed at discharge</li>
+            <li><div class="rf-dot"></div>Primary diagnosis: Congestive Heart Failure</li>
+            <li><div class="rf-dot"></div>Age ≥75</li>
+          </ul>
+          <a class="view-plan" href="#">View Care Plan →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Overview tab (shown)</span>
+      <span class="chip">Documents tab</span>
+      <span class="chip">Medications tab</span>
+      <span class="chip">Tasks tab</span>
+      <span class="chip">Timeline tab</span>
+      <span class="chip">Alert modal — critical interrupt</span>
+      <span class="chip">Approval pending — pulse border</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-004 Skeleton Loaders</span>
+      <span class="uxr-tag">UXR-005 Toast Notifications</span>
+      <span class="uxr-tag">UXR-006 Critical Alert Modals</span>
+      <span class="uxr-tag">UXR-007 AI-Assisted Badge</span>
+      <span class="uxr-tag">UXR-011 Last-Updated Timestamp</span>
+      <span class="uxr-tag">UXR-014 PHI Masking Toggle</span>
+      <span class="uxr-tag">UXR-023 Risk Score Chips</span>
+      <span class="uxr-tag">UXR-025 Confirm Before Irreversible Action</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

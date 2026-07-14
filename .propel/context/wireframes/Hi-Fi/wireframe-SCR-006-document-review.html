@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-006 — Document Review | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root{
+      --color-brand-primary:#2563EB;--color-surface-page:#F9FAFB;--color-surface-card:#FFFFFF;
+      --color-text-primary:#111827;--color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB;--color-grey-100:#F3F4F6;--color-grey-700:#374151;
+      --color-alert-critical:#DC2626;--color-alert-critical-bg:#FEF2F2;
+      --color-alert-warning:#D97706;--color-alert-warning-bg:#FFFBEB;
+      --color-alert-success:#16A34A;--color-alert-success-bg:#F0FDF4;
+      --color-alert-info:#2563EB;--color-alert-info-bg:#EFF6FF;
+      --color-ai-badge:#0D9488;--color-ai-badge-bg:#F0FDFA;--color-ai-badge-border:#2DD4BF;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:var(--color-surface-page);color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    .shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;min-height:calc(100vh - 32px);}
+    .topbar{grid-column:1/-1;background:var(--color-surface-card);border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;padding:0 24px;gap:16px;}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;}
+    .logo-mark{width:32px;height:32px;background:var(--color-brand-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+    .logo-mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+    .back-btn{font-size:13px;color:var(--color-brand-primary);cursor:pointer;font-weight:500;margin-left:16px;}
+    .avatar{width:32px;height:32px;border-radius:var(--radius-full);background:var(--color-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-left:auto;}
+    .sidebar{background:var(--color-surface-card);border-right:1px solid var(--color-border-default);padding:20px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-grey-700);cursor:pointer;border-left:3px solid transparent;}
+    .nav-item:hover{background:var(--color-grey-100);}
+    .nav-item.active{background:var(--color-alert-info-bg);color:var(--color-brand-primary);border-left-color:var(--color-brand-primary);font-weight:600;}
+    .nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;}
+
+    .main{padding:24px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+    .page-header h1{font-size:18px;font-weight:700;}
+    .ai-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--radius-md);background:var(--color-ai-badge-bg);border:1px solid var(--color-ai-badge-border);color:var(--color-ai-badge);font-size:11px;font-weight:600;}
+
+    /* Dual pane */
+    .dual-pane{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;flex:1;min-height:480px;}
+    .pane{display:flex;flex-direction:column;}
+    .pane-header{padding:12px 16px;border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;justify-content:space-between;}
+    .pane-header h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);}
+    .pane-header .meta{font-size:11px;color:var(--color-text-secondary);}
+    .pane-body{padding:20px;font-size:13px;line-height:1.7;flex:1;overflow-y:auto;}
+    .pane-body.ai-pane{background:var(--color-grey-100);color:var(--color-text-secondary);}
+    .pane-body.edit-pane{background:#fff;}
+    .pane.ai-pane-col{border-right:1px solid var(--color-border-default);}
+
+    .doc-heading{font-size:16px;font-weight:700;margin-bottom:12px;color:var(--color-text-primary);}
+    .doc-field{margin-bottom:12px;}
+    .doc-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);display:block;margin-bottom:3px;}
+    .doc-field p{font-size:13px;color:var(--color-text-primary);}
+    .doc-field p.ai-text{color:var(--color-text-secondary);}
+
+    /* Diff highlights */
+    .edited{background:#FEF3C7;border-radius:3px;padding:1px 3px;}
+    .ai-diff{background:#E0F2FE;border-radius:3px;padding:1px 3px;text-decoration:line-through;color:var(--color-text-secondary);}
+    .added-text{background:#D1FAE5;border-radius:3px;padding:1px 3px;}
+
+    /* Change log */
+    .change-log{background:var(--color-grey-100);border:1px solid var(--color-border-default);border-radius:var(--radius-md);padding:10px 16px;font-size:12px;color:var(--color-text-secondary);}
+    .change-log strong{color:var(--color-text-primary);}
+
+    /* Bottom actions */
+    .bottom-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+    .btn-reject{padding:10px 20px;background:transparent;color:var(--color-alert-critical);border:1.5px solid var(--color-alert-critical);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;}
+    .btn-save{padding:10px 20px;background:transparent;color:var(--color-text-secondary);border:1.5px solid var(--color-border-default);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;}
+    .btn-approve{padding:10px 24px;background:var(--color-alert-success);color:#fff;border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;}
+    .fallback-banner{background:var(--color-alert-warning-bg);border:1px solid #FDE68A;border-left:4px solid var(--color-alert-warning);border-radius:var(--radius-md);padding:10px 16px;font-size:12px;color:var(--color-alert-warning);font-weight:600;}
+
+    .ann{background:#FEFCE8;border:1px solid #FDE047;border-radius:4px;padding:3px 7px;font-size:10px;color:#713F12;display:inline-block;}
+    .ann::before{content:attr(data-id);font-weight:700;margin-right:4px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-006 — Document Review</strong>
+    &nbsp;|&nbsp; Route: <code>/patients/:id/documents</code>
+    &nbsp;|&nbsp; Personas: P-02 Physician, P-01 Nurse
+    &nbsp;|&nbsp; Priority: Must Have &nbsp;|&nbsp; UC: UC-004, UC-009
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
+    <span class="back-btn">← Smith, John — Patient Detail</span>
+    <div class="avatar">DD</div>
+  </div>
+  <div class="sidebar">
+    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    <div class="nav-item active"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Patients</div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Document Review — Smith, John — Discharge Summary</h1>
+      <div class="ai-badge">✨ <span class="ann" data-id="UXR-007">AI-Assisted — Review Required</span></div>
+    </div>
+
+    <!-- Vertex AI fallback banner (hidden by default) -->
+    <div class="fallback-banner" style="display:none">
+      ⚠ AI generation timed out — template-based summary used. Review carefully before approving.
+    </div>
+
+    <!-- Dual-pane editor -->
+    <div class="dual-pane">
+      <!-- AI Draft pane -->
+      <div class="pane ai-pane-col">
+        <div class="pane-header">
+          <h3>AI Draft (read-only)</h3>
+          <span class="meta">Generated 14:32 · Vertex AI</span>
+        </div>
+        <div class="pane-body ai-pane">
+          <div class="doc-heading">Discharge Summary</div>
+          <div class="doc-field">
+            <label>Patient</label>
+            <p class="ai-text">John Smith &nbsp;|&nbsp; MRN: ●●●●●●</p>
+          </div>
+          <div class="doc-field">
+            <label>Admission / Discharge</label>
+            <p class="ai-text">2026-07-10 → 2026-07-14 (4 days)</p>
+          </div>
+          <div class="doc-field">
+            <label>Primary Diagnosis</label>
+            <p class="ai-text"><span class="ai-diff">Congestive Heart Failure (I50.90)</span></p>
+          </div>
+          <div class="doc-field">
+            <label>Hospital Course</label>
+            <p class="ai-text">Patient presented with acute decompensated heart failure. IV diuresis commenced with furosemide. Echo revealed EF of 35%. Cardiology consulted. Patient stabilised on oral diuretics prior to discharge.</p>
+          </div>
+          <div class="doc-field">
+            <label>Discharge Condition</label>
+            <p class="ai-text">Stable. Ambulatory with assistance.</p>
+          </div>
+          <div class="doc-field">
+            <label>Follow-Up</label>
+            <p class="ai-text">Cardiology clinic within 7 days. Readmission risk: 0.82 (HIGH).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editable pane -->
+      <div class="pane">
+        <div class="pane-header">
+          <h3>Editable Version</h3>
+          <span class="meta">Auto-saved 14:38 · 2 edits</span>
+        </div>
+        <div class="pane-body edit-pane">
+          <div class="doc-heading">Discharge Summary</div>
+          <div class="doc-field">
+            <label>Patient</label>
+            <p>John Smith &nbsp;|&nbsp; MRN: ●●●●●●</p>
+          </div>
+          <div class="doc-field">
+            <label>Admission / Discharge</label>
+            <p>2026-07-10 → 2026-07-14 (4 days)</p>
+          </div>
+          <div class="doc-field">
+            <label>Primary Diagnosis <span style="font-size:10px;color:#D97706">[EDITED ✎]</span></label>
+            <p>Congestive Heart Failure, <span class="edited">Reduced Ejection Fraction</span> (I50.22)</p>
+          </div>
+          <div class="doc-field">
+            <label>Hospital Course</label>
+            <p>Patient presented with acute decompensated heart failure. IV diuresis commenced with furosemide. Echo revealed EF of 35%. Cardiology consulted. Patient stabilised on oral diuretics prior to discharge. <span class="added-text">[Physician note: Weight on discharge 84kg, target ≤82kg at follow-up.]</span></p>
+          </div>
+          <div class="doc-field">
+            <label>Discharge Condition</label>
+            <p>Stable. Ambulatory with assistance.</p>
+          </div>
+          <div class="doc-field">
+            <label>Follow-Up</label>
+            <p>Cardiology clinic within 7 days (mandatory — HIGH readmission risk). GP review within 48 hours.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change log -->
+    <div class="change-log">
+      Change log: <strong>2 edits</strong> by Dr. David Chen — 14:37 &nbsp;|&nbsp; Field: Primary Diagnosis (ICD code updated) &nbsp;|&nbsp; Field: Hospital Course (weight target added)
+    </div>
+
+    <!-- Bottom actions -->
+    <div class="bottom-actions">
+      <button class="btn-reject" title="UXR-025: Rejection reason required">← Reject &amp; Return</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-save">Save Draft</button>
+        <button class="btn-approve" title="UXR-025: Confirm modal before signing">Approve &amp; Sign ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Editing (shown)</span>
+      <span class="chip">AI draft pending — blank right pane</span>
+      <span class="chip">Completeness failure — approve blocked</span>
+      <span class="chip">Confirm approval modal</span>
+      <span class="chip">Approved — locked, green banner</span>
+      <span class="chip">Rejected — returned to queue</span>
+      <span class="chip">Vertex AI fallback — yellow banner</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-004 Skeleton Loaders</span>
+      <span class="uxr-tag">UXR-007 AI-Assisted Badge</span>
+      <span class="uxr-tag">UXR-008 User-Friendly Errors</span>
+      <span class="uxr-tag">UXR-025 Confirm Before Signing</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
