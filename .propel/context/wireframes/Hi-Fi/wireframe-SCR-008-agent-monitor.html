@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-008 — Agent Monitor | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root{
+      --color-brand-primary:#2563EB;--color-surface-page:#F9FAFB;--color-surface-card:#FFFFFF;
+      --color-text-primary:#111827;--color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB;--color-grey-100:#F3F4F6;--color-grey-700:#374151;
+      --color-alert-critical:#DC2626;--color-alert-critical-bg:#FEF2F2;
+      --color-alert-warning:#D97706;--color-alert-warning-bg:#FFFBEB;
+      --color-alert-success:#16A34A;--color-alert-success-bg:#F0FDF4;
+      --color-alert-info:#2563EB;--color-alert-info-bg:#EFF6FF;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:var(--color-surface-page);color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    .shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;min-height:calc(100vh - 32px);}
+    .topbar{grid-column:1/-1;background:var(--color-surface-card);border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;padding:0 24px;gap:16px;}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;}
+    .logo-mark{width:32px;height:32px;background:var(--color-brand-primary);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+    .logo-mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;}
+    .avatar{width:32px;height:32px;border-radius:var(--radius-full);background:var(--color-brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;margin-left:auto;}
+    .sidebar{background:var(--color-surface-card);border-right:1px solid var(--color-border-default);padding:20px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-grey-700);cursor:pointer;border-left:3px solid transparent;}
+    .nav-item:hover{background:var(--color-grey-100);}
+    .nav-item.active{background:var(--color-alert-info-bg);color:var(--color-brand-primary);border-left-color:var(--color-brand-primary);font-weight:600;}
+    .nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;}
+
+    .main{padding:24px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;}
+    .page-header h1{font-size:20px;font-weight:700;}
+
+    /* Agent health table */
+    .card{background:var(--color-surface-card);border:1px solid var(--color-border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;}
+    .card-header{padding:14px 18px;border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;justify-content:space-between;}
+    .card-header h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);}
+    table{width:100%;border-collapse:collapse;}
+    thead tr{background:var(--color-grey-100);}
+    th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);border-bottom:1px solid var(--color-border-default);}
+    td{padding:14px 16px;font-size:13px;border-bottom:1px solid var(--color-border-default);vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--color-grey-100);}
+
+    .status-chip{padding:4px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px;}
+    .status-chip.live{background:var(--color-alert-success-bg);color:var(--color-alert-success);}
+    .status-chip.warn{background:var(--color-alert-warning-bg);color:var(--color-alert-warning);}
+    .status-chip.down{background:var(--color-alert-critical-bg);color:var(--color-alert-critical);}
+    .status-dot{width:8px;height:8px;border-radius:50%;}
+    .status-dot.live{background:var(--color-alert-success);}
+    .status-dot.warn{background:var(--color-alert-warning);}
+    .status-dot.down{background:var(--color-alert-critical);}
+
+    .metric{font-size:13px;font-weight:600;}
+    .metric.good{color:var(--color-alert-success);}
+    .metric.warn{color:var(--color-alert-warning);}
+
+    /* Failed tasks */
+    .failed-task{background:var(--color-alert-critical-bg);border:1px solid #FECACA;border-left:4px solid var(--color-alert-critical);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;}
+    .failed-task:last-child{margin-bottom:0;}
+    .failed-task-title{font-size:13px;font-weight:700;color:var(--color-alert-critical);margin-bottom:4px;}
+    .failed-task-meta{font-size:12px;color:var(--color-text-secondary);margin-bottom:10px;}
+    .failed-task-actions{display:flex;gap:8px;}
+    .btn-sm{padding:6px 12px;border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid;}
+    .btn-sm.primary{background:var(--color-alert-critical);color:#fff;border-color:var(--color-alert-critical);}
+    .btn-sm.info{background:transparent;color:var(--color-brand-primary);border-color:var(--color-brand-primary);}
+    .btn-sm.secondary{background:transparent;color:var(--color-text-secondary);border-color:var(--color-border-default);}
+
+    /* Infra health */
+    .infra-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .infra-metric{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--color-grey-100);border-radius:var(--radius-md);font-size:12px;}
+    .infra-label{color:var(--color-text-secondary);}
+    .infra-value{font-weight:700;color:var(--color-text-primary);}
+    .infra-value.good{color:var(--color-alert-success);}
+
+    .ann{background:#FEFCE8;border:1px solid #FDE047;border-radius:4px;padding:3px 7px;font-size:10px;color:#713F12;display:inline-block;}
+    .ann::before{content:attr(data-id);font-weight:700;margin-right:4px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-008 — Agent Monitor</strong>
+    &nbsp;|&nbsp; Route: <code>/admin/agents</code>
+    &nbsp;|&nbsp; Persona: IT Supervisor
+    &nbsp;|&nbsp; Priority: Should Have &nbsp;|&nbsp; UC: UC-020
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-07-14</span>
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
+    <div class="avatar">SU</div>
+  </div>
+  <div class="sidebar">
+    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    <div class="nav-item active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Agent Monitor</div>
+    <div class="nav-item" style="opacity:.5">Admin Settings</div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Agent Health Monitor</h1>
+      <span style="font-size:12px;color:var(--color-text-secondary);">
+        <span class="ann" data-id="UXR-011">Last updated 14:39:05</span>
+        &nbsp;<span style="color:var(--color-brand-primary);cursor:pointer;font-weight:600">↻ Refresh</span>
+      </span>
+    </div>
+
+    <!-- Agent health table -->
+    <div class="card">
+      <div class="card-header"><h2>Agent Performance Metrics</h2></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Status</th>
+            <th>Tasks/hr</th>
+            <th>Success Rate</th>
+            <th>Avg Duration</th>
+            <th>Queue Depth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Transition Coordinator</strong></td>
+            <td><span class="status-chip live"><div class="status-dot live"></div>LIVE</span></td>
+            <td><span class="metric good">42</span></td>
+            <td><span class="metric good">99.8%</span></td>
+            <td>320 ms</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td><strong>Documentation Agent</strong></td>
+            <td><span class="status-chip live"><div class="status-dot live"></div>LIVE</span></td>
+            <td><span class="metric good">18</span></td>
+            <td><span class="metric good">98.1%</span></td>
+            <td>28,400 ms</td>
+            <td>2</td>
+          </tr>
+          <tr>
+            <td><strong>Medication Reconciliation</strong></td>
+            <td><span class="status-chip warn"><div class="status-dot warn"></div>WARNING</span></td>
+            <td><span class="metric warn">12</span></td>
+            <td><span class="metric warn">94.5%</span></td>
+            <td>450 ms</td>
+            <td><strong style="color:var(--color-alert-warning)">5</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Bed Management</strong></td>
+            <td><span class="status-chip live"><div class="status-dot live"></div>LIVE</span></td>
+            <td><span class="metric good">38</span></td>
+            <td><span class="metric good">100.0%</span></td>
+            <td>180 ms</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td><strong>Follow-up Care</strong></td>
+            <td><span class="status-chip live"><div class="status-dot live"></div>LIVE</span></td>
+            <td><span class="metric good">22</span></td>
+            <td><span class="metric good">97.3%</span></td>
+            <td>520 ms</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td><strong>Patient Communications</strong></td>
+            <td><span class="status-chip live"><div class="status-dot live"></div>LIVE</span></td>
+            <td><span class="metric good">60</span></td>
+            <td><span class="metric good">99.2%</span></td>
+            <td>810 ms</td>
+            <td>0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Failed tasks -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Failed Tasks</h2>
+        <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">3 tasks</span>
+      </div>
+      <div style="padding:16px;">
+        <div class="failed-task">
+          <div class="failed-task-title">Task #8821 — Medication Reconciliation — Encounter #2041 (Smith, J.)</div>
+          <div class="failed-task-meta">Error: FHIR endpoint timeout after 30s &nbsp;|&nbsp; Attempt: 3/3 &nbsp;|&nbsp; Failed at: 14:28:14</div>
+          <div class="failed-task-actions">
+            <button class="btn-sm info">View Details</button>
+            <button class="btn-sm primary">Retry</button>
+            <button class="btn-sm secondary">Escalate to On-Call</button>
+          </div>
+        </div>
+        <div class="failed-task">
+          <div class="failed-task-title">Task #8819 — Medication Reconciliation — Encounter #2039 (Patel, R.)</div>
+          <div class="failed-task-meta">Error: Drug interaction database timeout &nbsp;|&nbsp; Attempt: 2/3 &nbsp;|&nbsp; Failed at: 14:22:05</div>
+          <div class="failed-task-actions">
+            <button class="btn-sm info">View Details</button>
+            <button class="btn-sm primary">Retry</button>
+            <button class="btn-sm secondary">Escalate to On-Call</button>
+          </div>
+        </div>
+        <div class="failed-task">
+          <div class="failed-task-title">Task #8815 — Documentation — Encounter #2035 (Lee, K.)</div>
+          <div class="failed-task-meta">Error: Vertex AI quota exceeded &nbsp;|&nbsp; Attempt: 1/3 &nbsp;|&nbsp; Failed at: 14:09:44</div>
+          <div class="failed-task-actions">
+            <button class="btn-sm info">View Details</button>
+            <button class="btn-sm primary">Retry</button>
+            <button class="btn-sm secondary">Escalate to On-Call</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infrastructure health -->
+    <div class="card">
+      <div class="card-header"><h2>Infrastructure Health</h2></div>
+      <div style="padding:16px;">
+        <div class="infra-row">
+          <div class="infra-metric"><span class="infra-label">Pub/Sub lag:</span><span class="infra-value good">0.2s</span></div>
+          <div class="infra-metric"><span class="infra-label">Cloud SQL latency:</span><span class="infra-value good">12ms</span></div>
+          <div class="infra-metric"><span class="infra-label">Cloud Run pods:</span><span class="infra-value">3 / 4 active</span></div>
+          <div class="infra-metric"><span class="infra-label">SignalR connections:</span><span class="infra-value good">247 active</span></div>
+          <div class="infra-metric"><span class="infra-label">Vertex AI calls (1h):</span><span class="infra-value">18 / 60 quota</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Default — with failures (shown)</span>
+      <span class="chip">All healthy — zero failures</span>
+      <span class="chip">Agent warning chip — elevated errors</span>
+      <span class="chip">Agent down — red chip + escalate CTA</span>
+      <span class="chip">Task retry modal — confirm retry</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-004 Skeleton Loaders</span>
+      <span class="uxr-tag">UXR-011 Last-Updated Timestamp</span>
+      <span class="uxr-tag">UXR-025 Confirm Before Retry/Escalate</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 600" width="860" height="600" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <title>SmartHandoff — Design Token Reference</title>
+
+  <rect width="860" height="600" fill="#F9FAFB"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="860" height="48" fill="#1E3A8A"/>
+  <text x="20" y="30" fill="white" font-size="13" font-weight="700">SmartHandoff — Design Token Reference</text>
+  <text x="620" y="30" fill="rgba(255,255,255,0.6)" font-size="11">🎨 Design System Page · /generate-figma</text>
+
+  <!-- ══ COLOUR TOKENS ══ -->
+  <text x="20" y="72" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">BRAND COLOURS</text>
+
+  <!-- Brand Primary -->
+  <rect x="20" y="82" width="60" height="40" rx="8" fill="#2563EB"/>
+  <text x="20" y="134" fill="#374151" font-size="9" font-weight="600">--color-brand-primary</text>
+  <text x="20" y="146" fill="#9CA3AF" font-size="8">#2563EB</text>
+
+  <rect x="96" y="82" width="60" height="40" rx="8" fill="#1D4ED8"/>
+  <text x="96" y="134" fill="#374151" font-size="9" font-weight="600">--brand-primary-hover</text>
+  <text x="96" y="146" fill="#9CA3AF" font-size="8">#1D4ED8</text>
+
+  <rect x="172" y="82" width="60" height="40" rx="8" fill="#0D9488"/>
+  <text x="172" y="134" fill="#374151" font-size="9" font-weight="600">--brand-secondary</text>
+  <text x="172" y="146" fill="#9CA3AF" font-size="8">#0D9488</text>
+
+  <!-- Risk colours -->
+  <text x="280" y="72" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">RISK SEVERITY</text>
+
+  <rect x="280" y="82" width="60" height="40" rx="8" fill="#16A34A"/>
+  <text x="280" y="134" fill="#374151" font-size="9" font-weight="600">--risk-low</text>
+  <text x="280" y="146" fill="#9CA3AF" font-size="8">Score &lt; 0.3</text>
+
+  <rect x="356" y="82" width="60" height="40" rx="8" fill="#D97706"/>
+  <text x="356" y="134" fill="#374151" font-size="9" font-weight="600">--risk-medium</text>
+  <text x="356" y="146" fill="#9CA3AF" font-size="8">Score 0.3–0.7</text>
+
+  <rect x="432" y="82" width="60" height="40" rx="8" fill="#DC2626"/>
+  <text x="432" y="134" fill="#374151" font-size="9" font-weight="600">--risk-high</text>
+  <text x="432" y="146" fill="#9CA3AF" font-size="8">Score &gt; 0.7</text>
+
+  <!-- Alert colours -->
+  <text x="540" y="72" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">ALERT LEVELS</text>
+
+  <rect x="540" y="82" width="60" height="40" rx="8" fill="#DC2626"/>
+  <text x="540" y="134" fill="#374151" font-size="9" font-weight="600">--alert-critical</text>
+  <text x="540" y="146" fill="#9CA3AF" font-size="8">Drug interactions</text>
+
+  <rect x="616" y="82" width="60" height="40" rx="8" fill="#D97706"/>
+  <text x="616" y="134" fill="#374151" font-size="9" font-weight="600">--alert-warning</text>
+  <text x="616" y="146" fill="#9CA3AF" font-size="8">ED boarding alerts</text>
+
+  <rect x="692" y="82" width="60" height="40" rx="8" fill="#2563EB"/>
+  <text x="692" y="134" fill="#374151" font-size="9" font-weight="600">--alert-info</text>
+  <text x="692" y="146" fill="#9CA3AF" font-size="8">Informational</text>
+
+  <rect x="768" y="82" width="60" height="40" rx="8" fill="#16A34A"/>
+  <text x="768" y="134" fill="#374151" font-size="9" font-weight="600">--alert-success</text>
+  <text x="768" y="146" fill="#9CA3AF" font-size="8">Completion</text>
+
+  <!-- ══ TYPOGRAPHY ══ -->
+  <line x1="20" y1="162" x2="840" y2="162" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="182" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">TYPOGRAPHY — INTER</text>
+
+  <text x="20" y="215" fill="#111827" font-size="30" font-weight="700">KPI Value 30px Bold</text>
+  <text x="580" y="215" fill="#9CA3AF" font-size="10">--text-3xl / Bold / KPI tiles, large numerics</text>
+
+  <text x="20" y="246" fill="#111827" font-size="24" font-weight="600">Page Heading 24px SemiBold</text>
+  <text x="400" y="246" fill="#9CA3AF" font-size="10">--text-2xl / SemiBold / H2</text>
+
+  <text x="20" y="272" fill="#111827" font-size="18" font-weight="500">Card Title 18px Medium</text>
+  <text x="340" y="272" fill="#9CA3AF" font-size="10">--text-lg / Medium / Panel headers</text>
+
+  <text x="20" y="294" fill="#111827" font-size="14" font-weight="400">Body text 14px Regular — Table cells, secondary content, form labels</text>
+  <text x="580" y="294" fill="#9CA3AF" font-size="10">--text-sm / Regular</text>
+
+  <text x="20" y="313" fill="#4B5563" font-size="11" font-weight="400">Caption text 11px Regular — timestamps, metadata, badge labels</text>
+  <text x="520" y="313" fill="#9CA3AF" font-size="10">--text-xs / Regular</text>
+
+  <text x="20" y="330" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">TABLE HEADER UPPERCASE 11PX BOLD</text>
+  <text x="420" y="330" fill="#9CA3AF" font-size="10">--text-xs / Bold / letter-spacing 0.05em</text>
+
+  <!-- Mono -->
+  <text x="20" y="350" fill="#374151" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="13">MRN: ●●●●●●  ADT^A03  audit-log-entry-001</text>
+  <text x="500" y="350" fill="#9CA3AF" font-size="10">--font-family-mono / JetBrains Mono</text>
+
+  <!-- ══ SPACING ══ -->
+  <line x1="20" y1="366" x2="840" y2="366" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="386" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">SPACING SCALE (4px base unit)</text>
+
+  <!-- Spacing visualisation -->
+  <rect x="20" y="396" width="4" height="16" rx="2" fill="#2563EB"/>
+  <text x="28" y="408" fill="#374151" font-size="9">sp-1 / 4px</text>
+
+  <rect x="90" y="396" width="8" height="16" rx="2" fill="#2563EB"/>
+  <text x="102" y="408" fill="#374151" font-size="9">sp-2 / 8px</text>
+
+  <rect x="160" y="396" width="12" height="16" rx="2" fill="#2563EB"/>
+  <text x="176" y="408" fill="#374151" font-size="9">sp-3 / 12px</text>
+
+  <rect x="240" y="396" width="16" height="16" rx="2" fill="#2563EB"/>
+  <text x="260" y="408" fill="#374151" font-size="9">sp-4 / 16px</text>
+
+  <rect x="320" y="396" width="24" height="16" rx="2" fill="#2563EB"/>
+  <text x="348" y="408" fill="#374151" font-size="9">sp-6 / 24px</text>
+
+  <rect x="410" y="396" width="32" height="16" rx="2" fill="#2563EB"/>
+  <text x="446" y="408" fill="#374151" font-size="9">sp-8 / 32px</text>
+
+  <rect x="510" y="396" width="48" height="16" rx="2" fill="#2563EB"/>
+  <text x="562" y="408" fill="#374151" font-size="9">sp-12 / 48px</text>
+
+  <rect x="620" y="396" width="64" height="16" rx="2" fill="#2563EB"/>
+  <text x="688" y="408" fill="#374151" font-size="9">sp-16 / 64px</text>
+
+  <!-- ══ BORDER RADIUS ══ -->
+  <line x1="20" y1="426" x2="840" y2="426" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="20" y="446" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">BORDER RADIUS</text>
+
+  <rect x="20" y="456" width="48" height="48" rx="4" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="20" y="516" fill="#374151" font-size="9">--radius-sm</text>
+  <text x="20" y="527" fill="#9CA3AF" font-size="8">4px</text>
+
+  <rect x="90" y="456" width="48" height="48" rx="8" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="90" y="516" fill="#374151" font-size="9">--radius-md</text>
+  <text x="90" y="527" fill="#9CA3AF" font-size="8">8px</text>
+
+  <rect x="160" y="456" width="48" height="48" rx="12" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="160" y="516" fill="#374151" font-size="9">--radius-lg</text>
+  <text x="160" y="527" fill="#9CA3AF" font-size="8">12px</text>
+
+  <rect x="230" y="456" width="48" height="48" rx="16" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="230" y="516" fill="#374151" font-size="9">--radius-xl</text>
+  <text x="230" y="527" fill="#9CA3AF" font-size="8">16px</text>
+
+  <rect x="300" y="456" width="48" height="48" rx="24" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="300" y="516" fill="#374151" font-size="9">--radius-2xl</text>
+  <text x="300" y="527" fill="#9CA3AF" font-size="8">24px (portal)</text>
+
+  <rect x="370" y="464" width="48" height="32" rx="9999" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="370" y="516" fill="#374151" font-size="9">--radius-full</text>
+  <text x="370" y="527" fill="#9CA3AF" font-size="8">9999px (chips)</text>
+
+  <!-- ══ SHADOW ══ -->
+  <text x="480" y="446" fill="#374151" font-size="11" font-weight="700" letter-spacing="0.05em">ELEVATION / SHADOW</text>
+
+  <rect x="480" y="456" width="80" height="48" rx="8" fill="white" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.05))"/>
+  <text x="480" y="516" fill="#374151" font-size="9">--shadow-sm</text>
+
+  <rect x="580" y="454" width="80" height="48" rx="8" fill="white" style="filter:drop-shadow(0 4px 6px rgba(0,0,0,0.1))"/>
+  <text x="580" y="516" fill="#374151" font-size="9">--shadow-md</text>
+
+  <rect x="680" y="450" width="80" height="48" rx="8" fill="white" style="filter:drop-shadow(0 10px 15px rgba(0,0,0,0.1))"/>
+  <text x="680" y="516" fill="#374151" font-size="9">--shadow-lg</text>
+
+  <!-- Focus ring -->
+  <rect x="480" y="535" width="80" height="32" rx="8" fill="#2563EB" stroke="#93C5FD" stroke-width="3"/>
+  <text x="490" y="555" fill="white" font-size="10" font-weight="600">Focused</text>
+  <text x="480" y="574" fill="#374151" font-size="9">--shadow-focus: 0 0 0 3px rgba(37,99,235,0.4)</text>
+</svg>

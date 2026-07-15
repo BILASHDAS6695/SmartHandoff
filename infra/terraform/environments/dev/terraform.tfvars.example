@@ -1,0 +1,14 @@
+# terraform.tfvars.example
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is git-ignored — never commit actual values.
+# In CI/CD, values are injected via Cloud Build substitutions.
+
+project_id          = "smarthandoff-dev"
+region              = "us-central1"
+environment         = "dev"
+api_domain          = "api.dev.smarthandoff.health"
+portal_domain       = "portal.dev.smarthandoff.health"
+oncall_email        = "oncall@smarthandoff.health"
+slack_alert_channel = "#smarthandoff-alerts-dev"
+github_owner        = "your-github-org"
+github_repo         = "SmartHandoff"
