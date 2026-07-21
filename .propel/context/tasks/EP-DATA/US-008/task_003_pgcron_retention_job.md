@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-001]
@@ -16,7 +16,7 @@ upstream: [TASK-001]
 # TASK-003: Author Alembic Migration `0003_pgcron_retention` — 6-Year Audit Log Archival to Cloud Storage
 
 > **Story:** US-008 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

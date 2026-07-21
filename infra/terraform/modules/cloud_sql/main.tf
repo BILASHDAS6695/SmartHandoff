@@ -101,6 +101,10 @@ resource "google_sql_database_instance" "primary" {
       name  = "pg_stat_statements.track"
       value = "all"
     }
+    database_flags {
+      name  = "cloudsql.enable_pg_cron"
+      value = "on"
+    }
   }
 
   # Protect production from accidental terraform destroy

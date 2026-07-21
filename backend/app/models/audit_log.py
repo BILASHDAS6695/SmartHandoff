@@ -67,6 +67,11 @@ class AuditLog(Base):
 
     # Request context (no PHI in these fields — log sanitiser strips it)
     ip_address: Mapped[str | None] = mapped_column(sa.String(45), nullable=True)
+    endpoint: Mapped[str | None] = mapped_column(
+        sa.String(255),
+        nullable=True,
+        comment="Request URL path, e.g. /api/v1/patients/abc-123",
+    )
     request_id: Mapped[str | None] = mapped_column(
         sa.String(128),
         nullable=True,

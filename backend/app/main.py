@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db.encryption_key import get_phi_encryption_key
+from app.middleware.audit import HIPAAAuditMiddleware
 
 
 @asynccontextmanager
@@ -27,3 +28,7 @@ app = FastAPI(
     title="SmartHandoff API",
     lifespan=lifespan,
 )
+
+# HIPAA audit logging middleware — must be registered after JWT validation
+# middleware so request.state.user_id is populated when this middleware runs.
+app.add_middleware(HIPAAAuditMiddleware)
