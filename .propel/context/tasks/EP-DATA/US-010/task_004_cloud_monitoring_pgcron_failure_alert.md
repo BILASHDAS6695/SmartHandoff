@@ -7,7 +7,7 @@ sprint: 1
 layer: Infrastructure / Observability
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-002, TASK-003]

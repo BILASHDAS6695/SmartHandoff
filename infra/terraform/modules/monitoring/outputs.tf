@@ -58,3 +58,8 @@ output "audit_log_sink_writer_identity" {
   description = "Service account identity used by the log sink to write to the audit bucket"
   value       = google_logging_project_sink.audit_sink.writer_identity
 }
+
+output "pgcron_failure_alert_policy_name" {
+  description = "Resource name of the pg_cron archival/purge job failure alert policy (US-010)"
+  value       = google_monitoring_alert_policy.pgcron_job_failure_alert.name
+}

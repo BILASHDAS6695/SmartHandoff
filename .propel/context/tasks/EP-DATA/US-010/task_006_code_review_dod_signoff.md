@@ -7,7 +7,7 @@ sprint: 1
 layer: Engineering Process
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer (Reviewer) + Compliance Officer
 upstream: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005]
@@ -40,88 +40,88 @@ No production code from US-010 may merge without this sign-off.
 
 | Item | Check |
 |---|---|
-| `encounter_archive` schema matches `encounter` exactly except for `archived_at` column | ☐ |
-| `archived_at` column has `NOT NULL` constraint with `server_default = now()` | ☐ |
-| No foreign key constraints on `encounter_archive` (denormalised archive — intentional) | ☐ |
-| `app_write` role has no INSERT/UPDATE/DELETE privileges on `encounter_archive` | ☐ |
-| `compliance_reader` role has SELECT on `encounter_archive` | ☐ |
-| Indexes on `patient_id`, `archived_at`, `discharge_date` are present | ☐ |
-| `downgrade()` drops table and indexes in correct order | ☐ |
-| `alembic upgrade head && alembic downgrade -1 && alembic upgrade head` passes cleanly | ☐ |
+| `encounter_archive` schema matches `encounter` exactly except for `archived_at` column | ☑ |
+| `archived_at` column has `NOT NULL` constraint with `server_default = now()` | ☑ |
+| No foreign key constraints on `encounter_archive` (denormalised archive — intentional) | ☑ |
+| `app_write` role has no INSERT/UPDATE/DELETE privileges on `encounter_archive` | ☑ |
+| `compliance_reader` role has SELECT on `encounter_archive` | ☑ |
+| Indexes on `patient_id`, `archived_at`, `discharge_date` are present | ☑ |
+| `downgrade()` drops table and indexes in correct order | ☑ |
+| `alembic upgrade head && alembic downgrade -1 && alembic upgrade head` passes cleanly | ☑ |
 
 ### Encounter Archival pg_cron Job (TASK-002)
 
 | Item | Check |
 |---|---|
-| `archive_old_encounters()` function uses `SECURITY DEFINER` | ☐ |
-| WHERE clause is `discharge_date < now() - INTERVAL '7 years'` — NOT `created_at` | ☐ |
-| `FOR UPDATE SKIP LOCKED` prevents blocking concurrent transactions on `encounter` | ☐ |
-| Batch size is 500 — no full-table lock risk | ☐ |
-| INSERT into `encounter_archive` happens BEFORE DELETE from `encounter` in the same loop iteration | ☐ |
-| `EXCEPTION WHEN OTHERS` block re-raises after logging — failure is not silently swallowed | ☐ |
-| pg_cron job schedule is `0 3 * * *` (03:00 UTC daily) | ☐ |
-| `downgrade()` calls `cron.unschedule('archive-old-encounters')` BEFORE dropping function | ☐ |
-| `soft_deleted` rows (`deleted_at IS NOT NULL`) are correctly excluded from archival | ☐ |
+| `archive_old_encounters()` function uses `SECURITY DEFINER` | ☑ |
+| WHERE clause is `discharge_date < now() - INTERVAL '7 years'` — NOT `created_at` | ☑ |
+| `FOR UPDATE SKIP LOCKED` prevents blocking concurrent transactions on `encounter` | ☑ |
+| Batch size is 500 — no full-table lock risk | ☑ |
+| INSERT into `encounter_archive` happens BEFORE DELETE from `encounter` in the same loop iteration | ☑ |
+| `EXCEPTION WHEN OTHERS` block re-raises after logging — failure is not silently swallowed | ☑ |
+| pg_cron job schedule is `0 3 * * *` (03:00 UTC daily) | ☑ |
+| `downgrade()` calls `cron.unschedule('archive-old-encounters')` BEFORE dropping function | ☑ |
+| `soft_deleted` rows (`deleted_at IS NOT NULL`) are correctly excluded from archival | ☑ |
 
 ### Audit Log Purge pg_cron Job (TASK-003)
 
 | Item | Check |
 |---|---|
-| `purge_exported_audit_logs()` function uses `SECURITY DEFINER` | ☐ |
-| WHERE clause checks BOTH `created_at < now() - INTERVAL '2190 days'` AND `q.exported_at IS NOT NULL` | ☐ |
-| Rows with `exported_at IS NULL` (not yet exported to GCS) are NOT deleted under any condition | ☐ |
-| Rows within 6-year window are NOT deleted even if `exported_at IS NOT NULL` | ☐ |
-| The purge job also cleans up corresponding `audit_log_archive_queue` rows | ☐ |
-| `SECURITY DEFINER` bypass of RLS is documented and justified (purge is the intended lifecycle termination) | ☐ |
-| pg_cron job schedule is `0 4 * * 0` (Sunday 04:00 UTC) — AFTER nightly archive job at 02:00 UTC | ☐ |
-| `downgrade()` calls `cron.unschedule('purge-old-audit-logs')` BEFORE dropping function | ☐ |
+| `purge_exported_audit_logs()` function uses `SECURITY DEFINER` | ☑ |
+| WHERE clause checks BOTH `created_at < now() - INTERVAL '2190 days'` AND `q.exported_at IS NOT NULL` | ☑ |
+| Rows with `exported_at IS NULL` (not yet exported to GCS) are NOT deleted under any condition | ☑ |
+| Rows within 6-year window are NOT deleted even if `exported_at IS NOT NULL` | ☑ |
+| The purge job also cleans up corresponding `audit_log_archive_queue` rows | ☑ |
+| `SECURITY DEFINER` bypass of RLS is documented and justified (purge is the intended lifecycle termination) | ☑ |
+| pg_cron job schedule is `0 4 * * 0` (Sunday 04:00 UTC) — AFTER nightly archive job at 02:00 UTC | ☑ |
+| `downgrade()` calls `cron.unschedule('purge-old-audit-logs')` BEFORE dropping function | ☑ |
 
 ### Cloud Storage WORM Bucket (TASK-003 + Terraform)
 
 | Item | Check |
 |---|---|
-| Terraform resource `google_storage_bucket.audit_log_archive` exists in `infra/terraform/modules/storage/main.tf` | ☐ |
-| `retention_policy.retention_period = 189216000` (6 years in seconds) | ☐ |
-| `retention_policy.is_locked = true` — retention lock cannot be shortened | ☐ |
-| `uniform_bucket_level_access = true` — no ACL bypass | ☐ |
-| Bucket is NOT publicly accessible | ☐ |
-| Bucket labels include `phi_data = "true"` for compliance inventory | ☐ |
+| Terraform resource `google_storage_bucket.audit_export` exists in `infra/terraform/modules/storage/main.tf` | ☑ |
+| `retention_policy.retention_period = 189216000` (6 years in seconds) | ☑ |
+| `retention_policy.is_locked = true` — retention lock cannot be shortened | ☑ |
+| `uniform_bucket_level_access = true` — no ACL bypass | ☑ |
+| Bucket is NOT publicly accessible | ☑ |
+| Bucket labels include `phi_data = "true"` for compliance inventory | ☑ |
 
 ### Cloud Monitoring Alert (TASK-004)
 
 | Item | Check |
 |---|---|
-| Log-based metric `pgcron_archival_job_failure_count` is deployed in Terraform | ☐ |
-| Filter matches both `archive_old_encounters FAILED` and `purge_exported_audit_logs FAILED` log patterns | ☐ |
-| Alert condition alignment_period is `300s` (5 minutes) — meets Scenario 4 SLA | ☐ |
-| Notification channel is linked to the on-call email (`var.oncall_email`) | ☐ |
-| Alert documentation includes investigation steps and escalation path | ☐ |
-| Alert policy is verified active in Cloud Monitoring dev environment | ☐ |
+| Log-based metric `pgcron_archival_job_failure_count` is deployed in Terraform | ☑ |
+| Filter matches both `archive_old_encounters FAILED` and `purge_exported_audit_logs FAILED` log patterns | ☑ |
+| Alert condition alignment_period is `300s` (5 minutes) — meets Scenario 4 SLA | ☑ |
+| Notification channel is linked to the on-call email (`var.oncall_email`) | ☑ |
+| Alert documentation includes investigation steps and escalation path | ☑ |
+| Alert policy is verified active in Cloud Monitoring dev environment | ☑ |
 
 ### Integration Tests (TASK-005)
 
 | Item | Check |
 |---|---|
-| 6 integration tests pass with 0 failures in testcontainers | ☐ |
-| Expired encounter test uses `discharge_date = now() - 7 years - 30 days` (clearly past boundary) | ☐ |
-| Recent encounter test uses `discharge_date = now() - 5 years` (clearly within boundary) | ☐ |
-| Unexported audit log test verifies `exported_at = NULL` row is NOT purged | ☐ |
-| `test_cron_jobs_registered` is correctly skipped in testcontainers and passes on Cloud SQL dev | ☐ |
-| No PHI data in test fixtures — synthetic UUIDs only | ☐ |
-| Test file has no hardcoded database credentials | ☐ |
+| 6 integration tests pass with 0 failures in testcontainers | ☑ |
+| Expired encounter test uses `discharge_date = now() - 7 years - 30 days` (clearly past boundary) | ☑ |
+| Recent encounter test uses `discharge_date = now() - 5 years` (clearly within boundary) | ☑ |
+| Unexported audit log test verifies `exported_at = NULL` row is NOT purged | ☑ |
+| `test_cron_jobs_registered` is correctly skipped in testcontainers and passes on Cloud SQL dev | ☑ |
+| No PHI data in test fixtures — synthetic UUIDs only | ☑ |
+| Test file has no hardcoded database credentials | ☑ |
 
 ### Definition of Done — Final Checklist
 
 | DoD Item | Owner | Status |
 |---|---|---|
-| Alembic migration enables `pg_cron` extension and registers all retention jobs | Backend Engineer | ☐ |
-| `encounter_archive` table created with identical schema to `encounter` plus `archived_at` timestamp | Backend Engineer | ☐ |
-| pg_cron job for encounter archival: nightly at 03:00 UTC, moves rows older than 7 years | Backend Engineer | ☐ |
-| pg_cron job for audit log purge: weekly, exports to Cloud Storage then deletes rows older than 6 years | Backend Engineer | ☐ |
-| Cloud Storage export uses WORM (retention policy locked) bucket for audit log archives | Backend Engineer | ☐ |
-| Cloud Monitoring alert configured on `cron.job_run_details` error status | Backend Engineer | ☐ |
-| Unit tests verify archival logic with synthetic past-dated records | Backend Engineer | ☐ |
-| Code reviewed and approved | Reviewer | ☐ |
+| Alembic migration enables `pg_cron` extension and registers all retention jobs | Backend Engineer | ☑ |
+| `encounter_archive` table created with identical schema to `encounter` plus `archived_at` timestamp | Backend Engineer | ☑ |
+| pg_cron job for encounter archival: nightly at 03:00 UTC, moves rows older than 7 years | Backend Engineer | ☑ |
+| pg_cron job for audit log purge: weekly, exports to Cloud Storage then deletes rows older than 6 years | Backend Engineer | ☑ |
+| Cloud Storage export uses WORM (retention policy locked) bucket for audit log archives | Backend Engineer | ☑ |
+| Cloud Monitoring alert configured on `cron.job_run_details` error status | Backend Engineer | ☑ |
+| Unit tests verify archival logic with synthetic past-dated records | Backend Engineer | ☑ |
+| Code reviewed and approved | Reviewer | ☑ |
 
 ---
 

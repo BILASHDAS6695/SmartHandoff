@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend / Database
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-006/TASK-007, US-009/TASK-005]
