@@ -1,10 +1,13 @@
 # cloudbuild-shared.yaml
-# Shared lint and unit-test steps reused by every per-service cloudbuild.yaml.
+# Shared lint, secret-scan, and unit-test steps reused by every per-service cloudbuild.yaml.
 # Invoked via: gcloud builds submit --no-source --config=.cloudbuild/cloudbuild-shared.yaml
 #              --substitutions=_SERVICE_DIR=services/<name>,_SERVICE_NAME=<name>,_ENVIRONMENT=dev
 #
+# Pipeline stage order:
+# lint → source-secret-scan → unit-tests → (container-build + image-secret-scan in per-service yaml)
+#
 # Security note: CLOUD_LOGGING_ONLY routes all output to Cloud Logging (not stdout)
-# preventing accidental secret echoing in terminal sessions (US-003 Scenario 4).
+# preventing accidental secret echoing in terminal sessions (US-003 Scenario 4, US-005 Scenario 2).
 
 substitutions:
   _SERVICE_DIR: '.'          # Override per service (e.g., services/api-gateway)
@@ -44,8 +47,26 @@ steps:
     dir: '${_SERVICE_DIR}'
     waitFor: ['-']   # Start immediately in parallel with lint-python
 
-  # ── Stage 2: Unit Tests ──────────────────────────────────────────────────
-  # Python unit tests — gated on both lint steps passing
+  # ── Stage 2: Source Secret Scan (gitleaks) ──────────────────────────────
+  # Scans the checked-out workspace for hardcoded secrets, API keys, and credentials.
+  # --no-git: scans filesystem (Cloud Build uses shallow clone, no full git history).
+  # --redact: masks detected secret values in Cloud Build logs (US-005 Scenario 4).
+  # --config: uses project allowlists to suppress false positives on example files.
+  # Fails the pipeline (exit code 1) if any finding is detected.
+  - name: 'zricethezav/gitleaks:v8.18.4'
+    id: 'source-secret-scan'
+    entrypoint: 'gitleaks'
+    args:
+      - 'detect'
+      - '--source=/workspace'
+      - '--config=/workspace/.gitleaks.toml'
+      - '--redact'
+      - '--verbose'
+      - '--no-git'
+    waitFor: ['lint-python', 'lint-js']
+
+  # ── Stage 3: Unit Tests ──────────────────────────────────────────────────
+  # Python unit tests — gated on both lint and secret-scan steps passing
   - name: 'python:3.11-slim'
     id: 'test-python'
     entrypoint: bash
@@ -59,7 +80,7 @@ steps:
           echo "No Python tests found — skipping pytest"
         fi
     dir: '${_SERVICE_DIR}'
-    waitFor: ['lint-python', 'lint-js']
+    waitFor: ['source-secret-scan']
 
   # Node.js / TypeScript unit tests — parallel with test-python
   - name: 'node:20-slim'
@@ -75,11 +96,11 @@ steps:
           echo "No Node.js tests found — skipping jest"
         fi
     dir: '${_SERVICE_DIR}'
-    waitFor: ['lint-python', 'lint-js']
+    waitFor: ['source-secret-scan']
 
 options:
   logging: CLOUD_LOGGING_ONLY      # Prevents log streaming to stdout; reduces secret leakage risk
   machineType: 'E2_HIGHCPU_8'
   substitution_option: 'ALLOW_LOOSE'
 
-timeout: '600s'   # 10-minute cap for lint + test stages
+timeout: '600s'   # 10-minute cap for lint + secret-scan + test stages

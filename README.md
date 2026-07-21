@@ -8,6 +8,25 @@ PropelIQ-Copilot is an AI-powered development framework that automates software 
 
 PropelIQ-Copilot requires initial configuration to integrate with your project and enable AI-powered workflow automation. This setup process configures the framework files, API credentials, and MCP server integrations necessary for full functionality.
 
+## Pre-Commit Hooks (Secret Detection)
+
+This repository uses [gitleaks](https://github.com/gitleaks/gitleaks) to prevent secrets from being committed. The hook scans staged files for API keys, credentials, and other sensitive patterns before every commit.
+
+**One-time setup (required for all contributors):**
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+To run all hooks manually against all files:
+
+```bash
+pre-commit run --all-files
+```
+
+If a commit is blocked, gitleaks will print the file path and the matched pattern (with the secret value redacted). Resolve the finding before re-attempting the commit.
+
 ### Prerequisites
 
 Before beginning setup, ensure you have:

@@ -7,7 +7,7 @@ sprint: 1
 layer: Validation
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-14
 assignee: Security Engineer
 upstream: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007]

@@ -1,52 +1,97 @@
 # ── Service sizing map ────────────────────────────────────────────────────
 locals {
-  # Maps each service to the Secret Manager secret keys it requires.
-  # Secret names follow the convention: smarthandoff-<key>-<environment>
-  # NOTE: db-password is managed by the cloud_sql module; its secret name is
-  #       "smarthandoff-db-password-<environment>" — referenced directly here.
-  service_secrets = {
+  # ── Per-service Secret Manager env-var bindings ──────────────────────────
+  # Each entry maps a Cloud Run env-var name to a logical secret key in var.secret_names.
+  # Only secrets that exist in var.secret_names are mounted — try() + contains() guards
+  # against missing keys during first bootstrapping apply before the secrets module runs.
+  service_secret_env_vars = {
     "api-gateway" = [
-      "db-password", "redis-auth-token", "jwt-signing-key"
+      { env_name = "JWT_SIGNING_KEY_PRIVATE", secret_key = "jwt_signing_key_private" },
+      { env_name = "JWT_SIGNING_KEY_PUBLIC",  secret_key = "jwt_signing_key_public" },
+      { env_name = "OIDC_CLIENT_ID",          secret_key = "oidc_client_id" },
+      { env_name = "OIDC_CLIENT_SECRET",      secret_key = "oidc_client_secret" },
+      { env_name = "OIDC_DISCOVERY_URL",      secret_key = "oidc_discovery_url" },
     ]
     "hl7-listener" = [
-      "hl7-mllp-signing-key"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "PHI_ENCRYPTION_KEY_DET",  secret_key = "phi_encryption_key_det" },
     ]
     "coordinator-agent" = [
-      "db-password", "fhir-api-key", "vertex-ai-api-key"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "FHIR_CLIENT_ID",          secret_key = "fhir_client_id" },
+      { env_name = "FHIR_CLIENT_SECRET",      secret_key = "fhir_client_secret" },
+      { env_name = "FHIR_BASE_URL",           secret_key = "fhir_base_url" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "PHI_ENCRYPTION_KEY_DET",  secret_key = "phi_encryption_key_det" },
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
     ]
     "docs-agent" = [
-      "db-password", "fhir-api-key"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "FHIR_CLIENT_ID",          secret_key = "fhir_client_id" },
+      { env_name = "FHIR_CLIENT_SECRET",      secret_key = "fhir_client_secret" },
+      { env_name = "FHIR_BASE_URL",           secret_key = "fhir_base_url" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
+      { env_name = "GCS_HMAC_KEY",            secret_key = "gcs_hmac_key" },
     ]
     "medrecon-agent" = [
-      "db-password", "fhir-api-key"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "FHIR_CLIENT_ID",          secret_key = "fhir_client_id" },
+      { env_name = "FHIR_CLIENT_SECRET",      secret_key = "fhir_client_secret" },
+      { env_name = "FHIR_BASE_URL",           secret_key = "fhir_base_url" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
     ]
     "bed-mgmt-agent" = [
-      "db-password"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
     ]
     "followup-agent" = [
-      "db-password"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
+      { env_name = "TWILIO_AUTH_TOKEN",       secret_key = "twilio_auth_token" },
+      { env_name = "TWILIO_ACCOUNT_SID",      secret_key = "twilio_account_sid" },
+      { env_name = "TWILIO_VERIFY_SID",       secret_key = "twilio_verify_service_sid" },
+      { env_name = "TWILIO_PHONE_NUMBER",     secret_key = "twilio_phone_number" },
+      { env_name = "SENDGRID_API_KEY",        secret_key = "sendgrid_api_key" },
     ]
     "comms-agent" = [
-      "db-password", "twilio-auth-token", "sendgrid-api-key"
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+      { env_name = "TWILIO_AUTH_TOKEN",       secret_key = "twilio_auth_token" },
+      { env_name = "TWILIO_ACCOUNT_SID",      secret_key = "twilio_account_sid" },
+      { env_name = "TWILIO_PHONE_NUMBER",     secret_key = "twilio_phone_number" },
+      { env_name = "SENDGRID_API_KEY",        secret_key = "sendgrid_api_key" },
     ]
     "ml-inference" = [
-      "vertex-ai-api-key", "redis-auth-token"
+      { env_name = "VERTEX_AI_PROJECT",       secret_key = "vertex_ai_project" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
     ]
     "notification-svc" = [
-      "twilio-auth-token", "sendgrid-api-key"
+      { env_name = "TWILIO_AUTH_TOKEN",       secret_key = "twilio_auth_token" },
+      { env_name = "TWILIO_ACCOUNT_SID",      secret_key = "twilio_account_sid" },
+      { env_name = "TWILIO_VERIFY_SID",       secret_key = "twilio_verify_service_sid" },
+      { env_name = "TWILIO_PHONE_NUMBER",     secret_key = "twilio_phone_number" },
+      { env_name = "SENDGRID_API_KEY",        secret_key = "sendgrid_api_key" },
+      { env_name = "SLACK_WEBHOOK_URL",       secret_key = "slack_webhook_url" },
     ]
-  }
-
-  # Derive the env var name from the secret key (e.g., "db-password" → "DB_PASSWORD")
-  secret_env_var_name = {
-    "db-password"          = "DB_PASSWORD"
-    "redis-auth-token"     = "REDIS_AUTH_TOKEN"
-    "jwt-signing-key"      = "JWT_SIGNING_KEY"
-    "fhir-api-key"         = "FHIR_API_KEY"
-    "twilio-auth-token"    = "TWILIO_AUTH_TOKEN"
-    "sendgrid-api-key"     = "SENDGRID_API_KEY"
-    "hl7-mllp-signing-key" = "HL7_MLLP_SIGNING_KEY"
-    "vertex-ai-api-key"    = "VERTEX_AI_API_KEY"
+    "audit-svc" = [
+      { env_name = "DB_PASSWORD",             secret_key = "db_password" },
+      { env_name = "PHI_ENCRYPTION_KEY",      secret_key = "phi_encryption_key" },
+    ]
+    "portal-bff" = [
+      { env_name = "JWT_SIGNING_KEY_PRIVATE", secret_key = "jwt_signing_key_private" },
+      { env_name = "JWT_SIGNING_KEY_PUBLIC",  secret_key = "jwt_signing_key_public" },
+      { env_name = "OIDC_CLIENT_ID",          secret_key = "oidc_client_id" },
+      { env_name = "OIDC_CLIENT_SECRET",      secret_key = "oidc_client_secret" },
+      { env_name = "OIDC_DISCOVERY_URL",      secret_key = "oidc_discovery_url" },
+      { env_name = "FHIR_CLIENT_ID",          secret_key = "fhir_client_id" },
+      { env_name = "FHIR_CLIENT_SECRET",      secret_key = "fhir_client_secret" },
+      { env_name = "FHIR_BASE_URL",           secret_key = "fhir_base_url" },
+    ]
   }
 
   # Matches Design §9.2 exactly.
@@ -264,16 +309,25 @@ resource "google_cloud_run_v2_service" "services" {
         value = var.region
       }
 
-      # Secret Manager bindings — one env var per required secret per service.
-      # Secret names follow the convention: smarthandoff-<key>-<environment>
-      # No plaintext credentials are set here (satisfies US-001 AC-4 / Scenario 4).
+      # ── Secret Manager env var mounts ────────────────────────────────────────
+      # Secret IDs follow the canonical naming convention:
+      #   smarthandoff-{secret_key_with_hyphens}-{environment}
+      # e.g., "phi_encryption_key" → "smarthandoff-phi-encryption-key-dev"
+      # This approach requires no cross-module reference, avoiding a Terraform
+      # cycle between cloud_run and secrets modules (US-005 GAP-1 fix).
+      # version = "latest" satisfies US-005 Scenario 3 — Cloud Run resolves
+      # the newest enabled version on each new instance start (rotation without
+      # redeployment).
       dynamic "env" {
-        for_each = lookup(local.service_secrets, each.key, [])
+        for_each = {
+          for item in try(local.service_secret_env_vars[each.key], []) :
+          item.env_name => item
+        }
         content {
-          name = local.secret_env_var_name[env.value]
+          name = env.key
           value_source {
             secret_key_ref {
-              secret  = "smarthandoff-${env.value}-${var.environment}"
+              secret  = "smarthandoff-${replace(env.value.secret_key, "_", "-")}-${var.environment}"
               version = "latest"
             }
           }
@@ -285,11 +339,10 @@ resource "google_cloud_run_v2_service" "services" {
   lifecycle {
     # CI/CD (Cloud Deploy) manages the container image after initial provision.
     # Prevent Terraform from reverting image tags set by Cloud Deploy.
-    # Secret versions are rotated outside Terraform via Cloud KMS rotation policy —
-    # Terraform should not revert to "latest" on every plan.
+    # env is intentionally NOT in ignore_changes — Terraform owns secret mount
+    # configuration; CI/CD owns only the image tag.
     ignore_changes = [
       template[0].containers[0].image,
-      template[0].containers[0].env,
     ]
   }
 

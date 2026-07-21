@@ -7,7 +7,7 @@ sprint: 1
 layer: DevSecOps
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-14
 assignee: Security Engineer
 upstream: []

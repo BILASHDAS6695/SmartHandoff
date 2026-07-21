@@ -1,43 +1,40 @@
 # ── Application secrets (placeholder values) ────────────────────────────
-# Managed by: EP-TECH / US-001 / TASK-001
-# NOTE: The cloud_sql module owns smarthandoff-db-password-<env>.
-#       This module manages all other application secrets only.
+# Managed by: EP-TECH / US-005
+# All secrets declared here use placeholder values on first apply.
+# SecOps populates real values after apply — see infra/BOOTSTRAP.md Step 3.
+# IAM bindings (per-service secretAccessor grants) are in iam.tf.
 
 locals {
+  # Canonical secret definitions.
+  # Key = logical name (used in outputs, IAM matrix, Cloud Run mounts).
+  # Value = Secret Manager secret_id (what appears in gcloud secrets list).
   secrets = {
-    "redis-auth-token"     = {}
-    "jwt-signing-key"      = {}
-    "fhir-api-key"         = {}
-    "twilio-auth-token"    = {}
-    "sendgrid-api-key"     = {}
-    "hl7-mllp-signing-key" = {}
-    "vertex-ai-api-key"    = {}
+    db_password               = "smarthandoff-db-password-${var.environment}"
+    fhir_client_secret        = "smarthandoff-fhir-client-secret-${var.environment}"
+    fhir_client_id            = "smarthandoff-fhir-client-id-${var.environment}"
+    fhir_base_url             = "smarthandoff-fhir-base-url-${var.environment}"
+    twilio_auth_token         = "smarthandoff-twilio-auth-token-${var.environment}"
+    twilio_account_sid        = "smarthandoff-twilio-account-sid-${var.environment}"
+    twilio_verify_service_sid = "smarthandoff-twilio-verify-service-sid-${var.environment}"
+    twilio_phone_number       = "smarthandoff-twilio-phone-number-${var.environment}"
+    sendgrid_api_key          = "smarthandoff-sendgrid-api-key-${var.environment}"
+    jwt_signing_key_private   = "smarthandoff-jwt-signing-key-private-${var.environment}"
+    jwt_signing_key_public    = "smarthandoff-jwt-signing-key-public-${var.environment}"
+    oidc_client_id            = "smarthandoff-oidc-client-id-${var.environment}"
+    oidc_client_secret        = "smarthandoff-oidc-client-secret-${var.environment}"
+    oidc_discovery_url        = "smarthandoff-oidc-discovery-url-${var.environment}"
+    phi_encryption_key        = "smarthandoff-phi-encryption-key-${var.environment}"
+    phi_encryption_key_det    = "smarthandoff-phi-encryption-key-det-${var.environment}"
+    gcs_hmac_key              = "smarthandoff-gcs-hmac-key-${var.environment}"
+    vertex_ai_project         = "smarthandoff-vertex-ai-project-${var.environment}"
+    slack_webhook_url         = "smarthandoff-slack-webhook-url-${var.environment}"
   }
-
-  # Per-service secret access bindings (db-password IAM is owned by cloud_sql module)
-  service_secret_bindings = {
-    "api-gateway"       = ["redis-auth-token", "jwt-signing-key"]
-    "hl7-listener"      = ["hl7-mllp-signing-key"]
-    "coordinator-agent" = ["fhir-api-key", "vertex-ai-api-key"]
-    "docs-agent"        = ["fhir-api-key"]
-    "medrecon-agent"    = ["fhir-api-key"]
-    "comms-agent"       = ["twilio-auth-token", "sendgrid-api-key"]
-    "ml-inference"      = ["vertex-ai-api-key", "redis-auth-token"]
-    "notification-svc"  = ["twilio-auth-token", "sendgrid-api-key"]
-  }
-
-  # Flatten service_secret_bindings into a list of {service, secret} objects
-  bindings_flat = flatten([
-    for svc, secrets in local.service_secret_bindings : [
-      for s in secrets : { service = svc, secret = s }
-    ]
-  ])
 }
 
-# ── Secret Manager secrets (CMEK-encrypted, placeholder values) ───────────
+# ── Secret Manager secrets (CMEK-encrypted) ──────────────────────────────
 resource "google_secret_manager_secret" "secrets" {
   for_each  = local.secrets
-  secret_id = "smarthandoff-${each.key}-${var.environment}"
+  secret_id = each.value
   project   = var.project_id
 
   replication {
@@ -58,25 +55,15 @@ resource "google_secret_manager_secret" "secrets" {
   }
 }
 
-resource "google_secret_manager_secret_version" "placeholder" {
+# ── Placeholder versions — SecOps replaces via bootstrap script ──────────
+# lifecycle.ignore_changes prevents Terraform from overwriting real values
+# after initial apply (handles out-of-band rotation via BOOTSTRAP.md Step 3).
+resource "google_secret_manager_secret_version" "placeholders" {
   for_each    = google_secret_manager_secret.secrets
   secret      = each.value.id
-  secret_data = "PLACEHOLDER_CHANGE_BEFORE_DEPLOY"
+  secret_data = "PLACEHOLDER_REPLACE_BEFORE_USE"
 
   lifecycle {
-    # Prevent Terraform from overwriting secrets rotated outside IaC (e.g., CI/CD secret rotation)
     ignore_changes = [secret_data]
   }
-}
-
-# ── IAM: grant each service account secretAccessor on its required secrets ──
-resource "google_secret_manager_secret_iam_member" "service_access" {
-  for_each = {
-    for b in local.bindings_flat : "${b.service}/${b.secret}" => b
-  }
-
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.secrets[each.value.secret].secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${var.service_accounts[each.value.service]}"
 }

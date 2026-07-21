@@ -40,6 +40,18 @@ steps:
     dir: 'services/${_SERVICE_NAME}'
     waitFor: ['-']
 
+  - name: 'zricethezav/gitleaks:v8.18.4'
+    id: 'source-secret-scan'
+    entrypoint: 'gitleaks'
+    args:
+      - 'detect'
+      - '--source=/workspace'
+      - '--config=/workspace/.gitleaks.toml'
+      - '--redact'
+      - '--verbose'
+      - '--no-git'
+    waitFor: ['lint-python', 'lint-js']
+
   - name: 'python:3.11-slim'
     id: 'test-python'
     entrypoint: bash
@@ -53,7 +65,7 @@ steps:
           echo "No Python tests — skipping pytest"
         fi
     dir: 'services/${_SERVICE_NAME}'
-    waitFor: ['lint-python', 'lint-js']
+    waitFor: ['source-secret-scan']
 
   - name: 'node:20-slim'
     id: 'test-js'
@@ -68,7 +80,7 @@ steps:
           echo "No Node.js tests — skipping jest"
         fi
     dir: 'services/${_SERVICE_NAME}'
-    waitFor: ['lint-python', 'lint-js']
+    waitFor: ['source-secret-scan']
 
   - name: 'gcr.io/cloud-builders/gsutil'
     id: 'restore-trivy-db-cache'
@@ -101,6 +113,16 @@ steps:
     id: 'artifact-registry-push-latest'
     args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:latest']
     waitFor: ['docker-build']
+
+  - name: 'trufflesecurity/trufflehog:latest'
+    id: 'image-secret-scan'
+    entrypoint: 'trufflehog'
+    args:
+      - 'docker'
+      - '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '--only-verified'
+      - '--fail'
+    waitFor: ['artifact-registry-push-sha']
 
   - name: 'aquasec/trivy:latest'
     id: 'trivy-scan-critical-high'
@@ -169,7 +191,7 @@ steps:
           --platform=managed \
           --no-traffic \
           --tag=canary-${COMMIT_SHA:0:7}
-    waitFor: ['upload-sarif-to-scc']
+    waitFor: ['upload-sarif-to-scc', 'image-secret-scan']
 
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'canary-traffic-split'
