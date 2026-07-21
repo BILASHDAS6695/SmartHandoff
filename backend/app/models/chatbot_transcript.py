@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.encryption import EncryptedString
+from app.db.encryption import EncryptedText
 from app.db.mixins import TimestampMixin
 
 
@@ -42,9 +42,11 @@ class ChatbotTranscript(Base, TimestampMixin):
         comment="One of: patient, assistant — identifies message sender",
     )
 
-    # PHI-containing content encrypted via US-007 (DR-016)
+    # PHI-containing content encrypted via US-007 EncryptedText (DR-016)
+    # EncryptedText uses PostgreSQL TEXT (no length cap) to accommodate
+    # multi-turn conversation messages without VARCHAR truncation.
     message_content: Mapped[str] = mapped_column(
-        EncryptedString,
+        EncryptedText(),
         nullable=False,
         comment="Encrypted chatbot message body (DR-016)",
     )

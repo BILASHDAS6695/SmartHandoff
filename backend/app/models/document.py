@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.db.encryption import EncryptedString
+from app.db.encryption import EncryptedText
 from app.db.mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -49,9 +49,11 @@ class Document(Base, TimestampMixin):
         ),
     )
 
-    # PHI content encrypted via US-007 EncryptedString (DR-002, DR-013)
+    # PHI content encrypted via US-007 EncryptedText (DR-002, DR-013)
+    # EncryptedText uses PostgreSQL TEXT (no length cap) to accommodate
+    # multi-KB discharge summaries without VARCHAR truncation.
     content: Mapped[str] = mapped_column(
-        EncryptedString,
+        EncryptedText(),
         nullable=False,
         comment="Document body — AES-256-GCM encrypted (US-007)",
     )

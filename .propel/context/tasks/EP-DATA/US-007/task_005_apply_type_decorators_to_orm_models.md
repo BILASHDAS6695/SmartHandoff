@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-003, TASK-004, US-006]
@@ -16,7 +16,7 @@ upstream: [TASK-003, TASK-004, US-006]
 # TASK-005: Apply TypeDecorators to PHI Columns on ORM Models (Patient, Document, ChatbotTranscript)
 
 > **Story:** US-007 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

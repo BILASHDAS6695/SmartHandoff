@@ -51,7 +51,7 @@ class Patient(Base, TimestampMixin, SoftDeleteMixin):
 
     # MRN uses deterministic encryption to support unique constraint (DR-020)
     mrn_encrypted: Mapped[str] = mapped_column(
-        DeterministicEncryptedString(128),
+        DeterministicEncryptedString(256),
         nullable=False,
         unique=True,  # DB-enforced uniqueness; same plaintext → same ciphertext
         comment="Medical Record Number — deterministically encrypted for unique indexing",
