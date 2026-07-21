@@ -11,17 +11,21 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db.encryption_key import get_phi_encryption_key
+from app.db.session import create_db_engines, dispose_db_engines
 from app.middleware.audit import HIPAAAuditMiddleware
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan — validates encryption key at startup."""
+    """Application lifespan — validates encryption key and warms DB pools at startup."""
     # Fail fast: raises RuntimeError / ValueError on misconfiguration.
     # This prevents the service from accepting requests with a broken key.
     get_phi_encryption_key()
+    # Warm write + read DB connection pools (PgBouncer → primary + direct replica).
+    create_db_engines()
     yield
-    # Teardown: no-op (key cache cleared only in tests via clear_cached_key())
+    # Shutdown: drain DB connections gracefully before Cloud Run SIGTERM timeout (30s).
+    await dispose_db_engines()
 
 
 app = FastAPI(

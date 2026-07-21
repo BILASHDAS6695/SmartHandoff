@@ -51,6 +51,17 @@ def get_database_url() -> str:
     return url
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    """Exclude objects that are managed outside of autogenerate.
+
+    Materialised views (mv_*) are hand-authored (US-009/TASK-004).
+    Alembic cannot detect or manage materialised view drift automatically.
+    """
+    if type_ == "table" and name.startswith("mv_"):
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode (generates SQL without DB connection).
 
@@ -62,6 +73,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -71,6 +83,7 @@ def do_run_migrations(connection):
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
