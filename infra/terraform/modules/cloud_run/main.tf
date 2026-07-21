@@ -186,20 +186,68 @@ resource "google_cloud_run_v2_service" "services" {
         startup_cpu_boost = true
       }
 
+      # Liveness probe — triggers container restart on 3 consecutive failures.
+      # hl7-listener is a raw TCP MLLP server (port 2575) — no HTTP server present.
+      # All other services expose GET /health returning {"status":"ok"}.
       liveness_probe {
-        http_get {
-          path = "/health"
+        dynamic "http_get" {
+          for_each = each.key != "hl7-listener" ? [1] : []
+          content {
+            path = "/health"
+          }
+        }
+        dynamic "tcp_socket" {
+          for_each = each.key == "hl7-listener" ? [1] : []
+          content {
+            port = 2575
+          }
         }
         period_seconds    = 10
         failure_threshold = 3
       }
 
+      # Startup probe — blocks traffic during cold-start initialisation.
+      # failure_threshold=12 with period=5 → 60-second window for LangChain agents
+      # (docs-agent, medrecon-agent, coordinator-agent, ml-inference).
       startup_probe {
-        http_get {
-          path = "/ready"
+        dynamic "http_get" {
+          for_each = each.key != "hl7-listener" ? [1] : []
+          content {
+            path = "/ready"
+          }
+        }
+        dynamic "tcp_socket" {
+          for_each = each.key == "hl7-listener" ? [1] : []
+          content {
+            port = 2575
+          }
         }
         period_seconds    = 5
         failure_threshold = 12 # 60-second startup window
+      }
+
+      # Readiness probe — sheds traffic from running instances that have lost
+      # upstream dependencies (DB pool exhausted, Redis timeout) without
+      # triggering a restart. Fires continuously post-startup (distinct from
+      # startup_probe which is one-shot during initialisation).
+      # Returns {"status":"ready"} only after DB + Redis are reachable.
+      readiness_probe {
+        dynamic "http_get" {
+          for_each = each.key != "hl7-listener" ? [1] : []
+          content {
+            path = "/ready"
+          }
+        }
+        dynamic "tcp_socket" {
+          for_each = each.key == "hl7-listener" ? [1] : []
+          content {
+            port = 2575
+          }
+        }
+        period_seconds    = 10
+        failure_threshold = 3
+        # initial_delay_seconds intentionally omitted — startup_probe already
+        # covers the startup window; readiness_probe fires post-startup only.
       }
 
       # Non-sensitive runtime config
