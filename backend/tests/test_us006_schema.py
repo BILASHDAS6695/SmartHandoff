@@ -1,142 +1,3 @@
----
-id: TASK-008
-title: "Write Integration Tests — Schema Apply, State Machine, MRN Uniqueness, and Soft Delete"
-user_story: US-006
-epic: EP-DATA
-sprint: 1
-layer: Backend (Test)
-estimate: 3h
-priority: Must Have
-status: Done
-date: 2026-07-15
-assignee: Backend Engineer
-upstream: [TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007]
----
-
-# TASK-008: Write Integration Tests — Schema Apply, State Machine, MRN Uniqueness, and Soft Delete
-
-> **Story:** US-006 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend (Test) | **Est:** 3 h
-> **Status:** Done | **Date:** 2026-07-15
-
----
-
-## Context
-
-US-006 has four explicit acceptance criterion scenarios, each requiring an integration test that exercises the real PostgreSQL schema (not SQLite — UUIDs, RLS, and JSONB behave differently between engines). This task implements the full test suite covering all four scenarios plus the `alembic downgrade -1` reversibility requirement from the DoD.
-
-Tests use **pytest** with **pytest-asyncio** and **testcontainers** (PostgreSQL 15 container) to spin up an ephemeral database for each test session. This approach:
-- Matches the production Cloud SQL PostgreSQL 15 engine exactly
-- Requires no pre-existing database or credentials
-- Is runnable in Cloud Build CI without external dependencies
-
----
-
-## Acceptance Criteria Addressed
-
-| US-006 AC | Requirement |
-|---|---|
-| **Scenario 1** | `alembic upgrade head` on empty DB creates all tables with zero errors |
-| **Scenario 2** | Encounter state machine: `DISCHARGED → ADMITTED` (non-A13) raises `EncounterStateTransitionError` (409) |
-| **Scenario 3** | MRN unique constraint: duplicate MRN raises `UniqueConstraintViolation` |
-| **Scenario 4** | Soft delete: `deleted_at` set; record excluded from standard queries but retrievable with `include_deleted=True` |
-| **DoD** | `alembic downgrade -1` tested and reversible for each migration |
-
----
-
-## Implementation Steps
-
-### 1. Add Test Dependencies to `backend/requirements-dev.txt`
-
-```
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
-testcontainers[postgres]>=4.0.0
-asyncpg>=0.29.0
-```
-
-### 2. Create `backend/tests/conftest.py` — PostgreSQL Container Fixture
-
-```python
-"""Pytest configuration and shared fixtures for US-006 integration tests.
-
-Uses testcontainers to spin up a real PostgreSQL 15 instance matching Cloud SQL.
-The container is shared across all tests in the session for performance.
-"""
-from __future__ import annotations
-
-import asyncio
-import os
-from collections.abc import AsyncGenerator
-
-import pytest
-import pytest_asyncio
-from alembic import command
-from alembic.config import Config
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
-from testcontainers.postgres import PostgresContainer
-
-# ── Session-scoped PostgreSQL container ───────────────────────────────────────
-
-@pytest.fixture(scope="session")
-def pg_container():
-    """Start a PostgreSQL 15 container for the test session."""
-    with PostgresContainer("postgres:15-alpine") as postgres:
-        yield postgres
-
-
-@pytest.fixture(scope="session")
-def database_url(pg_container: PostgresContainer) -> str:
-    """Return the asyncpg-compatible URL for the test container."""
-    url = pg_container.get_connection_url()
-    # Convert to asyncpg scheme
-    return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
-
-
-@pytest.fixture(scope="session")
-def apply_migrations(database_url: str) -> None:
-    """Apply all Alembic migrations to the test database (session scope).
-
-    Runs synchronously before any async tests to ensure the schema is ready.
-    """
-    # Set DATABASE_URL so env.py can resolve the connection string
-    os.environ["DATABASE_URL"] = database_url
-
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("script_location", "alembic")
-    command.upgrade(alembic_cfg, "head")
-
-
-@pytest.fixture(scope="session")
-def async_engine(database_url: str, apply_migrations):
-    """Shared async SQLAlchemy engine connected to the test container."""
-    engine = create_async_engine(database_url, poolclass=NullPool)
-    yield engine
-    asyncio.get_event_loop().run_until_complete(engine.dispose())
-
-
-@pytest_asyncio.fixture
-async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Per-test async session with automatic rollback for test isolation.
-
-    Each test gets a fresh session. Changes are rolled back after the test
-    to keep the database clean for subsequent tests.
-    """
-    session_factory = async_sessionmaker(
-        bind=async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
-    async with session_factory() as session:
-        async with session.begin():
-            yield session
-            # Rollback to clean state after each test
-            await session.rollback()
-```
-
-### 3. Create `backend/tests/test_us006_schema.py` — All Four Scenarios
-
-```python
 """Integration tests for US-006: PostgreSQL Schema Migrations via Alembic.
 
 Tests run against a real PostgreSQL 15 container (testcontainers).
@@ -144,18 +5,18 @@ Each test maps directly to one of the four US-006 acceptance criteria scenarios.
 """
 from __future__ import annotations
 
+import pathlib
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import inspect, select, text
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import EncounterStateTransitionError
 from app.models import (
     AdtEvent,
-    AppUser,
     Encounter,
     EncounterStatus,
     Patient,
@@ -288,7 +149,7 @@ class TestScenario1CleanMigration:
         for table_name in ("patient", "encounter"):
             result = await db_session.execute(
                 text(
-                    f"SELECT column_name FROM information_schema.columns "  # noqa: S608
+                    "SELECT column_name FROM information_schema.columns "
                     f"WHERE table_name = '{table_name}' AND column_name = 'deleted_at'"
                 )
             )
@@ -533,9 +394,10 @@ class TestAlembicDowngrade:
         from alembic import command
         from alembic.config import Config
 
+        _backend = pathlib.Path(__file__).resolve().parent.parent
         os.environ["DATABASE_URL"] = database_url
-        cfg = Config("alembic.ini")
-        cfg.set_main_option("script_location", "alembic")
+        cfg = Config(str(_backend / "alembic.ini"))
+        cfg.set_main_option("script_location", str(_backend / "alembic"))
 
         # Downgrade one step (removes audit_log_rls migration)
         command.downgrade(cfg, "-1")
@@ -549,87 +411,13 @@ class TestAlembicDowngrade:
         from alembic import command
         from alembic.config import Config
 
+        _backend = pathlib.Path(__file__).resolve().parent.parent
         os.environ["DATABASE_URL"] = database_url
-        cfg = Config("alembic.ini")
-        cfg.set_main_option("script_location", "alembic")
+        cfg = Config(str(_backend / "alembic.ini"))
+        cfg.set_main_option("script_location", str(_backend / "alembic"))
 
         # Downgrade to base (removes all tables)
         command.downgrade(cfg, "base")
 
         # Upgrade back to head for remaining tests
         command.upgrade(cfg, "head")
-```
-
-### 4. Add `pytest.ini` Configuration
-
-```ini
-[pytest]
-asyncio_mode = auto
-testpaths = tests
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-```
-
-### 5. Run Tests Locally to Confirm All Pass
-
-```bash
-cd backend
-pip install -r requirements-dev.txt
-pytest tests/test_us006_schema.py -v --tb=short
-```
-
-**Expected output:**
-```
-PASSED tests/test_us006_schema.py::TestScenario1CleanMigration::test_all_10_tables_exist
-PASSED tests/test_us006_schema.py::TestScenario1CleanMigration::test_adt_event_source_message_id_unique_index_exists
-PASSED tests/test_us006_schema.py::TestScenario1CleanMigration::test_patient_mrn_encrypted_unique_index_exists
-PASSED tests/test_us006_schema.py::TestScenario1CleanMigration::test_encounter_composite_indexes_exist
-PASSED tests/test_us006_schema.py::TestScenario1CleanMigration::test_patient_and_encounter_have_deleted_at_column
-PASSED tests/test_us006_schema.py::TestScenario2EncounterStateMachine::test_invalid_discharged_to_admitted_raises_409
-PASSED tests/test_us006_schema.py::TestScenario2EncounterStateMachine::test_a13_cancel_with_flag_succeeds
-PASSED tests/test_us006_schema.py::TestScenario2EncounterStateMachine::test_valid_transitions_succeed
-PASSED tests/test_us006_schema.py::TestScenario2EncounterStateMachine::test_invalid_transition_registered_to_discharged_raises
-PASSED tests/test_us006_schema.py::TestScenario3MrnUniqueConstraint::test_duplicate_mrn_raises_integrity_error
-PASSED tests/test_us006_schema.py::TestScenario3MrnUniqueConstraint::test_duplicate_adt_source_message_id_raises_integrity_error
-PASSED tests/test_us006_schema.py::TestScenario4SoftDelete::test_soft_delete_sets_deleted_at
-PASSED tests/test_us006_schema.py::TestScenario4SoftDelete::test_soft_deleted_patient_excluded_from_standard_query
-PASSED tests/test_us006_schema.py::TestScenario4SoftDelete::test_soft_deleted_patient_retrievable_with_include_deleted
-PASSED tests/test_us006_schema.py::TestAlembicDowngrade::test_downgrade_audit_log_rls
-PASSED tests/test_us006_schema.py::TestAlembicDowngrade::test_downgrade_initial_schema
-16 passed in X.XXs
-```
-
----
-
-## Definition of Done
-
-- [ ] `backend/tests/conftest.py` sets up `pg_container`, `database_url`, `apply_migrations`, `async_engine`, `db_session` fixtures
-- [ ] All 4 acceptance criterion scenarios covered by at least one test each
-- [ ] State machine tests cover: invalid transition (409 raised), A13 cancel flag (succeeds), valid lifecycle, invalid skip (REGISTERED→DISCHARGED)
-- [ ] MRN duplicate test confirms `IntegrityError` on second insert with same encrypted MRN
-- [ ] Soft delete tests confirm: `deleted_at` set, record absent from `WHERE deleted_at IS NULL` query, record present without filter
-- [ ] Downgrade tests cover both migrations: `downgrade -1` (audit_log_rls) and `downgrade base` (initial_schema)
-- [ ] All 16 tests pass with zero failures in local environment
-- [ ] Tests run against PostgreSQL 15 container (not SQLite)
-- [ ] No PHI values in test data (fixture MRNs are synthetic test IDs only)
-
----
-
-## Dependencies
-
-| Dependency | Type | Notes |
-|---|---|---|
-| TASK-001 through TASK-007 | All preceding tasks | All models, migrations, and state machine must be complete |
-
----
-
-## Files Modified
-
-| File | Action |
-|---|---|
-| `backend/tests/__init__.py` | Create (empty) |
-| `backend/tests/conftest.py` | Create |
-| `backend/tests/test_us006_schema.py` | Create |
-| `backend/pytest.ini` | Create |
-| `backend/requirements-dev.txt` | Create or update |

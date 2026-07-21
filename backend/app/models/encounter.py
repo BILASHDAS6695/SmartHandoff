@@ -1,58 +1,3 @@
----
-id: TASK-004
-title: "Define ORM Model — `Encounter` with Status Enum and Patient Relationship"
-user_story: US-006
-epic: EP-DATA
-sprint: 1
-layer: Backend
-estimate: 2h
-priority: Must Have
-status: Done
-date: 2026-07-15
-assignee: Backend Engineer
-upstream: [TASK-002, TASK-003]
----
-
-# TASK-004: Define ORM Model — `Encounter` with Status Enum and Patient Relationship
-
-> **Story:** US-006 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Done | **Date:** 2026-07-15
-
----
-
-## Context
-
-The `Encounter` model is the central clinical workflow entity in SmartHandoff. Every ADT event, agent task, AI-generated document, and bed assignment references an `Encounter`. Its `status` column drives the encounter state machine (DR-023), which is implemented in TASK-006.
-
-This task establishes the `Encounter` model with:
-1. The `EncounterStatus` enum controlling allowed status values
-2. A FK relationship to `Patient` (many encounters per patient)
-3. Risk tier column for the Follow-up Care Agent (FR-052)
-4. `admit_date` and `discharge_date` for timeline queries
-5. Composite indexes required by DR-004 for dashboard query performance
-6. `SoftDeleteMixin` for DR-005 compliance
-
-The state machine event listener (TASK-006) will attach to `Encounter.status` using SQLAlchemy's `@event.listens_for` — the model definition here is its prerequisite.
-
----
-
-## Acceptance Criteria Addressed
-
-| US-006 AC | Requirement |
-|---|---|
-| **Scenario 2** | State machine: `status` column transitions must be validated — the `EncounterStatus` enum and model structure enable TASK-006 to attach the validator |
-| **Scenario 4** | Soft delete: `Encounter` inherits `SoftDeleteMixin`; `deleted_at` column present |
-| **DoD** | ORM model defined for `encounter` table with correct column types, relationships, and constraints |
-
----
-
-## Implementation Steps
-
-### 1. Define `EncounterStatus` Enum in `backend/app/models/encounter.py`
-
-The encounter state machine (DR-023) restricts status transitions. The enum must define all valid states:
-
-```python
 """Encounter ORM model — the central clinical workflow entity.
 
 DR-023: Encounter status transitions are enforced by the state machine
@@ -93,6 +38,7 @@ class EncounterStatus(str, enum.Enum):
 
     All other transitions are rejected with EncounterStateTransitionError (TASK-006).
     """
+
     REGISTERED = "REGISTERED"
     ADMITTED = "ADMITTED"
     TRANSFERRED = "TRANSFERRED"
@@ -101,15 +47,13 @@ class EncounterStatus(str, enum.Enum):
 
 class RiskTier(str, enum.Enum):
     """Readmission risk tier assigned by Follow-up Care Agent (FR-052)."""
+
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
     LOW = "LOW"
     UNKNOWN = "UNKNOWN"
-```
 
-### 2. Define the `Encounter` Model Class
 
-```python
 class Encounter(Base, TimestampMixin, SoftDeleteMixin):
     """Hospital encounter (admission episode).
 
@@ -230,55 +174,3 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
             f"status={self.status} "
             f"risk={self.risk_tier}>"
         )
-```
-
-### 3. Update `backend/app/models/__init__.py`
-
-Add `Encounter` and the enums to the exports:
-
-```python
-from app.models.app_user import AppUser
-from app.models.bed import Bed
-from app.models.encounter import Encounter, EncounterStatus, RiskTier
-from app.models.patient import Patient
-
-__all__ = [
-    "AppUser",
-    "Bed",
-    "Encounter",
-    "EncounterStatus",
-    "Patient",
-    "RiskTier",
-]
-```
-
----
-
-## Definition of Done
-
-- [ ] `backend/app/models/encounter.py` defines `EncounterStatus` enum with four states: `REGISTERED`, `ADMITTED`, `TRANSFERRED`, `DISCHARGED`
-- [ ] `Encounter` model includes `patient_id` FK to `patient.id` with `ondelete="RESTRICT"`
-- [ ] `Encounter.status` column uses `String(32)` (not a DB-level enum type) to allow migration without DB enum management
-- [ ] `Encounter` includes `risk_tier` (String, server_default `UNKNOWN`) and `risk_score` (Float, nullable)
-- [ ] `Encounter` inherits both `TimestampMixin` and `SoftDeleteMixin`
-- [ ] Three composite indexes defined per DR-004: `(patient_id, admit_date)`, `(unit, status)`, `(risk_tier, status)`
-- [ ] All relationships declared with `lazy="select"` (explicit loading strategy)
-- [ ] `backend/app/models/__init__.py` exports `Encounter`, `EncounterStatus`, `RiskTier`
-
----
-
-## Dependencies
-
-| Dependency | Type | Notes |
-|---|---|---|
-| TASK-002 | Preceding task | `TimestampMixin`, `SoftDeleteMixin` must exist |
-| TASK-003 | Preceding task | `Patient` model must be defined (FK target for `patient_id`) |
-
----
-
-## Files Modified
-
-| File | Action |
-|---|---|
-| `backend/app/models/encounter.py` | Create |
-| `backend/app/models/__init__.py` | Update (add Encounter exports) |
