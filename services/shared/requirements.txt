@@ -1,0 +1,17 @@
+# services/shared/requirements.txt
+# OpenTelemetry SDK + Cloud Trace exporter + FastAPI auto-instrumentation
+# Pin to minor versions; patch bumps are picked up automatically.
+
+# Core SDK
+opentelemetry-api>=1.25,<2.0
+opentelemetry-sdk>=1.25,<2.0
+
+# Cloud Trace exporter + propagator
+opentelemetry-exporter-gcp-trace>=1.6,<2.0
+opentelemetry-propagator-gcp>=1.6,<2.0
+
+# Auto-instrumentation for FastAPI / Starlette
+opentelemetry-instrumentation-fastapi>=0.46b0,<1.0
+
+# W3C trace context propagation (included transitively, pinned for reproducibility)
+opentelemetry-propagator-b3>=1.25,<2.0

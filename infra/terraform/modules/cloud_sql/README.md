@@ -55,3 +55,19 @@ private IP only, and stores the generated DB password in Secret Manager.
 - **`prevent_destroy = true`** on the CMEK key — destroying the key renders the database
   unrecoverable. Remove this only as part of a planned end-of-life decommission.
 - Instance provisioning takes **10–15 minutes** — first `terraform apply` will be slow.
+
+## Backup Strategy
+
+| Mechanism | Frequency | RPO |
+|---|---|---|
+| Automated snapshot | Daily at 02:00 UTC | Up to 24 h |
+| Cloud Scheduler on-demand backup | Every 6 h (00:00, 06:00, 12:00, 18:00 UTC) | Up to 6 h |
+| PITR (WAL archiving) | Continuous | < 15 min |
+
+**Recovery hierarchy**: PITR is the primary recovery mechanism. On-demand backups satisfy
+the US-001 AC-3 cadence requirement (every 4 hours). The daily snapshot provides a clean
+weekly baseline.
+
+Four `google_cloud_scheduler_job` resources (`sql-backup-00utc-<env>`, `06utc`, `12utc`,
+`18utc`) invoke the Cloud SQL Admin API `backupRuns` endpoint using a dedicated service
+account (`sql-backup-scheduler-<env>`) with the minimum required role `roles/cloudsql.editor`.

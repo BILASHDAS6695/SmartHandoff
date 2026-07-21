@@ -1,0 +1,43 @@
+# .gitleaks.toml
+# SmartHandoff-specific gitleaks configuration.
+# Extends the built-in gitleaks default ruleset with project-specific allowlists
+# to suppress known-safe false positives (placeholder values in example files).
+title = "SmartHandoff Gitleaks Config"
+
+[extend]
+# Inherit all gitleaks default rules (generic API key, JWT, cloud credentials, etc.)
+useDefault = true
+
+[[allowlists]]
+description = "Terraform example variable files — intentional placeholder values"
+paths = [
+  '''infra/terraform/environments/.*/terraform\.tfvars\.example''',
+]
+
+[[allowlists]]
+description = "BOOTSTRAP.md and documentation — placeholder echo commands in documentation"
+paths = [
+  '''infra/BOOTSTRAP\.md''',
+]
+regexes = [
+  "PLACEHOLDER_REPLACE_BEFORE_USE",
+  "PLACEHOLDER_CHANGE_BEFORE_DEPLOY",
+  "actual-value",
+  "your-new-secret-value",
+]
+
+[[allowlists]]
+description = "Terraform secrets module — placeholder version data only (not real secrets)"
+paths = [
+  '''infra/terraform/modules/secrets/main\.tf''',
+]
+regexes = [
+  "PLACEHOLDER_REPLACE_BEFORE_USE",
+]
+
+[[allowlists]]
+description = "Pre-commit config and gitleaks config themselves"
+paths = [
+  '''\.pre-commit-config\.yaml''',
+  '''\.gitleaks\.toml''',
+]

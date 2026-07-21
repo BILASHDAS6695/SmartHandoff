@@ -1,0 +1,276 @@
+# Per-service Cloud Build pipeline — api-gateway
+# Generated from .cloudbuild/cloudbuild-template.yaml
+# All other substitutions (_ENVIRONMENT, _REGION, _PROJECT_ID, _ORG_ID) are
+# injected at runtime by the google_cloudbuild_trigger Terraform resource.
+
+substitutions:
+  _SERVICE_NAME: 'notification-svc'
+  _ENVIRONMENT: 'dev'
+  _REGION: 'us-central1'
+  _PROJECT_ID: 'REPLACE_WITH_TRIGGER_SUBSTITUTION'
+  _ORG_ID: 'REPLACE_WITH_TRIGGER_SUBSTITUTION'
+
+steps:
+  - name: 'python:3.11-slim'
+    id: 'lint-python'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ -f requirements.txt ] || [ -d src ]; then
+          pip install flake8 --quiet
+          flake8 src/ --max-line-length=120 --statistics
+        else
+          echo "No Python source — skipping Python lint"
+        fi
+    dir: 'services/${_SERVICE_NAME}'
+
+  - name: 'node:20-slim'
+    id: 'lint-js'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ -f package.json ]; then
+          npm ci --silent
+          npx eslint src/ --ext .js,.ts --max-warnings=0
+        else
+          echo "No Node.js source — skipping JS/TS lint"
+        fi
+    dir: 'services/${_SERVICE_NAME}'
+    waitFor: ['-']
+
+  - name: 'zricethezav/gitleaks:v8.18.4'
+    id: 'source-secret-scan'
+    entrypoint: 'gitleaks'
+    args:
+      - 'detect'
+      - '--source=/workspace'
+      - '--config=/workspace/.gitleaks.toml'
+      - '--redact'
+      - '--verbose'
+      - '--no-git'
+    waitFor: ['lint-python', 'lint-js']
+
+  - name: 'python:3.11-slim'
+    id: 'test-python'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ -f requirements.txt ] && [ -d tests ]; then
+          pip install pytest pytest-cov --quiet -r requirements.txt
+          pytest tests/ --cov=src/ --cov-report=term-missing --tb=short
+        else
+          echo "No Python tests — skipping pytest"
+        fi
+    dir: 'services/${_SERVICE_NAME}'
+    waitFor: ['source-secret-scan']
+
+  - name: 'node:20-slim'
+    id: 'test-js'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ -f package.json ]; then
+          npm ci --silent
+          npx jest --coverage --ci
+        else
+          echo "No Node.js tests — skipping jest"
+        fi
+    dir: 'services/${_SERVICE_NAME}'
+    waitFor: ['source-secret-scan']
+
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'restore-trivy-db-cache'
+    args: ['-m', 'cp', '-r', 'gs://${_PROJECT_ID}-trivy-cache/.trivy', '/workspace/']
+    waitFor: ['-']
+    allowFailure: true
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-build'
+    args:
+      - 'build'
+      - '--tag'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '--tag'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:latest'
+      - '--file'
+      - 'Dockerfile'
+      - '--build-arg'
+      - 'SERVICE_NAME=${_SERVICE_NAME}'
+      - '.'
+    dir: 'services/${_SERVICE_NAME}'
+    waitFor: ['test-python', 'test-js']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'artifact-registry-push-sha'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}']
+    waitFor: ['docker-build']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'artifact-registry-push-latest'
+    args: ['push', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:latest']
+    waitFor: ['docker-build']
+
+  - name: 'trufflesecurity/trufflehog:latest'
+    id: 'image-secret-scan'
+    entrypoint: 'trufflehog'
+    args:
+      - 'docker'
+      - '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '--only-verified'
+      - '--fail'
+    waitFor: ['artifact-registry-push-sha']
+
+  - name: 'aquasec/trivy:latest'
+    id: 'trivy-scan-critical-high'
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        trivy image \
+          --exit-code 1 \
+          --severity CRITICAL,HIGH \
+          --format sarif \
+          --output /workspace/trivy-results.sarif \
+          --no-progress \
+          --cache-dir /workspace/.trivy \
+          ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}
+    waitFor: ['artifact-registry-push-sha', 'restore-trivy-db-cache']
+
+  - name: 'aquasec/trivy:latest'
+    id: 'trivy-scan-medium-low'
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        trivy image \
+          --exit-code 0 \
+          --severity MEDIUM,LOW \
+          --format table \
+          --no-progress \
+          --cache-dir /workspace/.trivy \
+          ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA} \
+          || true
+    waitFor: ['artifact-registry-push-sha', 'restore-trivy-db-cache']
+
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'save-trivy-db-cache'
+    args: ['-m', 'cp', '-r', '/workspace/.trivy', 'gs://${_PROJECT_ID}-trivy-cache/']
+    waitFor: ['trivy-scan-critical-high', 'trivy-scan-medium-low']
+    allowFailure: true
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'upload-sarif-to-scc'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ -f /workspace/trivy-results.sarif ]; then
+          curl -s -X POST \
+            -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            -H "Content-Type: application/json" \
+            "https://securitycenter.googleapis.com/v1/organizations/${_ORG_ID}/sources/-/findings:import" \
+            --data-binary @/workspace/trivy-results.sarif \
+            || echo "SARIF upload attempted — verify in Cloud SCC console"
+        fi
+    waitFor: ['trivy-scan-critical-high', 'trivy-scan-medium-low']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-new-revision'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        gcloud run deploy ${_SERVICE_NAME}-${_ENVIRONMENT} \
+          --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA} \
+          --region=${_REGION} \
+          --project=${_PROJECT_ID} \
+          --platform=managed \
+          --no-traffic \
+          --tag=canary-${COMMIT_SHA:0:7}
+    waitFor: ['upload-sarif-to-scc', 'image-secret-scan']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'canary-traffic-split'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        NEW_REVISION=$(gcloud run revisions list \
+          --service=${_SERVICE_NAME}-${_ENVIRONMENT} \
+          --region=${_REGION} \
+          --project=${_PROJECT_ID} \
+          --sort-by="~metadata.creationTimestamp" \
+          --limit=1 \
+          --format="value(metadata.name)")
+        echo "Routing 10% canary traffic to revision: $NEW_REVISION"
+        gcloud run services update-traffic ${_SERVICE_NAME}-${_ENVIRONMENT} \
+          --region=${_REGION} \
+          --project=${_PROJECT_ID} \
+          --to-revisions=${NEW_REVISION}=10 \
+          --to-latest=no
+        echo "$NEW_REVISION" > /workspace/canary_revision.txt
+    waitFor: ['deploy-new-revision']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'canary-observation-window'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        NEW_REVISION=$(cat /workspace/canary_revision.txt)
+        echo "Canary observation: monitoring $NEW_REVISION for 5 minutes (10 x 30s polls)..."
+        ROLLBACK_NEEDED=0
+        for i in $(seq 1 10); do
+          sleep 30
+          ALERT_STATE=$(gcloud alpha monitoring incidents list \
+            --project=${_PROJECT_ID} \
+            --filter="policy_name:smarthandoff-${_SERVICE_NAME}-canary-error-rate" \
+            --limit=1 \
+            --format="value(state)" 2>/dev/null || echo "closed")
+          echo "[$i/10] Alert state: ${ALERT_STATE:-closed}"
+          if [ "${ALERT_STATE}" = "open" ]; then
+            ROLLBACK_NEEDED=1
+            break
+          fi
+        done
+        if [ "$ROLLBACK_NEEDED" = "1" ]; then
+          echo "ERROR: Canary error-rate alert OPEN — rolling back traffic"
+          gcloud run services update-traffic ${_SERVICE_NAME}-${_ENVIRONMENT} \
+            --region=${_REGION} \
+            --project=${_PROJECT_ID} \
+            --to-latest
+          echo "Rollback complete. Pipeline FAILED."
+          exit 1
+        fi
+        echo "Observation window PASSED. Proceeding to full promotion."
+    waitFor: ['canary-traffic-split']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'promote-full-traffic'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        NEW_REVISION=$(cat /workspace/canary_revision.txt)
+        echo "Promoting $NEW_REVISION to 100% traffic"
+        gcloud run services update-traffic ${_SERVICE_NAME}-${_ENVIRONMENT} \
+          --region=${_REGION} \
+          --project=${_PROJECT_ID} \
+          --to-revisions=${NEW_REVISION}=100
+        echo "Deployment COMPLETE"
+    waitFor: ['canary-observation-window']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:${COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/smarthandoff-${_ENVIRONMENT}/${_SERVICE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+  substitution_option: 'ALLOW_LOOSE'
+
+timeout: '900s'

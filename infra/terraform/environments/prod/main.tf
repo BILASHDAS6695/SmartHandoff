@@ -101,7 +101,21 @@ module "redis" {
 
   depends_on = [module.networking]
 }
+# ── Secret Manager ─────────────────────────────────────────────────────
+module "secrets" {
+  source      = "../../modules/secrets"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
 
+  # Reuse the KMS crypto key already created by the cloud_sql module for CMEK encryption
+  kms_key_id = module.cloud_sql.sql_cmek_key_id
+
+  # Grant each Cloud Run service account access to its required secrets
+  service_accounts = module.cloud_run.service_accounts
+
+  depends_on = [module.cloud_run, module.cloud_sql]
+}
 # ── Cloud Armor + Load Balancer + CDN ─────────────────────────────────
 module "armor_lb_cdn" {
   source      = "../../modules/armor_lb_cdn"
@@ -114,4 +128,90 @@ module "armor_lb_cdn" {
   api_domain               = var.api_domain
 
   depends_on = [module.cloud_run, module.storage]
+}
+# ── Artifact Registry ────────────────────────────────────────────────
+resource "google_artifact_registry_repository" "container_images" {
+  location      = var.region
+  repository_id = "smarthandoff-${var.environment}"
+  format        = "DOCKER"
+  project       = var.project_id
+
+  labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+locals {
+  cicd_services = toset([
+    "api-gateway", "hl7-listener", "coordinator-agent", "docs-agent",
+    "medrecon-agent", "comms-agent", "ml-inference", "notification-svc",
+    "audit-svc", "portal-bff",
+  ])
+}
+
+resource "google_cloudbuild_trigger" "main_push" {
+  for_each    = local.cicd_services
+  name        = "smarthandoff-${each.key}-main-push-${var.environment}"
+  description = "CI/CD pipeline for ${each.key} on push to main — ${var.environment}"
+  project     = var.project_id
+  location    = "global"
+
+  github {
+    owner = var.github_owner
+    name  = var.github_repo
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = [
+    "services/${each.key}/**",
+    ".cloudbuild/**",
+    "cloudbuild-shared.yaml",
+  ]
+
+  filename = "services/${each.key}/cloudbuild.yaml"
+
+  substitutions = {
+    _SERVICE_NAME = each.key
+    _ENVIRONMENT  = var.environment
+    _REGION       = var.region
+    _PROJECT_ID   = var.project_id
+    _ORG_ID       = var.org_id
+  }
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_sa_email}"
+
+  depends_on = [google_project_service.apis, google_artifact_registry_repository.container_images]
+}
+
+# ── PagerDuty integration key — sourced from Secret Manager ─────────────────
+# The key is never stored in terraform.tfvars or state as a plain variable.
+# Pre-requisite: create the secret and set its value before running terraform apply:
+#   gcloud secrets create smarthandoff-pagerduty-integration-key-prod \
+#     --project=<PROJECT_ID> --replication-policy=automatic
+#   echo -n "<KEY>" | gcloud secrets versions add smarthandoff-pagerduty-integration-key-prod --data-file=-
+data "google_secret_manager_secret_version" "pagerduty_key" {
+  project = var.project_id
+  secret  = "smarthandoff-pagerduty-integration-key-${var.environment}"
+}
+
+module "monitoring" {
+  source      = "../../modules/monitoring"
+  project_id  = var.project_id
+  environment = var.environment
+  region      = var.region
+
+  project_number            = module.cloud_run.project_number
+  api_domain                = var.api_domain
+  oncall_email              = var.oncall_email
+  slack_alert_channel       = var.slack_alert_channel
+  cloudbuild_sa_email       = var.cloudbuild_sa_email
+  pagerduty_integration_key = data.google_secret_manager_secret_version.pagerduty_key.secret_data
+  compliance_officer_emails = var.compliance_officer_emails
+
+  depends_on = [google_project_service.apis, google_cloudbuild_trigger.main_push]
 }

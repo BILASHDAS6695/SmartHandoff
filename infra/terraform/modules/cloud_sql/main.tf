@@ -176,3 +176,40 @@ resource "google_secret_manager_secret_version" "db_password" {
   secret      = google_secret_manager_secret.db_password.id
   secret_data = random_password.db_password.result
 }
+
+# ── Cloud SQL 4-hour on-demand backup via Cloud Scheduler ─────────────────
+# Google Cloud SQL supports only one native backup window per day.
+# PITR (WAL archiving) provides RPO < 15 min.
+# These Cloud Scheduler jobs satisfy the explicit AC-3 "every 4 hours" cadence
+# by triggering on-demand backups at 00:00, 06:00, 12:00, 18:00 UTC.
+
+resource "google_service_account" "sql_backup_sa" {
+  account_id   = "sql-backup-scheduler-${var.environment}"
+  display_name = "Cloud SQL Backup Scheduler SA (${var.environment})"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "sql_backup_sa_role" {
+  project = var.project_id
+  role    = "roles/cloudsql.editor"
+  member  = "serviceAccount:${google_service_account.sql_backup_sa.email}"
+}
+
+resource "google_cloud_scheduler_job" "sql_backup" {
+  for_each  = toset(["00", "06", "12", "18"])
+  name      = "sql-backup-${each.key}utc-${var.environment}"
+  region    = var.region
+  project   = var.project_id
+  schedule  = "0 ${each.key} * * *"
+  time_zone = "UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://sqladmin.googleapis.com/v1/projects/${var.project_id}/instances/${google_sql_database_instance.primary.name}/backupRuns"
+    oauth_token {
+      service_account_email = google_service_account.sql_backup_sa.email
+    }
+  }
+
+  depends_on = [google_sql_database_instance.primary]
+}

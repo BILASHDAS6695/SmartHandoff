@@ -1,0 +1,78 @@
+# cloudbuild-rollback.yaml
+# Automated rollback pipeline — triggered by Cloud Monitoring canary error-rate
+# alert via Pub/Sub → cicd-alert-handler Cloud Run service → Cloud Build API.
+#
+# Purpose: Re-routes 100% traffic to the previous stable Cloud Run revision
+#          and notifies the DevOps team via Slack.
+#
+# US-003 Scenario 3 (belt-and-suspenders): this trigger fires even if the
+# in-pipeline observation window rollback (cloudbuild-template.yaml Stage 9)
+# did not execute (e.g., for degradation discovered hours after a deployment).
+
+substitutions:
+  _SERVICE_NAME: 'REPLACE_ME'   # Injected by cicd-alert-handler from incident payload
+  _ENVIRONMENT: 'dev'           # Injected by cicd-alert-handler
+  _REGION: 'us-central1'        # Injected by cicd-alert-handler
+  _PROJECT_ID: 'REPLACE_ME'     # Injected by Cloud Build trigger substitution
+
+steps:
+  # Find the previous stable revision and restore 100% traffic
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'rollback-canary-to-stable'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        echo "ROLLBACK INITIATED: canary error rate exceeded 1% threshold"
+        echo "Service: ${_SERVICE_NAME}-${_ENVIRONMENT}"
+
+        # Find the second most recent READY revision (previous stable)
+        PREV_REVISION=$(gcloud run revisions list \
+          --service=${_SERVICE_NAME}-${_ENVIRONMENT} \
+          --region=${_REGION} \
+          --project=${_PROJECT_ID} \
+          --filter="status.conditions[0].status=True" \
+          --sort-by="~metadata.creationTimestamp" \
+          --limit=2 \
+          --format="value(metadata.name)" | tail -1)
+
+        if [ -z "$PREV_REVISION" ]; then
+          echo "No previous stable revision found — routing to latest ready"
+          gcloud run services update-traffic ${_SERVICE_NAME}-${_ENVIRONMENT} \
+            --region=${_REGION} \
+            --project=${_PROJECT_ID} \
+            --to-latest
+        else
+          echo "Restoring 100% traffic to previous stable revision: $PREV_REVISION"
+          gcloud run services update-traffic ${_SERVICE_NAME}-${_ENVIRONMENT} \
+            --region=${_REGION} \
+            --project=${_PROJECT_ID} \
+            --to-revisions=${PREV_REVISION}=100
+        fi
+        echo "Traffic restoration COMPLETE"
+
+  # Notify DevOps team via Slack webhook (secret sourced from Secret Manager)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'notify-rollback-complete'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        WEBHOOK_URL=$(gcloud secrets versions access latest \
+          --secret=slack-cicd-webhook \
+          --project=${_PROJECT_ID} 2>/dev/null || echo "")
+        if [ -n "$WEBHOOK_URL" ]; then
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H 'Content-type: application/json' \
+            -d "{\"text\": \":rotating_light: *CANARY ROLLBACK* — \`${_SERVICE_NAME}-${_ENVIRONMENT}\` rolled back. Error rate exceeded 1% threshold. Previous stable revision restored.\"}"
+        else
+          echo "Slack webhook not configured — skipping notification"
+        fi
+        echo "Rollback notification sent at $(date -u)"
+    waitFor: ['rollback-canary-to-stable']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  substitution_option: 'ALLOW_LOOSE'
+
+timeout: '300s'   # Rollback should complete in under 5 minutes
