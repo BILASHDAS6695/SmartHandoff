@@ -106,7 +106,21 @@ module "redis" {
 
   depends_on = [module.networking]
 }
+# ── Secret Manager ─────────────────────────────────────────────────────
+module "secrets" {
+  source      = "../../modules/secrets"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
 
+  # Reuse the KMS crypto key already created by the cloud_sql module for CMEK encryption
+  kms_key_id = module.cloud_sql.sql_cmek_key_id
+
+  # Grant each Cloud Run service account access to its required secrets
+  service_accounts = module.cloud_run.service_accounts
+
+  depends_on = [module.cloud_run, module.cloud_sql]
+}
 # ── Cloud Armor + Load Balancer + CDN ─────────────────────────────────
 module "armor_lb_cdn" {
   source      = "../../modules/armor_lb_cdn"

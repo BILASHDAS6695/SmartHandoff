@@ -1,5 +1,54 @@
 # ── Service sizing map ────────────────────────────────────────────────────
 locals {
+  # Maps each service to the Secret Manager secret keys it requires.
+  # Secret names follow the convention: smarthandoff-<key>-<environment>
+  # NOTE: db-password is managed by the cloud_sql module; its secret name is
+  #       "smarthandoff-db-password-<environment>" — referenced directly here.
+  service_secrets = {
+    "api-gateway" = [
+      "db-password", "redis-auth-token", "jwt-signing-key"
+    ]
+    "hl7-listener" = [
+      "hl7-mllp-signing-key"
+    ]
+    "coordinator-agent" = [
+      "db-password", "fhir-api-key", "vertex-ai-api-key"
+    ]
+    "docs-agent" = [
+      "db-password", "fhir-api-key"
+    ]
+    "medrecon-agent" = [
+      "db-password", "fhir-api-key"
+    ]
+    "bed-mgmt-agent" = [
+      "db-password"
+    ]
+    "followup-agent" = [
+      "db-password"
+    ]
+    "comms-agent" = [
+      "db-password", "twilio-auth-token", "sendgrid-api-key"
+    ]
+    "ml-inference" = [
+      "vertex-ai-api-key", "redis-auth-token"
+    ]
+    "notification-svc" = [
+      "twilio-auth-token", "sendgrid-api-key"
+    ]
+  }
+
+  # Derive the env var name from the secret key (e.g., "db-password" → "DB_PASSWORD")
+  secret_env_var_name = {
+    "db-password"          = "DB_PASSWORD"
+    "redis-auth-token"     = "REDIS_AUTH_TOKEN"
+    "jwt-signing-key"      = "JWT_SIGNING_KEY"
+    "fhir-api-key"         = "FHIR_API_KEY"
+    "twilio-auth-token"    = "TWILIO_AUTH_TOKEN"
+    "sendgrid-api-key"     = "SENDGRID_API_KEY"
+    "hl7-mllp-signing-key" = "HL7_MLLP_SIGNING_KEY"
+    "vertex-ai-api-key"    = "VERTEX_AI_API_KEY"
+  }
+
   # Matches Design §9.2 exactly.
   # cpu_idle = false for api-gateway and coordinator-agent (latency-sensitive);
   # all agents use cpu_idle = true to reduce costs during low-traffic periods.
@@ -153,8 +202,7 @@ resource "google_cloud_run_v2_service" "services" {
         failure_threshold = 12 # 60-second startup window
       }
 
-      # Non-sensitive runtime config; secrets are mounted via Secret Manager bindings
-      # added in Task 008 (us_001) once all secrets are defined.
+      # Non-sensitive runtime config
       env {
         name  = "ENVIRONMENT"
         value = var.environment
@@ -167,13 +215,34 @@ resource "google_cloud_run_v2_service" "services" {
         name  = "REGION"
         value = var.region
       }
+
+      # Secret Manager bindings — one env var per required secret per service.
+      # Secret names follow the convention: smarthandoff-<key>-<environment>
+      # No plaintext credentials are set here (satisfies US-001 AC-4 / Scenario 4).
+      dynamic "env" {
+        for_each = lookup(local.service_secrets, each.key, [])
+        content {
+          name = local.secret_env_var_name[env.value]
+          value_source {
+            secret_key_ref {
+              secret  = "smarthandoff-${env.value}-${var.environment}"
+              version = "latest"
+            }
+          }
+        }
+      }
     }
   }
 
   lifecycle {
     # CI/CD (Cloud Deploy) manages the container image after initial provision.
     # Prevent Terraform from reverting image tags set by Cloud Deploy.
-    ignore_changes = [template[0].containers[0].image]
+    # Secret versions are rotated outside Terraform via Cloud KMS rotation policy —
+    # Terraform should not revert to "latest" on every plan.
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].containers[0].env,
+    ]
   }
 
   depends_on = [google_service_account.cloud_run_sa]
