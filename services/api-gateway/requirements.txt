@@ -1,0 +1,7 @@
+# services/api-gateway/requirements.txt
+# Reference shared OTel + structured logging dependencies.
+-r ../shared/requirements.txt
+
+# FastAPI + ASGI server
+fastapi>=0.111,<1.0
+uvicorn[standard]>=0.29,<1.0

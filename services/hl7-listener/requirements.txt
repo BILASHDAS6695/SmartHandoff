@@ -1,0 +1,6 @@
+# services/hl7-listener/requirements.txt
+# Reference shared OTel + structured logging dependencies.
+-r ../shared/requirements.txt
+
+# HL7 MLLP — Pub/Sub publisher
+google-cloud-pubsub>=2.21,<3.0

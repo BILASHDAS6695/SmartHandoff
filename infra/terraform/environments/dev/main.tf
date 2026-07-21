@@ -195,6 +195,17 @@ resource "google_cloudbuild_trigger" "main_push" {
   depends_on = [google_project_service.apis, google_artifact_registry_repository.container_images]
 }
 
+# ── PagerDuty integration key — sourced from Secret Manager ─────────────────
+# The key is never stored in terraform.tfvars or state as a plain variable.
+# Pre-requisite: create the secret and set its value before running terraform apply:
+#   gcloud secrets create smarthandoff-pagerduty-integration-key-dev \
+#     --project=<PROJECT_ID> --replication-policy=automatic
+#   echo -n "<KEY>" | gcloud secrets versions add smarthandoff-pagerduty-integration-key-dev --data-file=-
+data "google_secret_manager_secret_version" "pagerduty_key" {
+  project = var.project_id
+  secret  = "smarthandoff-pagerduty-integration-key-${var.environment}"
+}
+
 # ── Cloud Monitoring (canary error-rate alerts + rollback triggers) ───────
 module "monitoring" {
   source      = "../../modules/monitoring"
@@ -202,11 +213,13 @@ module "monitoring" {
   environment = var.environment
   region      = var.region
 
-  project_number      = module.cloud_run.project_number
-  api_domain          = var.api_domain
-  oncall_email        = var.oncall_email
-  slack_alert_channel = var.slack_alert_channel
-  cloudbuild_sa_email = var.cloudbuild_sa_email
+  project_number            = module.cloud_run.project_number
+  api_domain                = var.api_domain
+  oncall_email              = var.oncall_email
+  slack_alert_channel       = var.slack_alert_channel
+  cloudbuild_sa_email       = var.cloudbuild_sa_email
+  pagerduty_integration_key = data.google_secret_manager_secret_version.pagerduty_key.secret_data
+  compliance_officer_emails = var.compliance_officer_emails
 
   depends_on = [google_project_service.apis, google_cloudbuild_trigger.main_push]
 }

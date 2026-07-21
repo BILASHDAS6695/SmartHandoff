@@ -47,7 +47,8 @@ resource "google_monitoring_notification_channel" "canary_rollback_pubsub" {
 }
 
 # Email notification channel for all alert types
-resource "google_monitoring_notification_channel" "oncall_email" {
+# moved block handles state migration from the legacy "oncall_email" resource name.
+resource "google_monitoring_notification_channel" "email" {
   display_name = "SmartHandoff On-Call Email (${var.environment})"
   type         = "email"
   project      = var.project_id
@@ -55,6 +56,17 @@ resource "google_monitoring_notification_channel" "oncall_email" {
   labels = {
     email_address = var.oncall_email
   }
+
+  user_labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+}
+
+# Migrate state from legacy resource name — safe no-op on fresh applies.
+moved {
+  from = google_monitoring_notification_channel.oncall_email
+  to   = google_monitoring_notification_channel.email
 }
 
 # ── Canary error-rate alert policy (per service) ─────────────────────────────
@@ -97,7 +109,7 @@ resource "google_monitoring_alert_policy" "canary_error_rate" {
 
   notification_channels = [
     google_monitoring_notification_channel.canary_rollback_pubsub[each.key].id,
-    google_monitoring_notification_channel.oncall_email.id,
+    google_monitoring_notification_channel.email.id,
   ]
 
   alert_strategy {
@@ -162,6 +174,279 @@ resource "google_secret_manager_secret_version" "rollback_webhook_secret" {
 
   lifecycle {
     ignore_changes = [secret_data]
+  }
+}
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  US-004 — Cloud Monitoring Dashboards & Alerting                           ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+# ── PagerDuty notification channel (P1/P2 pages) ────────────────────────────
+# Only created when pagerduty_integration_key is supplied (non-empty).
+resource "google_monitoring_notification_channel" "pagerduty" {
+  count        = var.pagerduty_integration_key != "" ? 1 : 0
+  project      = var.project_id
+  display_name = "SmartHandoff PagerDuty (${var.environment})"
+  type         = "pagerduty"
+
+  sensitive_labels {
+    service_key = var.pagerduty_integration_key
+  }
+
+  user_labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+}
+
+locals {
+  # Build the notification channel list for P1 alerts (email always present;
+  # PagerDuty added only when the integration key is configured).
+  p1_channels = concat(
+    [google_monitoring_notification_channel.email.name],
+    var.pagerduty_integration_key != "" ? [google_monitoring_notification_channel.pagerduty[0].name] : []
+  )
+
+  # P2/P3 alerts go to email only (not PagerDuty — lower severity).
+  p2_p3_channels = [google_monitoring_notification_channel.email.name]
+
+  # Services to monitor with uptime checks (US-004 AC Scenario 3).
+  monitored_services = {
+    "api-gateway"          = "api-gateway"
+    "hl7-listener"         = "hl7-listener"
+    "coordinator-agent"    = "coordinator-agent"
+    "docs-agent"           = "docs-agent"
+    "medrecon-agent"       = "medrecon-agent"
+    "bed-management-agent" = "bed-management-agent"
+    "followup-care-agent"  = "followup-care-agent"
+    "patient-comms-agent"  = "patient-comms-agent"
+    "ml-inference"         = "ml-inference"
+    "notification-svc"     = "notification-svc"
+  }
+}
+
+# ── P1 Alert: Error Rate >1% for 60 s ────────────────────────────────────────
+resource "google_monitoring_alert_policy" "p1_error_rate" {
+  project      = var.project_id
+  display_name = "[P1] SmartHandoff — Error Rate >1% (${var.environment})"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Run request error rate >1% for 60s"
+
+    condition_monitoring_query_language {
+      query = <<-EOT
+        fetch cloud_run_revision
+        | metric 'run.googleapis.com/request_count'
+        | filter (resource.labels.project_id == '${var.project_id}')
+        | align rate(60s)
+        | group_by [resource.labels.service_name], [
+            error_requests: sum(if(metric.labels.response_code_class != '2xx', val(), 0)),
+            total_requests: sum(val())
+          ]
+        | value [error_rate: error_requests / if(total_requests > 0, total_requests, 1)]
+        | condition error_rate > 0.01
+      EOT
+      duration = "60s"
+    }
+  }
+
+  notification_channels = local.p1_channels
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "1800s"
+  }
+
+  user_labels = {
+    severity    = "p1"
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  documentation {
+    content   = "P1 — SmartHandoff error rate exceeds 1% threshold. Investigate Cloud Run logs for the affected service. Runbook: https://wiki.internal/runbooks/smarthandoff-p1-error-rate"
+    mime_type = "text/markdown"
+  }
+}
+
+# ── P2 Alert: Request Latency p95 >5 s for 60 s ─────────────────────────────
+resource "google_monitoring_alert_policy" "p2_latency_p95" {
+  project      = var.project_id
+  display_name = "[P2] SmartHandoff — Request Latency p95 >5s (${var.environment})"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Run request latency p95 >5s for 60s"
+
+    condition_monitoring_query_language {
+      query = <<-EOT
+        fetch cloud_run_revision
+        | metric 'run.googleapis.com/request_latencies'
+        | filter (resource.labels.project_id == '${var.project_id}')
+        | align delta(60s)
+        | every 60s
+        | group_by [resource.labels.service_name],
+            [p95_latency: percentile(value.request_latencies, 95)]
+        | condition p95_latency > 5000
+      EOT
+      duration = "60s"
+    }
+  }
+
+  notification_channels = local.p2_p3_channels
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "1800s"
+  }
+
+  user_labels = {
+    severity    = "p2"
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  documentation {
+    content   = "P2 — Request latency p95 exceeds 5 second SLA. Check service resource limits and upstream dependencies. Runbook: https://wiki.internal/runbooks/smarthandoff-p2-latency"
+    mime_type = "text/markdown"
+  }
+}
+
+# ── P3 Alert: DLQ message count >0 for 60 s ─────────────────────────────────
+resource "google_monitoring_alert_policy" "p3_dlq_messages" {
+  project      = var.project_id
+  display_name = "[P3] SmartHandoff — DLQ Messages Pending (${var.environment})"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Pub/Sub DLQ subscription has undelivered messages"
+
+    condition_monitoring_query_language {
+      query = <<-EOT
+        fetch pubsub_subscription
+        | metric 'pubsub.googleapis.com/subscription/num_undelivered_messages'
+        | filter (resource.labels.project_id == '${var.project_id}')
+        | filter (resource.labels.subscription_id =~ '.*-dlq-.*')
+        | align next_older(60s)
+        | group_by [], [max_dlq_depth: max(val())]
+        | condition max_dlq_depth > 0
+      EOT
+      duration = "60s"
+    }
+  }
+
+  notification_channels = local.p2_p3_channels
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "600s"
+    }
+    auto_close = "3600s"
+  }
+
+  user_labels = {
+    severity    = "p3"
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  documentation {
+    content   = "P3 — Dead-letter queue has pending messages. Messages may be failing after max delivery attempts. Investigate subscriber errors. Runbook: https://wiki.internal/runbooks/smarthandoff-p3-dlq"
+    mime_type = "text/markdown"
+  }
+}
+
+# ── Uptime checks — one per service (60-second interval) ────────────────────
+resource "google_monitoring_uptime_check_config" "service_health" {
+  for_each     = local.monitored_services
+  project      = var.project_id
+  display_name = "SmartHandoff ${each.key} /health (${var.environment})"
+  timeout      = "10s"
+  period       = "60s"
+
+  http_check {
+    path         = "/health"
+    port         = 443
+    use_ssl      = true
+    validate_ssl = true
+
+    accepted_response_status_codes {
+      status_class = "STATUS_CLASS_2XX"
+    }
+  }
+
+  monitored_resource {
+    type = "uptime_url"
+    labels = {
+      project_id = var.project_id
+      host       = "${each.value}.${var.api_domain}"
+    }
+  }
+
+  user_labels = {
+    service     = each.key
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+}
+
+# ── Uptime failure alert — fires when any service fails 2 consecutive checks ─
+# 2 consecutive failures at 60s interval = 120s detection window (AC Scenario 3).
+resource "google_monitoring_alert_policy" "uptime_failure" {
+  project      = var.project_id
+  display_name = "[P1] SmartHandoff — Uptime Check Failure (${var.environment})"
+  combiner     = "OR"
+
+  dynamic "conditions" {
+    for_each = google_monitoring_uptime_check_config.service_health
+
+    content {
+      display_name = "${conditions.value.display_name} — consecutive failures"
+
+      condition_threshold {
+        filter   = "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.labels.check_id=\"${conditions.value.uptime_check_id}\""
+        duration = "120s"
+
+        comparison      = "COMPARISON_LT"
+        threshold_value = 1
+
+        aggregations {
+          alignment_period     = "60s"
+          per_series_aligner   = "ALIGN_NEXT_OLDER"
+          cross_series_reducer = "REDUCE_COUNT_FALSE"
+          group_by_fields      = ["resource.labels.*"]
+        }
+
+        trigger {
+          count = 2
+        }
+      }
+    }
+  }
+
+  notification_channels = local.p1_channels
+
+  alert_strategy {
+    notification_rate_limit {
+      period = "300s"
+    }
+    auto_close = "1800s"
+  }
+
+  user_labels = {
+    severity    = "p1"
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  documentation {
+    content   = "P1 — Service /health endpoint returning non-2xx for 2+ consecutive checks (60s interval). The affected service appears as 'failing' on the SmartHandoff Operations dashboard. Runbook: https://wiki.internal/runbooks/smarthandoff-p1-uptime"
+    mime_type = "text/markdown"
   }
 }
 

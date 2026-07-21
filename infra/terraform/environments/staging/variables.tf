@@ -60,3 +60,10 @@ variable "cloudbuild_sa_email" {
   type        = string
   description = "Cloud Build service account email — used to run pipeline and rollback trigger builds"
 }
+
+variable "compliance_officer_emails" {
+  type        = list(string)
+  description = "Email addresses of compliance officers granted read access to the PHI audit log GCS bucket"
+  default     = []
+}
+
