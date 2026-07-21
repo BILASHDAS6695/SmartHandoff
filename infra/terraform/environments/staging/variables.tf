@@ -50,3 +50,13 @@ variable "github_repo" {
   description = "GitHub repository name"
   default     = "SmartHandoff"
 }
+
+variable "org_id" {
+  type        = string
+  description = "GCP organisation ID — used for Cloud SCC SARIF upload in CI/CD pipeline"
+}
+
+variable "cloudbuild_sa_email" {
+  type        = string
+  description = "Cloud Build service account email — used to run pipeline and rollback trigger builds"
+}

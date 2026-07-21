@@ -1,0 +1,21 @@
+# notifier-config.yaml
+# Cloud Build Slack notifier for scan failures and build failures.
+# Deploy via: gcloud builds submit --config=.cloudbuild/notifier-config.yaml
+#             --substitutions=_PROJECT_ID=<project_id>
+#
+# Requires: slack-cicd-webhook secret in Secret Manager
+# Reference: https://cloud.google.com/build/docs/configuring-notifications/configure-slack
+
+apiVersion: cloud-build-notifiers/v1
+kind: SlackNotifier
+metadata:
+  name: smarthandoff-build-alerts
+spec:
+  notification:
+    # Alert on any pipeline FAILURE — covers Trivy scan failures (Scenario 2)
+    # and canary rollback failures (Scenario 3)
+    filter: >-
+      build.status == Build.Status.FAILURE
+  delivery:
+    webhookUrl:
+      secretRef: projects/${_PROJECT_ID}/secrets/slack-cicd-webhook/versions/latest

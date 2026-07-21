@@ -134,3 +134,79 @@ module "armor_lb_cdn" {
 
   depends_on = [module.cloud_run, module.storage]
 }
+# ── Artifact Registry ────────────────────────────────────────────────
+resource "google_artifact_registry_repository" "container_images" {
+  location      = var.region
+  repository_id = "smarthandoff-${var.environment}"
+  format        = "DOCKER"
+  project       = var.project_id
+
+  labels = {
+    environment = var.environment
+    managed_by  = "terraform"
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+# ── Cloud Build CI/CD Triggers (one per service, push to main) ─────────────
+locals {
+  cicd_services = toset([
+    "api-gateway", "hl7-listener", "coordinator-agent", "docs-agent",
+    "medrecon-agent", "comms-agent", "ml-inference", "notification-svc",
+    "audit-svc", "portal-bff",
+  ])
+}
+
+resource "google_cloudbuild_trigger" "main_push" {
+  for_each    = local.cicd_services
+  name        = "smarthandoff-${each.key}-main-push-${var.environment}"
+  description = "CI/CD pipeline for ${each.key} on push to main — ${var.environment}"
+  project     = var.project_id
+  location    = "global"
+
+  github {
+    owner = var.github_owner
+    name  = var.github_repo
+    push {
+      branch = "^main$"
+    }
+  }
+
+  # Only trigger when relevant files change (reduces unnecessary builds)
+  included_files = [
+    "services/${each.key}/**",
+    ".cloudbuild/**",
+    "cloudbuild-shared.yaml",
+  ]
+
+  filename = "services/${each.key}/cloudbuild.yaml"
+
+  substitutions = {
+    _SERVICE_NAME = each.key
+    _ENVIRONMENT  = var.environment
+    _REGION       = var.region
+    _PROJECT_ID   = var.project_id
+    _ORG_ID       = var.org_id
+  }
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.cloudbuild_sa_email}"
+
+  depends_on = [google_project_service.apis, google_artifact_registry_repository.container_images]
+}
+
+# ── Cloud Monitoring (canary error-rate alerts + rollback triggers) ───────
+module "monitoring" {
+  source      = "../../modules/monitoring"
+  project_id  = var.project_id
+  environment = var.environment
+  region      = var.region
+
+  project_number      = module.cloud_run.project_number
+  api_domain          = var.api_domain
+  oncall_email        = var.oncall_email
+  slack_alert_channel = var.slack_alert_channel
+  cloudbuild_sa_email = var.cloudbuild_sa_email
+
+  depends_on = [google_project_service.apis, google_cloudbuild_trigger.main_push]
+}
