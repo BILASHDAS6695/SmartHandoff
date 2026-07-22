@@ -1,7 +1,7 @@
 from app.models.adt_event import AdtEvent
 from app.models.agent_task import AgentTask
 from app.models.app_user import AppUser
-from app.models.audit_log import AuditLog
+from app.models.audit_log import AuditAction, AuditLog
 from app.models.bed import Bed
 from app.models.chatbot_transcript import ChatbotTranscript
 from app.models.document import Document

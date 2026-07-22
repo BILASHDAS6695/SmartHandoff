@@ -30,19 +30,23 @@ class EncounterStatus(str, enum.Enum):
     """Valid encounter lifecycle states (DR-023).
 
     Allowed transitions:
-        REGISTERED  → ADMITTED
-        ADMITTED    → TRANSFERRED
-        ADMITTED    → DISCHARGED
-        TRANSFERRED → DISCHARGED
-        DISCHARGED  → ADMITTED  (only on A13 cancel-discharge event)
+        REGISTERED    → ADMITTED         (A01: initial admission)
+        PRE_ADMISSION → ADMITTED         (A01 re-admit after A11 cancel)
+        ADMITTED      → TRANSFERRED      (A02: transfer)
+        ADMITTED      → DISCHARGED       (A03: discharge)
+        ADMITTED      → PRE_ADMISSION    (A11: cancel admit)      ← US-015
+        TRANSFERRED   → DISCHARGED       (A03: discharge)
+        TRANSFERRED   → ADMITTED         (A12: cancel transfer)   ← US-015
+        DISCHARGED    → ADMITTED         (A13: cancel discharge)  ← US-015
 
     All other transitions are rejected with EncounterStateTransitionError (TASK-006).
     """
 
-    REGISTERED = "REGISTERED"
-    ADMITTED = "ADMITTED"
-    TRANSFERRED = "TRANSFERRED"
-    DISCHARGED = "DISCHARGED"
+    REGISTERED    = "REGISTERED"
+    PRE_ADMISSION = "PRE_ADMISSION"   # US-015: target of A11 cancel-admit
+    ADMITTED      = "ADMITTED"
+    TRANSFERRED   = "TRANSFERRED"
+    DISCHARGED    = "DISCHARGED"
 
 
 class RiskTier(str, enum.Enum):
@@ -113,6 +117,13 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
         comment="Current unit assignment; updated on transfer",
     )
 
+    # US-015: records the unit before the last A02 transfer — enables A12 cancel-transfer revert
+    previous_unit: Mapped[str | None] = mapped_column(
+        sa.String(64),
+        nullable=True,
+        comment="Unit occupied before last A02 transfer; used for A12 cancel-transfer revert (US-015)",
+    )
+
     # Risk stratification (Follow-up Care Agent, FR-052)
     risk_tier: Mapped[str] = mapped_column(
         sa.String(16),
@@ -167,6 +178,21 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
         sa.Index("ix_encounter_risk_tier_status", "risk_tier", "status"),
         sa.Index("ix_encounter_deleted_at", "deleted_at"),
     )
+
+    def transition_to(self, target: EncounterStatus) -> None:
+        """Attempt a status transition, validated by the ORM state machine.
+
+        For A13 (DISCHARGED → ADMITTED), the caller must set the session flag
+        ``session.info["allow_a13_cancel_discharge"] = str(encounter.id)``
+        before calling this method.
+
+        Args:
+            target: The new desired status.
+
+        Raises:
+            EncounterStateTransitionError: If the transition is not permitted.
+        """
+        self.status = target.value  # triggers ORM event listener in encounter_statemachine.py
 
     def __repr__(self) -> str:
         return (

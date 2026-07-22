@@ -7,8 +7,8 @@ sprint: 1
 layer: Frontend
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-15
+status: Done
+date: 2026-07-22
 assignee: Backend Engineer
 upstream: [US-056/TASK-005]
 ---
@@ -16,7 +16,7 @@ upstream: [US-056/TASK-005]
 # TASK-006: Implement Angular `AuthGuard`, `LoginComponent`, and `LoginCallbackComponent`
 
 > **Story:** US-056 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Frontend | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

@@ -5,6 +5,7 @@ One task row is created per agent execution per encounter.
 """
 from __future__ import annotations
 
+import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -17,6 +18,28 @@ from app.db.mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.encounter import Encounter
+
+
+class AgentTaskStatus(str, enum.Enum):
+    """Valid agent task lifecycle statuses.
+
+    Terminal statuses (COMPLETED, CANCELLED, FAILED) are never overwritten
+    by bulk cancellation operations (US-015).
+    """
+
+    QUEUED           = "queued"
+    PENDING          = "pending"
+    IN_PROGRESS      = "running"
+    COMPLETED        = "completed"
+    FAILED           = "failed"
+    PENDING_APPROVAL = "pending_approval"
+    CANCELLED        = "cancelled"   # US-015: set by CancellationService on A11/A12
+
+
+# Statuses that are terminal — bulk cancel must not overwrite these
+AGENT_TASK_TERMINAL_STATUSES: frozenset[AgentTaskStatus] = frozenset(
+    {AgentTaskStatus.COMPLETED, AgentTaskStatus.CANCELLED, AgentTaskStatus.FAILED}
+)
 
 
 class AgentTask(Base, TimestampMixin):

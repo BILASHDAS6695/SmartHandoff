@@ -6,6 +6,7 @@ and are validated against this table by RBAC middleware (SEC-002, AIR-031).
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
@@ -58,10 +59,36 @@ class AppUser(Base, TimestampMixin):
         comment="Set to False on SCIM deprovisioning (AIR-032)",
     )
 
+    # ── JWT revocation fields (US-059) ────────────────────────────────────────
+
+    current_jti: Mapped[str | None] = mapped_column(
+        sa.String(36),
+        nullable=True,
+        index=True,
+        unique=True,
+        comment="Most-recently-issued JWT jti; updated on every login (US-059/TASK-004)",
+    )
+
+    deprovisioned_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=True,
+        comment="Set by DELETE /api/v1/admin/users/{id}; non-null = deprovisioned (US-059)",
+    )
+
     unit: Mapped[str | None] = mapped_column(
         sa.String(64),
         nullable=True,
         comment="Hospital unit assignment for nurses (scopes patient list access)",
+    )
+
+    # ── SCIM provisioning fields (US-060) ─────────────────────────────────────
+
+    scim_id: Mapped[str | None] = mapped_column(
+        sa.String(256),
+        nullable=True,
+        index=True,
+        unique=True,
+        comment="IdP-assigned SCIM externalId; used for SCIM→SmartHandoff cross-reference (US-060)",
     )
 
     __table_args__ = (

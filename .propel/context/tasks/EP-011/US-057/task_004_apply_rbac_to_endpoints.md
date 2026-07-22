@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-057/TASK-002, US-057/TASK-003]
@@ -16,7 +16,7 @@ upstream: [US-057/TASK-002, US-057/TASK-003]
 # TASK-004: Apply `require_permission` to All Protected API Endpoints + 403 Audit Logging
 
 > **Story:** US-057 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

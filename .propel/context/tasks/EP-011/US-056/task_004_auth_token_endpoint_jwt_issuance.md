@@ -7,8 +7,8 @@ sprint: 1
 layer: Backend
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-15
+status: Done
+date: 2026-07-22
 assignee: Backend Engineer
 upstream: [US-056/TASK-003, US-005]
 ---
@@ -16,7 +16,7 @@ upstream: [US-056/TASK-003, US-005]
 # TASK-004: Implement `POST /api/v1/auth/token` Endpoint and Application JWT Issuance
 
 > **Story:** US-056 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

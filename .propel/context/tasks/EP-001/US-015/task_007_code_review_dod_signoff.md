@@ -7,7 +7,7 @@ sprint: 2
 layer: Process
 estimate: 1.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer + Security Engineer
 upstream: [US-015/TASK-001, US-015/TASK-002, US-015/TASK-003, US-015/TASK-004, US-015/TASK-005, US-015/TASK-006]
@@ -16,7 +16,7 @@ upstream: [US-015/TASK-001, US-015/TASK-002, US-015/TASK-003, US-015/TASK-004, U
 # TASK-007: Code Review & DoD Sign-off — US-015 ADT Cancellation Event Handling
 
 > **Story:** US-015 | **Epic:** EP-001 | **Sprint:** 2 | **Layer:** Process | **Est:** 1.5 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

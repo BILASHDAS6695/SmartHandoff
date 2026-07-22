@@ -7,8 +7,8 @@ sprint: 1
 layer: Backend
 estimate: 1h
 priority: Must Have
-status: Draft
-date: 2026-07-15
+status: Done
+date: 2026-07-22
 assignee: Backend Engineer
 upstream: []
 ---
@@ -16,7 +16,7 @@ upstream: []
 # TASK-001: Add Python OIDC/JWT Dependencies and Scaffold `app/core/auth/` Package
 
 > **Story:** US-056 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

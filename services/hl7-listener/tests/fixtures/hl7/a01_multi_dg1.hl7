@@ -1,0 +1,6 @@
+MSH|^~\&|EHR_PROD|CITY_HOSP|SmartHandoff|HOSP|20260715100000||ADT^A01|MSG-A01-MULTI|P|2.5
+EVN|A01|20260715095500
+PID|1||MRN-4004^^^CITY_HOSP^MR||Wilson^Robert||19651220|M|||88 Cedar Ln^^Boston^MA^02118^USA
+PV1|1|I|4N^4020^C|||||||67890^Patel^Anita^Dr|||||||ADM|||20260715095500||||||||||||||||||||ENC-9002
+DG1|1||R07.9^Chest pain unspecified^ICD10
+DG1|2||I10^Essential primary hypertension^ICD10

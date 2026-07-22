@@ -7,7 +7,7 @@ sprint: 1
 layer: Process
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer + Security Engineer
 upstream: [US-014/TASK-001, US-014/TASK-002, US-014/TASK-003, US-014/TASK-004, US-014/TASK-005]

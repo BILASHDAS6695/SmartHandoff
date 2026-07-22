@@ -1,0 +1,91 @@
+# SmartHandoff RBAC Permission Matrix
+#
+# Source of truth for role-based access control (SEC-002, US-057).
+# Loaded at application startup; changes require re-deploy.
+#
+# PATIENT role is NOT defined here — it has a hardcoded security boundary
+# in app/core/auth/rbac.py. Any attempt to add PATIENT here is silently
+# ignored by the loader and flagged in startup validation logs.
+#
+# Permitted actions per resource:
+#   list    — collection endpoint (GET /resource)
+#   read    — single-item endpoint (GET /resource/{id})
+#   write   — create or update (POST, PATCH, PUT)
+#   approve — approve a document (PATCH /documents/{id}/approve)
+#   resolve — resolve an alert (PATCH /alerts/{id}/resolve)
+#
+# Design ref: design.md §8.3 RBAC Permission Matrix
+
+roles:
+
+  ADMIN:
+    patient:    [list, read, write]
+    encounter:  [list, read, write]
+    document:   [list, read, write, approve]
+    medication: [list, read, write]
+    alert:      [list, read, resolve]
+    bed:        [list, read, write]
+    analytics:  [list, read]
+    audit_log:  [list, read]
+    user:       [list, read, write]
+    agent_task: [list, read]
+
+  PHYSICIAN:
+    patient:    [list, read]
+    encounter:  [list, read]
+    document:   [list, read, approve]
+    medication: [list, read]
+    alert:      [list, read]
+    bed:        []
+    analytics:  []
+    audit_log:  []
+    user:       []
+    agent_task: [list, read]
+
+  NURSE:
+    patient:    [list, read]
+    encounter:  [list, read]
+    document:   [list, read]
+    medication: [list, read]
+    alert:      [list, read]
+    bed:        []
+    analytics:  []
+    audit_log:  []
+    user:       []
+    agent_task: [list, read]
+
+  PHARMACIST:
+    patient:    [read]
+    encounter:  [read]
+    document:   []
+    medication: [list, read, write]
+    alert:      [list, read, resolve]
+    bed:        []
+    analytics:  []
+    audit_log:  []
+    user:       []
+    agent_task: []
+
+  BED_MANAGER:
+    patient:    []
+    encounter:  [list, read]
+    document:   []
+    medication: []
+    alert:      [list, read]
+    bed:        [list, read, write]
+    analytics:  [list, read]
+    audit_log:  []
+    user:       []
+    agent_task: []
+
+  CARE_MANAGER:
+    patient:    [list, read]
+    encounter:  [list, read]
+    document:   [list, read]
+    medication: [list, read]
+    alert:      [list, read]
+    bed:        []
+    analytics:  [list, read]
+    audit_log:  []
+    user:       []
+    agent_task: [list, read]

@@ -61,6 +61,11 @@ variable "cloudbuild_sa_email" {
   description = "Cloud Build service account email — used to run pipeline and rollback trigger builds"
 }
 
+variable "idp_base_url" {
+  type        = string
+  description = "Base URL of the hospital identity provider (OIDC issuer)"
+}
+
 variable "compliance_officer_emails" {
   type        = list(string)
   description = "Email addresses of compliance officers granted read access to the PHI audit log GCS bucket"

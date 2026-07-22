@@ -7,8 +7,8 @@ sprint: 1
 layer: Backend
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-15
+status: Done
+date: 2026-07-22
 assignee: Backend Engineer
 upstream: [US-056/TASK-001]
 ---
@@ -16,7 +16,7 @@ upstream: [US-056/TASK-001]
 # TASK-002: Implement OIDC Discovery Fetch and JWKS Caching in `app/core/auth/oidc.py`
 
 > **Story:** US-056 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

@@ -1,3 +1,9 @@
+variable "env_vars" {
+  type        = map(string)
+  description = "Non-sensitive environment variables to inject into the Cloud Run service"
+  default     = {}
+}
+
 variable "project_id" {
   type        = string
   description = "GCP project ID"

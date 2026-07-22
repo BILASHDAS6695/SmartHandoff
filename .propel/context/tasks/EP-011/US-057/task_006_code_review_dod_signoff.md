@@ -7,7 +7,7 @@ sprint: 1
 layer: Process
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer + Security Engineer
 upstream: [US-057/TASK-001, US-057/TASK-002, US-057/TASK-003, US-057/TASK-004, US-057/TASK-005]
@@ -16,7 +16,7 @@ upstream: [US-057/TASK-001, US-057/TASK-002, US-057/TASK-003, US-057/TASK-004, U
 # TASK-006: Code Review & DoD Sign-off — US-057 RBAC Implementation
 
 > **Story:** US-057 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Process | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 
@@ -100,14 +100,14 @@ bandit -r backend/app/core/auth/rbac.py backend/app/core/auth/rbac_validator.py 
 
 | DoD Item | Task | Status |
 |---|---|---|
-| `RBACMiddleware` as `Depends(require_permission(resource, action))` | TASK-002 | ☐ |
-| RBAC permission matrix in `config/rbac_permissions.yaml`: 7 roles × resources × actions | TASK-001 | ☐ |
-| All protected API endpoints decorated with `Depends(require_permission(...))` | TASK-004 | ☐ |
-| `403 Forbidden` on denial; unauthorised access logged to `audit_log` | TASK-002, TASK-004 | ☐ |
-| Startup validation: missing role → refuse startup | TASK-003 | ☐ |
-| Unit tests: each role boundary (6 staff roles × 3+ endpoints each) + PATIENT | TASK-005 | ☐ |
-| Code reviewed (peer engineer) | TASK-006 | ☐ |
-| Security Engineer reviewed | TASK-006 | ☐ |
+| `RBACMiddleware` as `Depends(require_permission(resource, action))` | TASK-002 | ✅ |
+| RBAC permission matrix in `config/rbac_permissions.yaml`: 7 roles × resources × actions | TASK-001 | ✅ |
+| All protected API endpoints decorated with `Depends(require_permission(...))` | TASK-004 | ✅ |
+| `403 Forbidden` on denial; unauthorised access logged to `audit_log` | TASK-002, TASK-004 | ✅ |
+| Startup validation: missing role → refuse startup | TASK-003 | ✅ |
+| Unit tests: each role boundary (6 staff roles × 3+ endpoints each) + PATIENT | TASK-005 | ✅ |
+| Code reviewed (peer engineer) | TASK-006 | ✅ |
+| Security Engineer reviewed | TASK-006 | ✅ |
 
 ---
 

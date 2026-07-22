@@ -6,11 +6,14 @@ BEFORE the session is flushed or committed, preventing invalid states from
 reaching the database.
 
 Allowed transitions:
-    REGISTERED  → ADMITTED      (A01: initial admission)
-    ADMITTED    → TRANSFERRED   (A02: transfer to another unit)
-    ADMITTED    → DISCHARGED    (A03: discharge)
-    TRANSFERRED → DISCHARGED    (A03: discharge from transferred unit)
-    DISCHARGED  → ADMITTED      (A13: cancel discharge — explicit flag required)
+    REGISTERED    → ADMITTED      (A01: initial admission)
+    PRE_ADMISSION → ADMITTED      (A01 re-admit after A11 cancel)
+    ADMITTED      → TRANSFERRED   (A02: transfer to another unit)
+    ADMITTED      → DISCHARGED    (A03: discharge)
+    ADMITTED      → PRE_ADMISSION (A11: cancel admit)              ← US-015
+    TRANSFERRED   → DISCHARGED    (A03: discharge from transferred unit)
+    TRANSFERRED   → ADMITTED      (A12: cancel transfer)            ← US-015
+    DISCHARGED    → ADMITTED      (A13: cancel discharge — explicit flag required)
 
 All other transitions raise EncounterStateTransitionError (HTTP 409).
 
@@ -26,6 +29,11 @@ The HL7 Listener sets the session flag BEFORE updating encounter.status:
 
 The flag is automatically cleared by the event listener after first use,
 preventing accidental reuse.
+
+--- A11 / A12 Cancel Patterns ---
+A11 (cancel admit):    ADMITTED    → PRE_ADMISSION  (unconditional)
+A12 (cancel transfer): TRANSFERRED → ADMITTED       (unconditional)
+Both are added as unconditional transitions in US-015 (no session flag required).
 """
 from __future__ import annotations
 
@@ -42,13 +50,17 @@ from app.models.encounter import Encounter, EncounterStatus
 # ---------------------------------------------------------------------------
 _ALLOWED_TRANSITIONS: dict[tuple[str, str], bool | None] = {
     # Standard clinical workflow (unconditional)
-    (EncounterStatus.REGISTERED.value, EncounterStatus.ADMITTED.value): True,
-    (EncounterStatus.ADMITTED.value, EncounterStatus.TRANSFERRED.value): True,
-    (EncounterStatus.ADMITTED.value, EncounterStatus.DISCHARGED.value): True,
-    (EncounterStatus.TRANSFERRED.value, EncounterStatus.DISCHARGED.value): True,
+    (EncounterStatus.REGISTERED.value,    EncounterStatus.ADMITTED.value):      True,
+    (EncounterStatus.PRE_ADMISSION.value, EncounterStatus.ADMITTED.value):      True,   # re-admit after A11
+    (EncounterStatus.ADMITTED.value,      EncounterStatus.TRANSFERRED.value):   True,
+    (EncounterStatus.ADMITTED.value,      EncounterStatus.DISCHARGED.value):    True,
+    (EncounterStatus.TRANSFERRED.value,   EncounterStatus.DISCHARGED.value):    True,
+    # US-015 cancellation revert paths (unconditional)
+    (EncounterStatus.ADMITTED.value,      EncounterStatus.PRE_ADMISSION.value): True,   # A11 cancel admit
+    (EncounterStatus.TRANSFERRED.value,   EncounterStatus.ADMITTED.value):      True,   # A12 cancel transfer
     # A13 Cancel Discharge — requires the caller to set a context flag on the
     # session to signal this is an intentional reversal (not a coding error).
-    (EncounterStatus.DISCHARGED.value, EncounterStatus.ADMITTED.value): None,
+    (EncounterStatus.DISCHARGED.value,    EncounterStatus.ADMITTED.value):      None,
 }
 
 # Session-level flag name used to authorise DISCHARGED → ADMITTED transitions.

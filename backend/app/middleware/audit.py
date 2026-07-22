@@ -1,4 +1,4 @@
-"""HIPAA audit logging middleware.
+"""HIPAA audit logging middleware (US-058/TASK-002).
 
 Intercepts all requests to PHI endpoints and writes an immutable record
 to audit_log via the audit_writer PostgreSQL role.
@@ -12,19 +12,26 @@ Key constraints (US-008 Technical Notes):
 Request lifecycle position:
   Cloud Armor → TLS → Rate Limiter → JWT Validator → RBAC →
   PHI Log Sanitiser → HIPAA Audit Logger ← this middleware → Route Handler
+
+US-058 enhancements:
+  - user_agent captured from User-Agent header
+  - Action suffix overrides: /approve → approve, /reject → reject, /resolve → resolve
+  - Extended PHI prefixes: /alerts, /beds, /tasks added
+  - X-Forwarded-For: first non-RFC-1918 IP used (Cloud Run proxy-aware)
 """
 from __future__ import annotations
 
 import logging
 import uuid
 from collections.abc import Callable
+from ipaddress import AddressValueError, ip_address as parse_ip
+from typing import Optional
 
 from fastapi import BackgroundTasks, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.db.audit_session import get_audit_session_factory
-from app.models.audit_log import AuditLog
+from app.db.audit import write_audit_entry
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +41,9 @@ _PHI_PREFIXES: tuple[str, ...] = (
     "/api/v1/encounters",
     "/api/v1/documents",
     "/api/v1/medications",
+    "/api/v1/alerts",
+    "/api/v1/beds",
+    "/api/v1/tasks",
     "/api/v1/admin/audit",
     "/api/v1/admin/users",
 )
@@ -48,6 +58,13 @@ _METHOD_ACTION: dict[str, str] = {
     "DELETE": "delete",
 }
 
+# ── Path suffix → action override (checked before method mapping) ─────────────
+_SUFFIX_ACTION: dict[str, str] = {
+    "/approve": "approve",
+    "/reject": "reject",
+    "/resolve": "resolve",
+}
+
 # ── Endpoints explicitly excluded from auditing ───────────────────────────────
 _EXCLUDED_PATHS: frozenset[str] = frozenset(
     {"/health", "/ready", "/metrics", "/docs", "/openapi.json", "/favicon.ico"}
@@ -59,9 +76,19 @@ _RESOURCE_MAP: dict[str, str] = {
     "encounters": "encounter",
     "documents": "document",
     "medications": "medication",
+    "alerts": "alert",
+    "beds": "bed",
+    "tasks": "agent_task",
     "users": "user",
     "audit": "audit_log",
 }
+
+# RFC-1918 private prefixes — skipped when resolving real client IP from XFF
+_PRIVATE_PREFIXES = (
+    "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.",
+    "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.",
+    "172.29.", "172.30.", "172.31.", "192.168.", "127.", "::1",
+)
 
 
 def _is_phi_endpoint(path: str) -> bool:
@@ -95,6 +122,40 @@ def _extract_resource_info(path: str) -> tuple[str, str]:
     return resource_type, resource_id
 
 
+def _extract_action(path: str, method: str) -> str:
+    """Determine audit action from path suffix (priority) or HTTP method.
+
+    Path suffix overrides take priority — PATCH /documents/abc/approve → "approve".
+    """
+    path_lower = path.lower()
+    for suffix, action in _SUFFIX_ACTION.items():
+        if path_lower.endswith(suffix):
+            return action
+    return _METHOD_ACTION.get(method.upper(), "read")
+
+
+def _extract_ip(request: Request) -> Optional[str]:
+    """Extract the real client IP, preferring X-Forwarded-For over remote addr.
+
+    Cloud Run sits behind Google's managed load balancer which inserts the
+    original client IP as the first entry in X-Forwarded-For.  We skip
+    RFC-1918 addresses to find the first public IP in the chain.
+    Falls back to request.client.host if no public IP found.
+    """
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        for candidate in (ip.strip() for ip in xff.split(",")):
+            if not any(candidate.startswith(p) for p in _PRIVATE_PREFIXES):
+                try:
+                    parse_ip(candidate)
+                    return candidate
+                except (AddressValueError, ValueError):
+                    continue
+    if request.client:
+        return request.client.host
+    return None
+
+
 async def _write_audit_record(
     user_id: uuid.UUID | None,
     user_role: str | None,
@@ -102,48 +163,26 @@ async def _write_audit_record(
     resource_type: str,
     resource_id: str,
     ip_address: str | None,
+    user_agent: str | None,
     endpoint: str | None,
     request_id: str | None,
 ) -> None:
-    """Persist one audit_log row via the audit_writer session.
+    """Persist one audit_log row via the audit_writer session (BackgroundTask).
 
-    This coroutine runs as a BackgroundTask. Any exception is caught and
-    logged — it must NOT propagate to the ASGI layer.
-
-    Security: PHI field values are never passed to this function.
-    Only opaque identifiers (UUIDs, resource type strings) are logged.
+    Any exception is caught and logged — must NOT propagate to the ASGI layer.
+    PHI field values are never passed to this function.
     """
-    try:
-        factory = get_audit_session_factory()
-        async with factory() as session:
-            record = AuditLog(
-                id=uuid.uuid4(),
-                user_id=user_id,
-                user_role=user_role,
-                action=action,
-                resource_type=resource_type,
-                resource_id=resource_id,
-                ip_address=ip_address,
-                endpoint=endpoint,
-                request_id=request_id,
-                outcome="success",
-            )
-            session.add(record)
-            await session.commit()
-    except Exception:
-        # Audit write failure is NOT surfaced to the client.
-        # Cloud Logging alert fires on this log pattern (P2 threshold).
-        logger.exception(
-            "HIPAA audit log write failed",
-            extra={
-                "user_id": str(user_id) if user_id else None,
-                "action": action,
-                "resource_type": resource_type,
-                "resource_id": resource_id,
-                "endpoint": endpoint,
-                # ip_address intentionally omitted from error log (PII)
-            },
-        )
+    await write_audit_entry(
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        user_id=user_id,
+        user_role=user_role,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        endpoint=endpoint,
+        request_id=request_id,
+    )
 
 
 class HIPAAAuditMiddleware(BaseHTTPMiddleware):
@@ -175,16 +214,10 @@ class HIPAAAuditMiddleware(BaseHTTPMiddleware):
         # Extract user identity set by JWT validation middleware
         user_id: uuid.UUID | None = getattr(request.state, "user_id", None)
         user_role: str | None = getattr(request.state, "user_role", None)
-        action = _METHOD_ACTION.get(request.method, "read")
+        action = _extract_action(path, request.method)
         resource_type, resource_id = _extract_resource_info(path)
-
-        # Client IP — respect X-Forwarded-For set by Cloud Load Balancer.
-        # Take the first (leftmost) IP — the original client, not a proxy.
-        forwarded_for = request.headers.get("x-forwarded-for")
-        if forwarded_for:
-            ip_address = forwarded_for.split(",")[0].strip()
-        else:
-            ip_address = request.client.host if request.client else None
+        ip_address = _extract_ip(request)
+        user_agent: str | None = request.headers.get("User-Agent")
 
         # Distributed trace ID for correlation with Cloud Logging
         request_id: str | None = request.headers.get("x-cloud-trace-context")
@@ -199,6 +232,7 @@ class HIPAAAuditMiddleware(BaseHTTPMiddleware):
             resource_type=resource_type,
             resource_id=resource_id,
             ip_address=ip_address,
+            user_agent=user_agent,
             endpoint=path,
             request_id=request_id,
         )

@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-006/TASK-001]
@@ -16,7 +16,7 @@ upstream: [US-006/TASK-001]
 # TASK-002: Extend `api-gateway/app/models/encounter.py` — Add Cancellation Transitions to Encounter State Machine (PRE_ADMISSION status, A11/A12/A13 revert paths)
 
 > **Story:** US-015 | **Epic:** EP-001 | **Sprint:** 2 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

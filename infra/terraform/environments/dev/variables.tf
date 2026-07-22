@@ -56,6 +56,11 @@ variable "org_id" {
   description = "GCP organisation ID — used for Cloud SCC SARIF upload in CI/CD pipeline"
 }
 
+variable "idp_base_url" {
+  type        = string
+  description = "Base URL of the hospital identity provider (OIDC issuer)"
+}
+
 variable "compliance_officer_emails" {
   type        = list(string)
   description = "Email addresses of compliance officers granted read access to the PHI audit log GCS bucket"

@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-057/TASK-002]
@@ -16,7 +16,7 @@ upstream: [US-057/TASK-002]
 # TASK-003: RBAC Config Startup Validation — Lifespan Integration and Role Completeness Check
 
 > **Story:** US-057 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

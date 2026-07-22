@@ -7,7 +7,7 @@ sprint: 1
 layer: Testing
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-058/TASK-001, US-058/TASK-002, US-058/TASK-003, US-058/TASK-004]
@@ -16,7 +16,7 @@ upstream: [US-058/TASK-001, US-058/TASK-002, US-058/TASK-003, US-058/TASK-004]
 # TASK-005: Write pytest Unit Tests — Audit Entry Creation, PHI Sanitisation, Admin Query RBAC
 
 > **Story:** US-058 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Testing | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 
