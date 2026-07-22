@@ -6,6 +6,7 @@ locals {
   # against missing keys during first bootstrapping apply before the secrets module runs.
   service_secret_env_vars = {
     "api-gateway" = [
+      { env_name = "JWT_SIGNING_KEY",         secret_key = "jwt_signing_key" },
       { env_name = "JWT_SIGNING_KEY_PRIVATE", secret_key = "jwt_signing_key_private" },
       { env_name = "JWT_SIGNING_KEY_PUBLIC",  secret_key = "jwt_signing_key_public" },
       { env_name = "OIDC_CLIENT_ID",          secret_key = "oidc_client_id" },

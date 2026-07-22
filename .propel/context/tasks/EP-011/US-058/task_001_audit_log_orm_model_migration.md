@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend / Database
 estimate: 1.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-008/TASK-001, US-056/TASK-004]
@@ -16,7 +16,7 @@ upstream: [US-008/TASK-001, US-056/TASK-004]
 # TASK-001: Create `AuditLog` SQLAlchemy ORM Model + Alembic Migration
 
 > **Story:** US-058 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend / Database | **Est:** 1.5 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

@@ -52,6 +52,10 @@ module "cloud_run" {
   environment      = var.environment
   vpc_connector_id = module.networking.vpc_connector_id
 
+  env_vars = {
+    IDP_BASE_URL = var.idp_base_url
+  }
+
   depends_on = [module.networking]
 }
 

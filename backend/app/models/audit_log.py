@@ -3,9 +3,11 @@
 DR-003: Append-only. PostgreSQL RLS (DENY DELETE/UPDATE) enforced by
 migration 0002_audit_log_rls.py (TASK-007).
 BR-023: 6-year retention minimum.
+US-058: AuditAction enum + write_audit_entry helpers added for middleware.
 """
 from __future__ import annotations
 
+import enum
 import uuid
 from datetime import datetime
 
@@ -13,6 +15,24 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+
+
+class AuditAction(str, enum.Enum):
+    """Permitted action values for audit_log.action (US-058).
+
+    Maps to the plain-string ``action`` column.  String subclass so
+    SQLAlchemy stores and reads the enum as its value without needing a
+    DB-level ENUM type.
+    """
+
+    READ = "read"
+    WRITE = "write"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    APPROVE = "approve"
+    REJECT = "reject"
+    RESOLVE = "resolve"
 
 
 class AuditLog(Base):
@@ -67,6 +87,7 @@ class AuditLog(Base):
 
     # Request context (no PHI in these fields — log sanitiser strips it)
     ip_address: Mapped[str | None] = mapped_column(sa.String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     endpoint: Mapped[str | None] = mapped_column(
         sa.String(255),
         nullable=True,

@@ -1,0 +1,6 @@
+MSH|^~\&|EHR_PROD|CITY_HOSP|SmartHandoff|HOSP|20260715100000||ADT^A01|MSG-A01-001|P|2.5
+EVN|A01|20260715095500
+PID|1||MRN-1001^^^CITY_HOSP^MR||Smith^John^A||19800115|M|||100 Oak Ave^^Boston^MA^02101^USA
+PV1|1|I|2E^2012^A|||||||12345^Jones^Sarah^Dr|||||||ADM|||20260715095500||||||||||||||||||||ENC-9001
+PV2|||Chest pain evaluation
+DG1|1||R07.9^Chest pain unspecified^ICD10

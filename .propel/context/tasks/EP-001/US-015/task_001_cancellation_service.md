@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-006/TASK-001, US-015/TASK-002]
@@ -16,7 +16,7 @@ upstream: [US-006/TASK-001, US-015/TASK-002]
 # TASK-001: Create `api-gateway/app/services/cancellation_service.py` — CancellationService with Atomic Task Cancellation & Encounter Status Revert
 
 > **Story:** US-015 | **Epic:** EP-001 | **Sprint:** 2 | **Layer:** Backend | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

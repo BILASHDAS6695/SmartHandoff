@@ -7,8 +7,8 @@ sprint: 1
 layer: Frontend
 estimate: 2h
 priority: Must Have
-status: Draft
-date: 2026-07-15
+status: Done
+date: 2026-07-22
 assignee: Backend Engineer
 upstream: [US-056/TASK-004]
 ---
@@ -16,7 +16,7 @@ upstream: [US-056/TASK-004]
 # TASK-005: Implement Angular `AuthService` with In-Memory JWT Storage and SignalR Token Factory
 
 > **Story:** US-056 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Frontend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

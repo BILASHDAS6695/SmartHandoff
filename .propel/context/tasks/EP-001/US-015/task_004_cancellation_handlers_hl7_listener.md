@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend
 estimate: 2.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-012/TASK-003, US-015/TASK-001, US-015/TASK-002, US-015/TASK-003]
@@ -16,7 +16,7 @@ upstream: [US-012/TASK-003, US-015/TASK-001, US-015/TASK-002, US-015/TASK-003]
 # TASK-004: Create `hl7-listener/app/handlers/cancellation_handlers.py` — Register A11/A12/A13 Handlers in ADTRouter with Backend API Call & Unknown Encounter Guard
 
 > **Story:** US-015 | **Epic:** EP-001 | **Sprint:** 2 | **Layer:** Backend | **Est:** 2.5 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

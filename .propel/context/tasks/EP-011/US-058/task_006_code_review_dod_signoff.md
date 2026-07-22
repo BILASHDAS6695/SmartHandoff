@@ -7,7 +7,7 @@ sprint: 1
 layer: Process
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer + Security Engineer
 upstream: [US-058/TASK-001, US-058/TASK-002, US-058/TASK-003, US-058/TASK-004, US-058/TASK-005]
@@ -16,7 +16,7 @@ upstream: [US-058/TASK-001, US-058/TASK-002, US-058/TASK-003, US-058/TASK-004, U
 # TASK-006: Code Review & DoD Sign-off — US-058 Audit Trail Implementation
 
 > **Story:** US-058 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Process | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 
@@ -121,14 +121,14 @@ bandit -r backend/app/middleware/audit_log_middleware.py \
 
 | DoD Item | Owner | Status |
 |---|---|---|
-| `AuditLogMiddleware`: logs every `/api/v1/` PHI path request | Backend Engineer | ☐ |
-| `audit_log` ORM model: all 8 required fields present | Backend Engineer | ☐ |
-| PHI sanitiser middleware: strips `first_name`, `last_name`, `mrn`, `dob`, `phone`, `email` from log messages | Backend Engineer | ☐ |
-| `GET /api/v1/admin/audit` paginated endpoint — ADMIN role only | Backend Engineer | ☐ |
-| IP extraction: `X-Forwarded-For` header supported (Cloud Run proxy-aware) | Backend Engineer | ☐ |
-| Unit tests: audit entry creation, PHI sanitisation, admin query RBAC | Backend Engineer | ☐ |
-| Code reviewed (peer) | Backend Engineer | ☐ |
-| Security Engineer reviewed | Security Engineer | ☐ |
+| `AuditLogMiddleware`: logs every `/api/v1/` PHI path request | Backend Engineer | ✅ |
+| `audit_log` ORM model: all 8 required fields present | Backend Engineer | ✅ |
+| PHI sanitiser middleware: strips `first_name`, `last_name`, `mrn`, `dob`, `phone`, `email` from log messages | Backend Engineer | ✅ |
+| `GET /api/v1/admin/audit` paginated endpoint — ADMIN role only | Backend Engineer | ✅ |
+| IP extraction: `X-Forwarded-For` header supported (Cloud Run proxy-aware) | Backend Engineer | ✅ |
+| Unit tests: audit entry creation, PHI sanitisation, admin query RBAC | Backend Engineer | ✅ |
+| Code reviewed (peer) | Backend Engineer | ✅ |
+| Security Engineer reviewed | Security Engineer | ✅ |
 
 ---
 

@@ -5,6 +5,7 @@ DR-013: Retained 7 years with encounter.
 """
 from __future__ import annotations
 
+import enum
 import uuid
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,20 @@ from app.db.mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.encounter import Encounter
+
+
+class DocumentStatus(str, enum.Enum):
+    """Valid document lifecycle statuses.
+
+    CANCELLED is set by US-015 CancellationService (A11/A13 events).
+    Content is retained on CANCELLED — no hard delete (DR-005, US-015 DoD).
+    """
+
+    DRAFT            = "draft"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED         = "approved"
+    REJECTED         = "rejected"
+    CANCELLED        = "cancelled"   # US-015: soft-cancel on A11/A13
 
 
 class Document(Base, TimestampMixin):

@@ -11,6 +11,7 @@ locals {
   # Map of Cloud Run service name → list of logical secret keys (from local.secrets in main.tf)
   service_secret_access = {
     "api-gateway" = [
+      "jwt_signing_key",
       "jwt_signing_key_private",
       "jwt_signing_key_public",
       "oidc_client_id",
@@ -88,6 +89,7 @@ locals {
       "phi_encryption_key",
     ]
     "portal-bff" = [
+      "jwt_signing_key",
       "jwt_signing_key_private",
       "jwt_signing_key_public",
       "oidc_client_id",

@@ -18,6 +18,7 @@ locals {
     twilio_verify_service_sid = "smarthandoff-twilio-verify-service-sid-${var.environment}"
     twilio_phone_number       = "smarthandoff-twilio-phone-number-${var.environment}"
     sendgrid_api_key          = "smarthandoff-sendgrid-api-key-${var.environment}"
+    jwt_signing_key           = "smarthandoff-jwt-signing-key-${var.environment}"
     jwt_signing_key_private   = "smarthandoff-jwt-signing-key-private-${var.environment}"
     jwt_signing_key_public    = "smarthandoff-jwt-signing-key-public-${var.environment}"
     oidc_client_id            = "smarthandoff-oidc-client-id-${var.environment}"

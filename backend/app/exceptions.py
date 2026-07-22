@@ -5,7 +5,21 @@ to structured HTTP responses. No PHI is included in exception messages.
 """
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import HTTPException, status
+
+
+class EncounterNotFoundError(Exception):
+    """Raised when an encounter_id does not exist in the database.
+
+    Maps to HTTP 404 at the API layer.
+    No PHI is included in the message (only the UUID).
+    """
+
+    def __init__(self, encounter_id: UUID | str) -> None:
+        self.encounter_id = encounter_id
+        super().__init__(f"Encounter not found: {encounter_id}")
 
 
 class EncounterStateTransitionError(HTTPException):
