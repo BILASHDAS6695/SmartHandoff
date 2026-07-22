@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend (DevOps)
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-002, TASK-003, TASK-004, TASK-005]
@@ -16,7 +16,7 @@ upstream: [TASK-002, TASK-003, TASK-004, TASK-005]
 # TASK-007: Implement PHI Re-Encryption Utility Script and Document in `infra/BOOTSTRAP.md`
 
 > **Story:** US-007 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend (DevOps) | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

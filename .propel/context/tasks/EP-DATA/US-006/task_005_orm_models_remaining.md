@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 4h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-002, TASK-003, TASK-004]
@@ -16,7 +16,7 @@ upstream: [TASK-002, TASK-003, TASK-004]
 # TASK-005: Define ORM Models — `AdtEvent`, `Medication`, `AgentTask`, `Document`, `AuditLog`, `ChatbotTranscript`
 
 > **Story:** US-006 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 4 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

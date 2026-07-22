@@ -277,3 +277,140 @@ secret commits. See the repository `README.md` "Pre-Commit Hooks" section for in
 pip install pre-commit
 pre-commit install
 ```
+
+---
+
+## PHI Encryption Key Rotation
+
+SmartHandoff uses AES-256-GCM field-level encryption for all PHI columns
+(`patient`, `document`, `chatbot_transcript`). When the encryption key must
+be rotated (annual rotation, suspected compromise), follow this procedure.
+
+> **US-007 requirement:** The re-encryption script (`backend/scripts/reencrypt_phi.py`)
+> must be executed after each key rotation to migrate all existing PHI records
+> from the old key to the new key.
+
+### Prerequisites
+
+- GCP role `roles/secretmanager.secretVersionManager` on the `phi-encryption-key` secret
+- Cloud SQL IAM role `roles/cloudsql.client` (for Cloud SQL Auth Proxy access)
+- `DATABASE_URL` pointing to the Cloud SQL instance
+
+### Step 1 — Generate a new AES-256 key
+
+```bash
+NEW_KEY=$(python3 -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())")
+# IMPORTANT: Store this value securely (e.g., a local password manager).
+# Do NOT print or log it in a shared terminal session.
+```
+
+### Step 2 — Store the new key as a new Secret Manager version
+
+```bash
+PROJECT="smarthandoff-prod"   # or smarthandoff-dev / smarthandoff-staging
+echo -n "$NEW_KEY" | \
+  gcloud secrets versions add phi-encryption-key \
+    --data-file=- \
+    --project="$PROJECT"
+```
+
+This creates a new version. The previous version remains accessible until
+explicitly disabled — do NOT disable it before the re-encryption script completes.
+
+### Step 3 — Retrieve the old key version number
+
+```bash
+# List all enabled versions — the second entry is the old version
+gcloud secrets versions list phi-encryption-key \
+  --project="$PROJECT" \
+  --format="table(name,state,createTime)" \
+  --filter="state=ENABLED"
+# Note the old version number (e.g., "3")
+```
+
+### Step 4 — Retrieve the old key value
+
+```bash
+OLD_KEY=$(gcloud secrets versions access <old-version-number> \
+  --secret=phi-encryption-key \
+  --project="$PROJECT")
+```
+
+### Step 5 — Run the re-encryption script (dry-run first)
+
+```bash
+cd backend
+export DATABASE_URL="postgresql+asyncpg://<user>:<pass>@localhost/smarthandoff"
+export PHI_ENCRYPTION_KEY_OLD="$OLD_KEY"
+export PHI_ENCRYPTION_KEY_SECRET_ID="phi-encryption-key"  # Uses new latest version
+
+# Dry run — no DB writes, logs row counts per table
+python -m scripts.reencrypt_phi --dry-run --batch-size 100
+
+# If the counts look correct, run for real
+python -m scripts.reencrypt_phi --batch-size 100
+
+# To process a single table (e.g., patient only)
+python -m scripts.reencrypt_phi --table patient --batch-size 100
+```
+
+The script is **idempotent** — if it fails mid-way, re-run it from the
+beginning. Already re-encrypted rows will fail decryption with the old key
+and must be skipped manually (see Rollback below if this happens).
+
+### Step 6 — Verify ORM decryption works with the new key
+
+```bash
+# Spot-check: load a patient record through the API and verify PHI is readable
+curl -H "Authorization: Bearer <valid-token>" \
+  https://api-gateway-prod.run.app/v1/patients/<patient-id> | jq .
+# first_name, last_name, date_of_birth must return plaintext (not ciphertext)
+```
+
+### Step 7 — Deploy updated Cloud Run services
+
+After re-encryption completes, all Cloud Run services will automatically pick
+up the new key version on their next cold-start (Secret Manager `version = latest`).
+To force an immediate refresh:
+
+```bash
+gcloud run services update-traffic <service-name> \
+  --to-latest \
+  --project="$PROJECT" \
+  --region=us-central1
+```
+
+### Step 8 — Disable the old Secret Manager key version
+
+Once all services are confirmed healthy and re-encryption is complete:
+
+```bash
+gcloud secrets versions disable <old-version-number> \
+  --secret=phi-encryption-key \
+  --project="$PROJECT"
+```
+
+### Rollback
+
+If re-encryption fails and some rows cannot be decrypted:
+
+1. Do NOT disable the old key version.
+2. Re-enable the old key version as the active version (add a new Secret Manager
+   version with the old key value so it becomes `latest`).
+3. Contact the security team to assess which rows need manual intervention.
+4. File an incident report per HIPAA breach notification requirements.
+
+### Security Audit Log
+
+All re-encryption runs must be recorded manually in the audit log:
+
+| Field | Value |
+|-------|-------|
+| Date | ISO-8601 datetime |
+| Operator | Name and GCP identity |
+| Old key version | Secret Manager version number |
+| New key version | Secret Manager version number |
+| Tables processed | patient, document, chatbot_transcript |
+| Rows re-encrypted | Total count from script output |
+| Dry-run first? | Yes / No |
+| Outcome | Success / Partial / Rollback |

@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-006/TASK-001]
@@ -16,7 +16,7 @@ upstream: [US-006/TASK-001]
 # TASK-001: Add `cryptography` Dependency and Create `encryption.py` Module Skeleton
 
 > **Story:** US-007 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

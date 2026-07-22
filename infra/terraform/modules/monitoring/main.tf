@@ -450,3 +450,117 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
   }
 }
 
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  US-010 — pg_cron Archival / Purge Job Failure Alerting                   ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+# ── Log-based metric: pg_cron archival/purge job failure count ────────────────
+# Counts WARNING/ERROR log lines emitted by archive_old_encounters() and
+# purge_exported_audit_logs() when they hit the EXCEPTION WHEN OTHERS block.
+resource "google_logging_metric" "pgcron_job_failure" {
+  project = var.project_id
+  name    = "pgcron_archival_job_failure_count"
+
+  filter = <<-EOT
+    resource.type="cloudsql_database"
+    (
+      textPayload=~"archive_old_encounters FAILED"
+      OR textPayload=~"purge_exported_audit_logs FAILED"
+      OR textPayload=~"cron.*failed"
+    )
+    severity=("WARNING" OR "ERROR" OR "CRITICAL")
+  EOT
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
+    display_name = "pg_cron archival job failure count"
+
+    labels {
+      key         = "job_name"
+      value_type  = "STRING"
+      description = "pg_cron job name extracted from the failure log message"
+    }
+  }
+
+  label_extractors = {
+    "job_name" = "EXTRACT(textPayload, \"(archive_old_encounters|purge_exported_audit_logs)\")"
+  }
+}
+
+# ── Alert policy: pg_cron job failure ────────────────────────────────────────
+# Fires within 5 minutes of the first failure log line (alignment_period=300s).
+# Notifies the on-call email channel (already provisioned in this module).
+resource "google_monitoring_alert_policy" "pgcron_job_failure_alert" {
+  project      = var.project_id
+  display_name = "pg_cron Archival/Purge Job Failure — ${upper(var.environment)}"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "pg_cron archival/purge error count > 0 (5-min window)"
+
+    condition_threshold {
+      filter = <<-EOT
+        resource.type="cloudsql_database"
+        AND metric.type="logging.googleapis.com/user/${google_logging_metric.pgcron_job_failure.name}"
+      EOT
+
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_COUNT"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+
+  alert_strategy {
+    auto_close = "604800s"   # Auto-resolve after 7 days per TASK-004 spec
+  }
+
+  user_labels = {
+    severity    = "p2"
+    environment = var.environment
+    managed_by  = "terraform"
+    component   = "data-retention"
+  }
+
+  documentation {
+    content   = <<-DOC
+      **pg_cron Archival/Purge Job Failure — ${upper(var.environment)}**
+
+      One or more of the HIPAA-mandated data retention pg_cron jobs has failed.
+
+      **Affected jobs:**
+      - `archive-old-encounters` (nightly 03:00 UTC) — moves 7-year-old encounter rows to encounter_archive
+      - `purge-old-audit-logs` (Sunday 04:00 UTC) — deletes confirmed-exported audit_log rows older than 6 years
+
+      **Investigation steps:**
+      1. Check Cloud SQL logs: `SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 20;`
+      2. Check for error details: filter `textPayload =~ "FAILED: "` in Cloud Logging
+      3. Verify pg_cron is enabled: `SHOW cloudsql.enable_pgcron;`
+      4. Confirm encounter_archive and audit_log_archive_queue tables are accessible
+      5. Check available disk space on the Cloud SQL instance
+
+      **Escalation:** If not self-resolved within 1 hour, escalate to the on-call DBA and Compliance Officer.
+      Non-resolution within 24 hours constitutes a potential HIPAA breach (45 CFR §164.312(b)).
+
+      Runbook: https://wiki.internal/runbooks/smarthandoff-pgcron-data-retention
+    DOC
+    mime_type = "text/markdown"
+  }
+
+  depends_on = [google_logging_metric.pgcron_job_failure]
+}
+

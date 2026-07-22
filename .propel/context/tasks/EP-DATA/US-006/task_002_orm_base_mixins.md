@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-001]
@@ -16,7 +16,7 @@ upstream: [TASK-001]
 # TASK-002: Define SQLAlchemy ORM Base — `DeclarativeBase`, Timestamp Mixin, and Soft-Delete Mixin
 
 > **Story:** US-006 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 
