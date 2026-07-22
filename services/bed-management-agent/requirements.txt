@@ -1,0 +1,5 @@
+# services/bed-management-agent/requirements.txt
+-r ../shared/requirements.txt
+fastapi>=0.111,<1.0
+uvicorn[standard]>=0.29,<1.0
+google-cloud-pubsub>=2.21,<3.0

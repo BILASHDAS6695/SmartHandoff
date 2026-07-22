@@ -50,3 +50,24 @@ variable "github_repo" {
   description = "GitHub repository name (without owner prefix)"
   default     = "SmartHandoff"
 }
+
+variable "org_id" {
+  type        = string
+  description = "GCP organisation ID — used for Cloud SCC SARIF upload in CI/CD pipeline"
+}
+
+variable "idp_base_url" {
+  type        = string
+  description = "Base URL of the hospital identity provider (OIDC issuer)"
+}
+
+variable "compliance_officer_emails" {
+  type        = list(string)
+  description = "Email addresses of compliance officers granted read access to the PHI audit log GCS bucket"
+  default     = []
+}
+
+variable "cloudbuild_sa_email" {
+  type        = string
+  description = "Cloud Build service account email — used to run pipeline and rollback trigger builds"
+}

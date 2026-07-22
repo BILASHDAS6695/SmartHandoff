@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [TASK-002, TASK-003]
@@ -16,7 +16,7 @@ upstream: [TASK-002, TASK-003]
 # TASK-004: Define ORM Model — `Encounter` with Status Enum and Patient Relationship
 
 > **Story:** US-006 | **Epic:** EP-DATA | **Sprint:** 1 | **Layer:** Backend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

@@ -1,3 +1,9 @@
+variable "env_vars" {
+  type        = map(string)
+  description = "Non-sensitive environment variables to inject into the Cloud Run service"
+  default     = {}
+}
+
 variable "project_id" {
   type        = string
   description = "GCP project ID"
@@ -17,4 +23,10 @@ variable "environment" {
 variable "vpc_connector_id" {
   type        = string
   description = "Serverless VPC Access connector ID (output of networking module)"
+}
+
+variable "secret_names" {
+  type        = map(string)
+  description = "Map of logical secret name → Secret Manager secret_id (short name). Passed from the secrets module output. Defaults to {} so cloud_run can be applied before the secrets module on first bootstrapping apply."
+  default     = {}
 }

@@ -7,7 +7,7 @@ sprint: 2
 layer: Testing
 estimate: 2.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-060/TASK-001, US-060/TASK-002, US-060/TASK-003, US-060/TASK-004, US-060/TASK-005]

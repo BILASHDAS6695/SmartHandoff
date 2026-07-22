@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend
 estimate: 1.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer / Security Engineer
 upstream: [US-058/TASK-002]
@@ -16,7 +16,7 @@ upstream: [US-058/TASK-002]
 # TASK-003: Implement `PhiLogSanitiserMiddleware` — Strip PHI from Cloud Logging Emissions
 
 > **Story:** US-058 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend | **Est:** 1.5 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

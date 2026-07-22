@@ -7,7 +7,7 @@ sprint: 2
 layer: Testing
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-015/TASK-001, US-015/TASK-002, US-015/TASK-003, US-015/TASK-004]
@@ -16,7 +16,7 @@ upstream: [US-015/TASK-001, US-015/TASK-002, US-015/TASK-003, US-015/TASK-004]
 # TASK-005: Write pytest Unit Tests — CancellationService, State Machine Transitions, CancellationDispatcher, Cancellation Handlers (All 4 US-015 Scenarios)
 
 > **Story:** US-015 | **Epic:** EP-001 | **Sprint:** 2 | **Layer:** Testing | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-22
 
 ---
 

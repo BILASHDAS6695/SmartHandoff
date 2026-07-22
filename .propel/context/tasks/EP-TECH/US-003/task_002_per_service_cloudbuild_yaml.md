@@ -7,7 +7,7 @@ sprint: 1
 layer: CI/CD
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-14
 assignee: DevOps Engineer
 upstream: [TASK-001]

@@ -1,0 +1,22 @@
+# SCIM 2.0 department → SmartHandoff role mapping
+# Used by: backend/app/api/v1/admin/scim/schemas.py (ScimRoleMapper)
+# RFC ref:  RFC 7643 §4.1 enterpriseUser.department
+# Design:   design.md §7.4 AIR-032
+#
+# Keys  = values that arrive in
+#           urn:ietf:params:scim:schemas:extension:enterprise:2.0:User.department
+# Values = SmartHandoff role strings (must match rbac_permissions.yaml ADMIN/NURSE/etc.)
+#
+# Update this file for hospital-specific department naming without
+# modifying application code.
+
+role_mapping:
+  Nursing: NURSE
+  Pharmacy: PHARMACIST
+  Medicine: PHYSICIAN
+  BedManagement: BED_MANAGER
+  Administration: ADMIN
+  # Add hospital-specific aliases below:
+  # "ICU Nursing": NURSE
+  # "Clinical Pharmacy": PHARMACIST
+  # "Internal Medicine": PHYSICIAN

@@ -7,7 +7,7 @@ sprint: 1
 layer: Backend / Config
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-056/TASK-004]
@@ -16,7 +16,7 @@ upstream: [US-056/TASK-004]
 # TASK-001: Create `config/rbac_permissions.yaml` — 7-Role RBAC Permission Matrix
 
 > **Story:** US-057 | **Epic:** EP-011 | **Sprint:** 1 | **Layer:** Backend / Config | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 

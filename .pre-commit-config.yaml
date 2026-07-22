@@ -1,0 +1,32 @@
+# .pre-commit-config.yaml
+# SmartHandoff — pre-commit hooks for secret detection and code quality.
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+default_install_hook_types: [pre-commit]
+
+repos:
+  # ── Secret detection — gitleaks ─────────────────────────────────────────
+  # Scans staged files for secrets, API keys, and credentials.
+  # Blocks the commit and prints the file + pattern if a finding is detected.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: "gitleaks — detect hardcoded secrets"
+        description: "Scan staged files for secrets, API keys, and credentials."
+        # --no-git: scan staged file content rather than full git history
+        # --redact: mask secret values in output so they are never echoed to terminal
+        args: ["--no-git", "--redact", "--verbose"]
+
+  # ── Pre-commit standard hooks ────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+        name: "detect-private-key — block RSA/EC private key commits"
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]

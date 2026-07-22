@@ -50,4 +50,35 @@ correct resource sizing, VPC connector bindings, health probes, and IAM.
 - `lifecycle.ignore_changes` on `image` prevents Terraform from reverting CI/CD deployments.
 - `cpu_idle = false` on `api-gateway`, `hl7-listener`, `coordinator-agent` keeps CPU allocated
   to eliminate cold-start latency on the critical path.
-- Secret Manager bindings are added to each service in Task 008.
+- Secret Manager bindings inject credentials via `value_source.secret_key_ref` (no plaintext
+  credentials in any env block — satisfies US-001 AC-4 / Scenario 4).
+
+## Health Probes
+
+All 10 services configure three probes per container:
+
+| Probe | Purpose | hl7-listener | All other services |
+|-------|---------|-------------|-------------------|
+| `liveness_probe` | Restart container on deadlock (3 failures) | `tcp_socket` port 2575 | `GET /health` |
+| `startup_probe` | Block traffic during cold start (12×5s = 60s) | `tcp_socket` port 2575 | `GET /ready` |
+| `readiness_probe` | Shed traffic when dependencies unavailable (3 failures) | `tcp_socket` port 2575 | `GET /ready` |
+
+`hl7-listener` is a raw TCP MLLP server (port 2575) with no HTTP listener — HTTP probes would
+cause a crash loop. `dynamic` conditional blocks select the correct probe type per service.
+
+The 60-second `startup_probe` window (`failure_threshold=12`, `period_seconds=5`) accommodates
+slow LangChain framework initialisation for `docs-agent`, `medrecon-agent`, `coordinator-agent`,
+and `ml-inference`.
+
+## Multi-Zone Deployment
+
+Cloud Run (fully managed) automatically distributes instances across multiple availability
+zones within the configured region. Zone scheduling is managed by the Google Cloud platform
+and cannot be overridden at the service level.
+
+Verified region: `us-central1` (zones: us-central1-a, us-central1-b, us-central1-c,
+us-central1-f). Services with `min_instance_count ≥ 2` (e.g., `api-gateway`) maintain warm
+instances in ≥2 zones at all times.
+
+**Do not** add `zones` or node affinity annotations to `google_cloud_run_v2_service` resources
+— they are not valid fields and will cause `terraform validate` errors.

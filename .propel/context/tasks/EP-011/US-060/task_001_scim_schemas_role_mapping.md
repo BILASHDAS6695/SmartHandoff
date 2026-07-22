@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend / Config
 estimate: 1.5h
 priority: Must Have
-status: Draft
+status: Done
 date: 2026-07-15
 assignee: Backend Engineer
 upstream: [US-006/TASK-001]
@@ -16,7 +16,7 @@ upstream: [US-006/TASK-001]
 # TASK-001: Create SCIM 2.0 Pydantic Schemas + `config/scim_role_mapping.yaml`
 
 > **Story:** US-060 | **Epic:** EP-011 | **Sprint:** 2 | **Layer:** Backend / Config | **Est:** 1.5 h
-> **Status:** Draft | **Date:** 2026-07-15
+> **Status:** Done | **Date:** 2026-07-15
 
 ---
 
