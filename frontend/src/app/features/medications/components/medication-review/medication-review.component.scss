@@ -1,0 +1,53 @@
+.med-review {
+  &__loading,
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    justify-content: center;
+  }
+
+  &__panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 16px;
+
+    @media (max-width: 960px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__panel {
+    border: 1px solid var(--mat-divider-color);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  &__panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    padding: 12px 16px;
+    background: var(--mat-sys-surface-dim);
+    border-bottom: 1px solid var(--mat-divider-color);
+  }
+
+  &__table {
+    width: 100%;
+    font-size: 13px;
+  }
+
+  &__no-interaction {
+    color: var(--mat-sys-outline);
+    font-size: 12px;
+  }
+
+  &__error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+    border-radius: 8px;
+    margin: 16px;
+  }
+}

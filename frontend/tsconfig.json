@@ -13,7 +13,7 @@
     "sourceMap": true,
     "declaration": false,
     "experimentalDecorators": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
@@ -24,6 +24,8 @@
       "@app/*": ["src/app/*"],
       "@core/*": ["src/app/core/*"],
       "@features/*": ["src/app/features/*"],
+      "@shared/*": ["src/app/shared/*"],
+      "@env/*": ["src/environments/*"],
       "@environments/*": ["src/environments/*"]
     }
   },

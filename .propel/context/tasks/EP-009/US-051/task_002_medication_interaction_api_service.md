@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Service Layer
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [US-030, US-031]
@@ -16,7 +16,7 @@ upstream: [US-030, US-031]
 # TASK-002: Implement `MedicationApiService` and `InteractionAlertApiService`
 
 > **Story:** US-051 | **Epic:** EP-009 | **Sprint:** 2 | **Layer:** Frontend — Service Layer | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

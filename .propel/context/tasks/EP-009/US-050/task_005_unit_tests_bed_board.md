@@ -1,7 +1,7 @@
 # TASK-005: Unit Tests — BedBoard, BedDetailPanel, Filter, and SignalR Handler
 
 > **Story:** US-050 | **Effort:** 6 hours | **Layer:** Frontend — Testing
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

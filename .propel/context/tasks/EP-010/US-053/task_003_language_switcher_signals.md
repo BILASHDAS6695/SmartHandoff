@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend / Angular
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [US-053/TASK-002, FR-022]

@@ -7,7 +7,7 @@ sprint: 2
 layer: Review / QA
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [US-052/TASK-001, US-052/TASK-002, US-052/TASK-003, US-052/TASK-004, US-052/TASK-005, US-052/TASK-006]

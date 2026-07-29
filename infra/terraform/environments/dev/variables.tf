@@ -71,3 +71,30 @@ variable "cloudbuild_sa_email" {
   type        = string
   description = "Cloud Build service account email — used to run pipeline and rollback trigger builds"
 }
+
+variable "db_name" {
+  type        = string
+  description = "PostgreSQL database name"
+  default     = "smarthandoff"
+}
+
+variable "db_user" {
+  type        = string
+  description = "PostgreSQL user name (non-sensitive; password from Secret Manager)"
+  default     = "smarthandoff_app"
+}
+
+variable "bq_export_container_image" {
+  type        = string
+  description = "Full URI for the bq-export Cloud Run job container image"
+}
+
+variable "deidentification_salt_secret_id" {
+  type        = string
+  description = "Secret Manager ID for the monthly de-identification salt"
+}
+
+variable "data_team_alert_email" {
+  type        = string
+  description = "Email for data team alert notifications on BigQuery export failure"
+}

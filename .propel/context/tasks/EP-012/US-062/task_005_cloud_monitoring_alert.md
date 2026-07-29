@@ -7,7 +7,7 @@ sprint: 2
 layer: IaC / Observability
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [TASK-004, DR-017]
@@ -16,7 +16,7 @@ upstream: [TASK-004, DR-017]
 # TASK-005: Cloud Monitoring Alert — Export Job Failure Notification
 
 > **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** IaC / Observability | **Est:** 1 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

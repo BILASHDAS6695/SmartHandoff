@@ -7,8 +7,8 @@ sprint: 2
 layer: Testing
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer + Frontend Engineer
 upstream: [US-063/TASK-001, US-063/TASK-002, US-063/TASK-003, US-063/TASK-004, US-063/TASK-005]
 ---
@@ -16,7 +16,7 @@ upstream: [US-063/TASK-001, US-063/TASK-002, US-063/TASK-003, US-063/TASK-004, U
 # TASK-006: Unit Tests — CSV PHI Guard, PDF Content Validation & RBAC Enforcement
 
 > **Story:** US-063 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Testing | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Draft | **Date:** 2026-07-29
 
 ---
 

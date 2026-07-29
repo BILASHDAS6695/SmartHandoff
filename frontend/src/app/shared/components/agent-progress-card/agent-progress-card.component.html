@@ -1,0 +1,36 @@
+<div class="agent-progress" aria-label="Agent progress for this encounter">
+  <h3 class="agent-progress__title">Agent Progress</h3>
+  <ul class="agent-progress__list" role="list">
+    <li
+      *ngFor="let task of tasks; trackBy: trackByAgent"
+      class="agent-progress__row"
+      role="listitem"
+      [attr.aria-label]="agentDisplayNames[task.agentType] + ': ' + task.status + (task.slaBreach ? ', SLA breached' : '')"
+    >
+      <!-- Status icon -->
+      <mat-icon
+        class="agent-progress__icon"
+        [ngClass]="statusClass(task.status)"
+        [matTooltip]="task.status"
+        aria-hidden="true"
+      >
+        {{ task.status | agentStatusIcon }}
+      </mat-icon>
+
+      <!-- Agent label -->
+      <span class="agent-progress__label">
+        {{ agentDisplayNames[task.agentType] }}
+      </span>
+
+      <!-- SLA breach clock -->
+      <mat-icon
+        *ngIf="task.slaBreach"
+        class="agent-progress__sla-icon"
+        [matTooltip]="'SLA breached at ' + (task.slaDeadline | date:'HH:mm')"
+        aria-label="SLA breached"
+      >
+        alarm
+      </mat-icon>
+    </li>
+  </ul>
+</div>

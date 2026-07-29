@@ -1,0 +1,99 @@
+<h2 mat-dialog-title id="alert-modal-title">Resolve Drug Interaction Alert</h2>
+
+<mat-dialog-content aria-labelledby="alert-modal-title">
+
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="alert-modal__loading" aria-busy="true">
+    <mat-spinner diameter="32"></mat-spinner>
+    <span>Loading alert details…</span>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="hasError() && !isLoading()" role="alert" class="alert-modal__error">
+    <span>Failed to load alert details. Please close and try again.</span>
+  </div>
+
+  <!-- Alert detail -->
+  <ng-container *ngIf="alert() as a">
+    <div class="alert-modal__detail">
+      <p class="alert-modal__drug-pair">
+        <strong>{{ a.drug1Name }}</strong> ↔ <strong>{{ a.drug2Name }}</strong>
+      </p>
+      <p class="alert-modal__severity" [attr.data-severity]="a.severity">
+        Severity: <strong>{{ a.severity }}</strong>
+      </p>
+      <div class="alert-modal__description">
+        <p>{{ descriptionText }}</p>
+        <button
+          *ngIf="showReadMore"
+          mat-button
+          type="button"
+          (click)="toggleDescription()"
+          aria-expanded="false"
+        >
+          Read more
+        </button>
+        <button
+          *ngIf="descriptionExpanded()"
+          mat-button
+          type="button"
+          (click)="toggleDescription()"
+          aria-expanded="true"
+        >
+          Show less
+        </button>
+      </div>
+    </div>
+
+    <!-- Resolution form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" id="resolution-form">
+      <mat-radio-group
+        formControlName="resolutionType"
+        aria-label="Select resolution type"
+        class="alert-modal__radio-group"
+      >
+        <mat-radio-button
+          *ngFor="let option of resolutionOptions"
+          [value]="option.value"
+        >
+          {{ option.label }}
+        </mat-radio-button>
+      </mat-radio-group>
+
+      <mat-error *ngIf="form.get('resolutionType')?.touched && form.get('resolutionType')?.hasError('required')">
+        Please select a resolution type.
+      </mat-error>
+
+      <mat-form-field appearance="outline" class="alert-modal__note-field">
+        <mat-label>Clinician Note (optional)</mat-label>
+        <textarea
+          matInput
+          formControlName="note"
+          rows="3"
+          maxlength="500"
+          aria-label="Add a clinician note for this resolution"
+          placeholder="Add context or rationale…"
+        ></textarea>
+        <mat-hint align="end">{{ form.get('note')?.value?.length ?? 0 }}/500</mat-hint>
+      </mat-form-field>
+    </form>
+  </ng-container>
+
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="isSubmitting()">
+    Cancel
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    type="submit"
+    form="resolution-form"
+    [disabled]="form.invalid || isSubmitting()"
+    aria-label="Submit alert resolution"
+  >
+    <mat-spinner *ngIf="isSubmitting()" diameter="16" class="alert-modal__btn-spinner"></mat-spinner>
+    <span *ngIf="!isSubmitting()">Resolve Alert</span>
+  </button>
+</mat-dialog-actions>

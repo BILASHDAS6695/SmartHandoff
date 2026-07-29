@@ -1,5 +1,13 @@
 import 'jest-preset-angular/setup-jest';
 
+// Mock TextEncoder/TextDecoder for jsPDF
+if (!global.TextEncoder) {
+  global.TextEncoder = require('util').TextEncoder;
+}
+if (!global.TextDecoder) {
+  global.TextDecoder = require('util').TextDecoder;
+}
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -16,7 +24,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
+(global as any).IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
   observe() {}
@@ -24,7 +32,7 @@ global.IntersectionObserver = class IntersectionObserver {
   takeRecords() {
     return [];
   }
-};
+} as any;
 
 // Suppress console errors in tests (optional)
 global.console = {

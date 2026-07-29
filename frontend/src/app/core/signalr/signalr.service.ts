@@ -1,17 +1,19 @@
 /**
- * SignalRService — manages the Azure SignalR WebSocket connection for real-time
- * task_updated events on the care team dashboard.
+ * SignalRService — manages the WebSocket connection to the FastAPI SignalR hub
+ * for real-time ADT events, task updates, alerts, and bed status changes.
  *
- * US-022 requirements:
- *   - HubConnectionBuilder with accessTokenFactory (Scenario 4 — JWT auth)
- *   - withAutomaticReconnect with custom retry schedule (Scenario 3 — <5s reconnect)
- *   - task_updated event exposes taskUpdated$ Observable (Scenario 1 — <1s latency)
- *   - On reconnect, re-fetches missed tasks (Scenario 3 — no missed updates)
+ * US-048 requirements:
+ *   - HubConnectionBuilder with accessTokenFactory (JWT auth via query param)
+ *   - withAutomaticReconnect with exponential backoff [0, 2000, 5000, 10000, 30000]ms
+ *   - Exposes 4 typed Observable streams: adtEvent$, taskUpdated$, alertCreated$, bedStatusChanged$
+ *   - Maintains connectionState signal for UI indicators
+ *   - Tracks lastEventTime for REST fallback polls after reconnect
+ *   - Invokes JoinGroups on connect and reconnect for server-side filtering
  *
- * Design: Angular standalone service (providedIn: 'root'); uses inject() API.
- * RxJS Subject bridges SignalR callback to Angular Observable.
+ * Design: Angular standalone service (providedIn: 'root'); uses inject() API and signals.
+ * RxJS Subject bridges SignalR callbacks to Angular Observables.
  */
-import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import {
   HubConnection,
   HubConnectionBuilder,
@@ -21,136 +23,198 @@ import {
 import { Subject, Observable } from 'rxjs';
 
 import { AuthService } from '../auth/auth.service';
-import { EncounterTasksApiService } from '../api/encounter-tasks-api.service';
 import { environment } from '../../../environments/environment';
+import {
+  AdtEventPayload,
+  AlertCreatedPayload,
+  BedStatusChangedPayload,
+  JoinGroupsRequest,
+  SignalRConnectionState,
+  TaskUpdatedPayload,
+} from './signalr.models';
+import type { RiskScoreUpdatedEvent } from '../../features/patients/models/risk-score-updated.event';
 
-/** Payload received from the SignalR `task_updated` event.
- *  Mirrors TaskUpdatedPayload on the FastAPI backend (US-022 TASK-001). */
-export interface TaskUpdatedEvent {
-  task_id: string;
-  encounter_id: string;
-  unit_id: string;
-  role_name: string;
-  agent_type: string;
-  previous_status: string;
-  new_status: string;
-  updated_at: string;
-}
-
-/** Retry intervals for withAutomaticReconnect — targets <5s reconnect (US-022 Scenario 3). */
-const RECONNECT_DELAYS_MS = [0, 1000, 2000, 5000, 10000];
+/** Retry intervals for withAutomaticReconnect — exponential backoff as per US-048 Technical Notes. */
+const RECONNECT_DELAYS_MS = [0, 2000, 5000, 10000, 30000];
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService implements OnDestroy {
   private readonly authService = inject(AuthService);
-  private readonly encounterTasksApi = inject(EncounterTasksApiService);
 
-  private connection: HubConnection | null = null;
-  private readonly _taskUpdated$ = new Subject<TaskUpdatedEvent>();
-  private currentEncounterId: string | null = null;
+  // ---------------------------------------------------------------------------
+  // Connection state — writable signal for template binding
+  // ---------------------------------------------------------------------------
+  readonly connectionState = signal<SignalRConnectionState>('Disconnected');
 
-  /** Observable of task_updated events. Subscribe in DashboardComponent. */
-  readonly taskUpdated$: Observable<TaskUpdatedEvent> = this._taskUpdated$.asObservable();
+  // ---------------------------------------------------------------------------
+  // Typed event streams — components subscribe to these Observables
+  // ---------------------------------------------------------------------------
+  private readonly _adtEvent$ = new Subject<AdtEventPayload>();
+  private readonly _taskUpdated$ = new Subject<TaskUpdatedPayload>();
+  private readonly _alertCreated$ = new Subject<AlertCreatedPayload>();
+  private readonly _bedStatusChanged$ = new Subject<BedStatusChangedPayload>();
+  private readonly _riskScoreUpdated$ = new Subject<RiskScoreUpdatedEvent>();
+  private readonly _documentCreated$ = new Subject<{ documentId: string; status: string }>();
+  private readonly _alertResolved$ = new Subject<{ alertId: string; status: string }>();
 
-  /** Initiates the SignalR connection for the given encounter context.
-   *
-   * Calls the negotiate endpoint (TASK-002) — the accessTokenFactory ensures the
-   * JWT is attached to every connection and reconnection attempt.
-   *
-   * @param encounterId - Active encounter ID; used to re-fetch missed tasks on reconnect.
-   */
-  async startConnection(encounterId: string): Promise<void> {
-    if (this.connection?.state === HubConnectionState.Connected) {
-      return;
-    }
+  readonly adtEvent$: Observable<AdtEventPayload> = this._adtEvent$.asObservable();
+  readonly taskUpdated$: Observable<TaskUpdatedPayload> =
+    this._taskUpdated$.asObservable();
+  readonly alertCreated$: Observable<AlertCreatedPayload> =
+    this._alertCreated$.asObservable();
+  readonly bedStatusChanged$: Observable<BedStatusChangedPayload> =
+    this._bedStatusChanged$.asObservable();
+  readonly riskScoreUpdated$: Observable<RiskScoreUpdatedEvent> = this._riskScoreUpdated$.asObservable();
+  readonly documentCreated$: Observable<{ documentId: string; status: string }> = this._documentCreated$.asObservable();
+  readonly alertResolved$: Observable<{ alertId: string; status: string }> = this._alertResolved$.asObservable();
 
-    this.currentEncounterId = encounterId;
-
-    this.connection = new HubConnectionBuilder()
-      .withUrl(`${environment.apiBaseUrl}/api/v1/signalr/negotiate`, {
-        // US-022 Technical Notes: accessTokenFactory injects JWT for every connection.
-        // The negotiate endpoint (TASK-002) validates this JWT before issuing the
-        // Azure SignalR client token.
-        accessTokenFactory: () => this.authService.getToken() ?? '',
-      })
-      .withAutomaticReconnect(RECONNECT_DELAYS_MS)
-      .configureLogging(environment.production ? LogLevel.Warning : LogLevel.Information)
-      .build();
-
-    this._registerEventHandlers();
-    this._registerReconnectHandlers();
-
-    await this.connection.start();
+  // Emits the timestamp string of the last successfully received event.
+  // Used by the REST fallback poll to fetch missed events after reconnect.
+  private _lastEventTime: string | null = null;
+  get lastEventTime(): string | null {
+    return this._lastEventTime;
   }
 
-  /** Gracefully stops the connection. Call on component destroy or logout. */
-  async stopConnection(): Promise<void> {
+  private connection: HubConnection | null = null;
+
+
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Builds and starts the SignalR hub connection.
+   * Invokes `JoinGroups` on the hub immediately after connection is established.
+   *
+   * @param joinRequest - Units and roles for server-side group subscription
+   */
+  async connect(joinRequest: JoinGroupsRequest): Promise<void> {
+    if (this.connection?.state === HubConnectionState.Connected) {
+      return; // Already connected — idempotent
+    }
+
+    this.connection = this.buildConnection();
+    this.registerHandlers();
+    this.registerLifecycleHooks(joinRequest);
+
+    this.connectionState.set('Connecting');
+    try {
+      await this.connection.start();
+      // Transition to Connected state after successful start
+      this.connectionState.set('Connected');
+      // Join groups on initial connection
+      await this.joinGroups(joinRequest);
+    } catch (error) {
+      this.connectionState.set('Disconnected');
+      throw error;
+    }
+  }
+
+  /** Gracefully closes the hub connection. */
+  async disconnect(): Promise<void> {
     if (this.connection) {
-      await this.connection.stop();
-      this.connection = null;
+      try {
+        await this.connection.stop();
+      } catch (error) {
+        console.error('Error stopping SignalR connection:', error);
+      }
+      this.connectionState.set('Disconnected');
     }
   }
 
   ngOnDestroy(): void {
-    this.stopConnection().catch(() => {
-      // Swallow stop errors on destroy — connection may already be closed.
-    });
+    void this.disconnect();
+    this._adtEvent$.complete();
     this._taskUpdated$.complete();
+    this._alertCreated$.complete();
+    this._bedStatusChanged$.complete();
+    this._riskScoreUpdated$.complete();
+    this._documentCreated$.complete();
+    this._alertResolved$.complete();
   }
 
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private _registerEventHandlers(): void {
+  private buildConnection(): HubConnection {
+    return new HubConnectionBuilder()
+      .withUrl(`${environment.apiBaseUrl}/hubs/dashboard`, {
+        // JWT in query param — SignalR limitation for WS upgrade handshake.
+        // Token is sourced from in-memory store (never localStorage).
+        accessTokenFactory: () => this.authService.getToken() ?? '',
+      })
+      // Exponential backoff: immediate, 2s, 5s, 10s, 30s (US-048 Technical Notes)
+      .withAutomaticReconnect(RECONNECT_DELAYS_MS)
+      .configureLogging(
+        environment.production ? LogLevel.Warning : LogLevel.Information,
+      )
+      .build();
+  }
+
+  private registerHandlers(): void {
     if (!this.connection) return;
 
-    // US-022 Scenario 1: listen for task_updated events from the hub.
-    this.connection.on('task_updated', (payload: TaskUpdatedEvent) => {
+    this.connection.on('adt_event_received', (payload: AdtEventPayload) => {
+      this._lastEventTime = payload.timestamp;
+      this._adtEvent$.next(payload);
+    });
+
+    this.connection.on('task_updated', (payload: TaskUpdatedPayload) => {
+      if (payload.completedAt) {
+        this._lastEventTime = payload.completedAt;
+      }
       this._taskUpdated$.next(payload);
+    });
+
+    this.connection.on('alert_created', (payload: AlertCreatedPayload) => {
+      this._lastEventTime = payload.timestamp;
+      this._alertCreated$.next(payload);
+    });
+
+    this.connection.on('bed_status_changed', (payload: BedStatusChangedPayload) => {
+      this._lastEventTime = payload.timestamp;
+      this._bedStatusChanged$.next(payload);
+    });
+
+    this.connection.on('risk_score_updated', (payload: RiskScoreUpdatedEvent) => {
+      this._riskScoreUpdated$.next(payload);
+    });
+
+    this.connection.on('document_created', (payload: { documentId: string; status: string }) => {
+      this._documentCreated$.next(payload);
+    });
+
+    this.connection.on('alert_resolved', (payload: { alertId: string; status: string }) => {
+      this._alertResolved$.next(payload);
     });
   }
 
-  private _registerReconnectHandlers(): void {
+  private registerLifecycleHooks(joinRequest: JoinGroupsRequest): void {
     if (!this.connection) return;
 
+    this.connection.onclose(() => {
+      this.connectionState.set('Disconnected');
+    });
+
     this.connection.onreconnecting(() => {
-      // Dashboard can show a "Reconnecting…" indicator via taskUpdated$ subscribers.
+      this.connectionState.set('Reconnecting');
     });
 
     this.connection.onreconnected(async () => {
-      if (this.currentEncounterId) {
-        try {
-          const tasks = await this.encounterTasksApi
-            .getTasksForEncounter(this.currentEncounterId)
-            .toPromise();
-          if (tasks) {
-            // Emit a synthetic task_updated for each task so the dashboard
-            // re-renders to the current server state without requiring a full reload.
-            tasks.forEach(task => {
-              this._taskUpdated$.next({
-                task_id: task.id,
-                encounter_id: this.currentEncounterId!,
-                unit_id: task.unit_id ?? '',
-                role_name: task.target_role ?? '',
-                agent_type: task.agent_type,
-                previous_status: task.status,
-                new_status: task.status,
-                updated_at: task.completed_time ?? task.start_time,
-              });
-            });
-          }
-        } catch (error) {
-          // Reconnect re-fetch is best-effort — log only.
-          console.error('Failed to re-fetch tasks on reconnect:', error);
-        }
-      }
+      this.connectionState.set('Connected');
+      // Re-join groups after reconnect — server clears group memberships on disconnect
+      await this.joinGroups(joinRequest);
     });
+  }
 
-    this.connection.onclose(() => {
-      // Connection permanently closed (all retry attempts exhausted).
-      // Dashboard should surface an actionable "Connection lost — please refresh" banner.
-      console.error('SignalR connection closed permanently');
-    });
+  private async joinGroups(request: JoinGroupsRequest): Promise<void> {
+    if (this.connection?.state === HubConnectionState.Connected) {
+      try {
+        await this.connection.invoke('JoinGroups', request);
+      } catch (error) {
+        console.error('Error joining groups:', error);
+      }
+    }
   }
 }

@@ -1,0 +1,118 @@
+<!-- Loading state -->
+<div *ngIf="isLoading()" class="med-review__loading" aria-busy="true" aria-label="Loading medication reconciliation">
+  <mat-spinner diameter="40"></mat-spinner>
+</div>
+
+<!-- Error state -->
+<div *ngIf="hasError() && !isLoading()" class="med-review__error" role="alert">
+  <mat-icon aria-hidden="true">error_outline</mat-icon>
+  <span>Failed to load medication reconciliation data.</span>
+  <button mat-stroked-button color="warn" (click)="load()">Retry</button>
+</div>
+
+<!-- Three-panel reconciliation table -->
+<ng-container *ngIf="reconciliation() as rec">
+  <div class="med-review__panels">
+
+    <!-- Pre-Admit Panel -->
+    <section class="med-review__panel" aria-labelledby="pre-admit-heading">
+      <h2 id="pre-admit-heading" class="med-review__panel-title">Pre-Admit</h2>
+      <table mat-table [dataSource]="rec.preAdmit" class="med-review__table" aria-label="Pre-Admit medications">
+        <ng-container matColumnDef="drugName">
+          <th mat-header-cell *matHeaderCellDef>Drug</th>
+          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
+        </ng-container>
+        <ng-container matColumnDef="dose">
+          <th mat-header-cell *matHeaderCellDef>Dose</th>
+          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
+        </ng-container>
+        <ng-container matColumnDef="frequency">
+          <th mat-header-cell *matHeaderCellDef>Frequency</th>
+          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>Interaction</th>
+          <td mat-cell *matCellDef="let row">
+            <app-risk-badge
+              *ngIf="row.interactionSeverity"
+              [tier]="row.interactionSeverity"
+              [attr.aria-label]="row.interactionSeverity + ' severity interaction'"
+              (click)="onBadgeClick(row)"
+              style="cursor: pointer"
+            />
+            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </section>
+
+    <!-- Inpatient Panel -->
+    <section class="med-review__panel" aria-labelledby="inpatient-heading">
+      <h2 id="inpatient-heading" class="med-review__panel-title">Inpatient</h2>
+      <table mat-table [dataSource]="rec.inpatient" class="med-review__table" aria-label="Inpatient medications">
+        <ng-container matColumnDef="drugName">
+          <th mat-header-cell *matHeaderCellDef>Drug</th>
+          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
+        </ng-container>
+        <ng-container matColumnDef="dose">
+          <th mat-header-cell *matHeaderCellDef>Dose</th>
+          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
+        </ng-container>
+        <ng-container matColumnDef="frequency">
+          <th mat-header-cell *matHeaderCellDef>Frequency</th>
+          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>Interaction</th>
+          <td mat-cell *matCellDef="let row">
+            <app-risk-badge
+              *ngIf="row.interactionSeverity"
+              [tier]="row.interactionSeverity"
+              (click)="onBadgeClick(row)"
+              style="cursor: pointer"
+            />
+            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </section>
+
+    <!-- Discharge Panel -->
+    <section class="med-review__panel" aria-labelledby="discharge-heading">
+      <h2 id="discharge-heading" class="med-review__panel-title">Discharge</h2>
+      <table mat-table [dataSource]="rec.discharge" class="med-review__table" aria-label="Discharge medications">
+        <ng-container matColumnDef="drugName">
+          <th mat-header-cell *matHeaderCellDef>Drug</th>
+          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
+        </ng-container>
+        <ng-container matColumnDef="dose">
+          <th mat-header-cell *matHeaderCellDef>Dose</th>
+          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
+        </ng-container>
+        <ng-container matColumnDef="frequency">
+          <th mat-header-cell *matHeaderCellDef>Frequency</th>
+          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
+        </ng-container>
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>Interaction</th>
+          <td mat-cell *matCellDef="let row">
+            <app-risk-badge
+              *ngIf="row.interactionSeverity"
+              [tier]="row.interactionSeverity"
+              (click)="onBadgeClick(row)"
+              style="cursor: pointer"
+            />
+            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </section>
+
+  </div>
+</ng-container>

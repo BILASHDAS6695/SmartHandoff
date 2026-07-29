@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Feature Component
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [FR-072, UI-005, US-030]
@@ -16,7 +16,7 @@ upstream: [FR-072, UI-005, US-030]
 # TASK-001: Implement `MedicationReviewComponent` — Three-Column MatTable with Severity Badges
 
 > **Story:** US-051 | **Epic:** EP-009 | **Sprint:** 2 | **Layer:** Frontend — Feature Component | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

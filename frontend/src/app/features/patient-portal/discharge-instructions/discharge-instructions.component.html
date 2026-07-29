@@ -1,0 +1,172 @@
+<!-- Discharge Instructions Page — US-053
+     Renders five structured sections with mat-icon headers.
+     Language switcher at top right updates activeLanguage signal (no API call).
+
+     Design refs:
+       US-053 AC Scenario 1    — preferred_language initialised from JWT; FR shown on load
+       US-053 AC Scenario 3    — five sections with icons; mobile single-column layout
+       US-053 DoD              — mat-icon healthcare icons per section
+       NFR-034                 — Angular Material components; WCAG 2.1 AA built-in
+-->
+
+<main class="instructions-page" aria-labelledby="instructions-heading">
+
+  <!-- Offline banner (US-054) -->
+  <app-offline-banner />
+
+  <!-- Loading state -->
+  <div *ngIf="isLoading()" class="loading-container" aria-live="polite" aria-busy="true">
+    <mat-spinner diameter="48" aria-label="Loading discharge instructions"></mat-spinner>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="errorMessage()" class="error-banner" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ errorMessage() }}</span>
+  </div>
+
+  <!-- Instructions content -->
+  <ng-container *ngIf="!isLoading() && !errorMessage() && currentContent() as content">
+
+    <!-- Page header + language switcher + action buttons -->
+    <div class="instructions-header">
+      <h1 id="instructions-heading" class="instructions-title">
+        Your Discharge Instructions
+      </h1>
+
+      <div class="header-controls">
+        <!-- Action buttons: PDF download + PWA install (US-054) -->
+        <div class="action-buttons">
+          <button
+            mat-button
+            (click)="downloadPdf()"
+            aria-label="Download discharge instructions as PDF"
+            class="action-button">
+            <mat-icon>download</mat-icon>
+            <span>Download PDF</span>
+          </button>
+
+          @if (canInstallPwa()) {
+            <button
+              mat-button
+              (click)="installApp()"
+              aria-label="Install SmartHandoff as an app on this device"
+              class="action-button">
+              <mat-icon>get_app</mat-icon>
+              <span>Add to Home Screen</span>
+            </button>
+          }
+        </div>
+
+        <!-- Language switcher -->
+        <mat-button-toggle-group
+          class="language-switcher"
+          [value]="activeLanguage()"
+          (change)="onLanguageChange($event.value)"
+          aria-label="Select language for discharge instructions"
+          hideSingleSelectionIndicator>
+          <mat-button-toggle
+            *ngFor="let lang of availableLanguages()"
+            [value]="lang"
+            [attr.aria-pressed]="activeLanguage() === lang">
+            {{ languageLabels[lang] }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+    </div>
+
+    <!-- Instruction sections -->
+    <div class="sections-container">
+
+      <!-- Medications section -->
+      <section
+        *ngIf="sections[0] as meta"
+        class="instruction-section"
+        aria-labelledby="section-medications">
+        <div class="section-header">
+          <mat-icon aria-hidden="true">{{ meta.icon }}</mat-icon>
+          <h2 id="section-medications" class="section-title">Your Medications</h2>
+        </div>
+        <mat-divider></mat-divider>
+        <ul class="medication-list" aria-label="Medication list">
+          <li *ngFor="let med of content.medications" class="medication-item">
+            <strong>{{ med.name }}</strong> — {{ med.dosage }}, {{ med.frequency }}
+            <span *ngIf="med.notes" class="med-notes">{{ med.notes }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Activity section -->
+      <section
+        *ngIf="sections[1] as meta"
+        class="instruction-section"
+        aria-labelledby="section-activity">
+        <div class="section-header">
+          <mat-icon aria-hidden="true">{{ meta.icon }}</mat-icon>
+          <h2 id="section-activity" class="section-title">Activity</h2>
+        </div>
+        <mat-divider></mat-divider>
+        <p class="section-body">{{ content.activity }}</p>
+      </section>
+
+      <!-- Diet section -->
+      <section
+        *ngIf="sections[2] as meta"
+        class="instruction-section"
+        aria-labelledby="section-diet">
+        <div class="section-header">
+          <mat-icon aria-hidden="true">{{ meta.icon }}</mat-icon>
+          <h2 id="section-diet" class="section-title">Diet</h2>
+        </div>
+        <mat-divider></mat-divider>
+        <p class="section-body">{{ content.diet }}</p>
+      </section>
+
+      <!-- Follow-up Appointments section -->
+      <section
+        *ngIf="sections[3] as meta"
+        class="instruction-section"
+        aria-labelledby="section-followup">
+        <div class="section-header">
+          <mat-icon aria-hidden="true">{{ meta.icon }}</mat-icon>
+          <h2 id="section-followup" class="section-title">Follow-up Appointments</h2>
+        </div>
+        <mat-divider></mat-divider>
+        <ul class="followup-list" aria-label="Follow-up appointments">
+          <li *ngFor="let appt of content.follow_up" class="followup-item">
+            <strong>{{ appt.provider }}</strong> — {{ appt.timeframe }}
+            <span *ngIf="appt.contact" class="followup-contact">{{ appt.contact }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Warning Signs section — appWarningSection directive applied (TASK-004) -->
+      <section
+        *ngIf="sections[4] as meta"
+        class="instruction-section"
+        appWarningSection
+        aria-labelledby="section-warning">
+        <div class="section-header">
+          <mat-icon aria-hidden="true" class="warning-icon">{{ meta.icon }}</mat-icon>
+          <h2 id="section-warning" class="section-title">
+            ⚠ Call 911 immediately if you experience:
+          </h2>
+        </div>
+        <mat-divider></mat-divider>
+        <ul class="warning-list" aria-label="Warning signs requiring immediate action" role="list">
+          <li *ngFor="let sign of content.warning_signs" class="warning-item">
+            {{ sign }}
+          </li>
+        </ul>
+      </section>
+
+    </div>
+  </ng-container>
+
+  <!-- Appointment Summary (US-055) -->
+  <app-appointment-summary></app-appointment-summary>
+
+  <!-- Chatbot Widget (US-055) -->
+  <app-chatbot-widget></app-chatbot-widget>
+
+</main>

@@ -7,8 +7,8 @@ sprint: 2
 layer: Backend / API
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-061/TASK-001, US-057]
 ---
@@ -16,7 +16,7 @@ upstream: [US-061/TASK-001, US-057]
 # TASK-002: GET /api/v1/analytics/kpis — FastAPI Endpoint with RBAC & Unit Scoping
 
 > **Story:** US-061 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / API | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

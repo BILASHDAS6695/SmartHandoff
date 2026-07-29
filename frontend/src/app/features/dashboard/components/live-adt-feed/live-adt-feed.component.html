@@ -1,0 +1,43 @@
+<!-- Live ADT Events panel — real-time feed with virtual scrolling -->
+<section class="adt-feed-panel" aria-label="Live ADT Events">
+
+  <!-- Panel header with connection status indicator -->
+  <header class="adt-feed-panel__header">
+    <h2 class="adt-feed-panel__title">Live ADT Events</h2>
+    <span
+      class="connection-indicator"
+      [class.connection-indicator--connected]="connectionState() === 'Connected'"
+      [class.connection-indicator--reconnecting]="connectionState() === 'Reconnecting'"
+      [class.connection-indicator--disconnected]="connectionState() === 'Disconnected'"
+      [matTooltip]="connectionState()"
+      [attr.aria-label]="'SignalR connection status: ' + connectionState()"
+      role="status"
+    ></span>
+  </header>
+
+  <!-- Virtual scroll viewport — only renders visible rows -->
+  <cdk-virtual-scroll-viewport
+    [itemSize]="rowHeight"
+    class="adt-feed-panel__viewport"
+    aria-live="polite"
+    aria-label="ADT events feed"
+  >
+    <div *cdkVirtualFor="let event of adtEvents(); trackBy: trackByEncounterId"
+         class="event-row"
+         role="listitem">
+      <span class="event-badge" [class]="'event-badge ' + eventTypeCssClass(event.eventType)">
+        {{ eventTypeLabel(event.eventType) }}
+      </span>
+      <span class="event-unit">{{ event.patientUnit }}</span>
+      <span class="event-encounter">{{ event.encounterId }}</span>
+      <span class="event-timestamp">{{ event.timestamp | relativeTime }}</span>
+    </div>
+  </cdk-virtual-scroll-viewport>
+
+  <!-- Empty state -->
+  <div *ngIf="(adtEvents() | slice:0:1).length === 0" class="adt-feed-panel__empty">
+    <mat-icon>inbox</mat-icon>
+    <p>Waiting for ADT events...</p>
+  </div>
+
+</section>

@@ -7,8 +7,8 @@ sprint: 2
 layer: Frontend / Component
 estimate: 5h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Frontend Engineer
 upstream: [US-061/TASK-003, US-061/TASK-004]
 ---
@@ -16,7 +16,7 @@ upstream: [US-061/TASK-003, US-061/TASK-004]
 # TASK-005: Five KPI Chart Components — Line, Bar, Gauge, Doughnut & Stacked Bar via ng2-charts
 
 > **Story:** US-061 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Frontend / Component | **Est:** 5 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

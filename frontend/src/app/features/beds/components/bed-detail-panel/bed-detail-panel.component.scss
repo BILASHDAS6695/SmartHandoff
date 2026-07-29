@@ -1,0 +1,89 @@
+.bed-detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+  transform: translateX(100%);
+  transition: transform 300ms ease-in-out;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+
+  &--open { transform: translateX(0); }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+  }
+
+  &__body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  &__status {
+    margin: 0;
+    font-size: 14px;
+    color: #424242;
+
+    strong {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+    }
+  }
+
+  &__patient {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  &__discharge {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  &__nurse {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  &__assign-btn {
+    align-self: flex-start;
+    margin-top: 8px;
+  }
+}
+
+// Risk tier chip colours
+.risk-chip--high {
+  background-color: #ffcdd2 !important;
+  color: #b71c1c !important;
+}
+
+.risk-chip--medium {
+  background-color: #ffe0b2 !important;
+  color: #e65100 !important;
+}
+
+.risk-chip--low {
+  background-color: #c8e6c9 !important;
+  color: #1b5e20 !important;
+}

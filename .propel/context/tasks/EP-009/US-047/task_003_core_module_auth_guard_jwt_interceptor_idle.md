@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend / Core
 estimate: 4h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [TASK-001, US-056, SEC-001, NFR-034]

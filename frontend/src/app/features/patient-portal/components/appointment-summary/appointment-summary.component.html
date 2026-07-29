@@ -1,0 +1,54 @@
+<!-- AppointmentSummaryComponent
+     US-055 AC Scenario 2: type, date, time, calendar-add button per appointment
+-->
+<section class="appointment-summary" aria-labelledby="appointments-heading">
+  <h2 id="appointments-heading" class="appointments-title">Your Appointments</h2>
+
+  @if (isLoading()) {
+    <mat-spinner diameter="40" aria-label="Loading appointments"></mat-spinner>
+  } @else if (hasError()) {
+    <p class="appointments-error" role="alert">
+      Unable to load appointments. Please refresh the page or contact your care team.
+    </p>
+  } @else if (appointments().length === 0) {
+    <p class="appointments-empty">No upcoming appointments scheduled.</p>
+  } @else {
+    <ul class="appointment-list" role="list">
+      @for (appt of appointments(); track appt.id) {
+        <li class="appointment-card" role="listitem">
+          <mat-card>
+            <mat-card-content>
+              <div class="appt-type">
+                <mat-icon aria-hidden="true">event</mat-icon>
+                <span>{{ appt.type }}</span>
+              </div>
+              <p class="appt-date">
+                <strong>Date:</strong> {{ appt.date | date:'fullDate' }}
+              </p>
+              @if (appt.time) {
+                <p class="appt-time">
+                  <strong>Time:</strong> {{ appt.time | date:'shortTime':'UTC' }}
+                </p>
+              }
+              @if (appt.provider) {
+                <p class="appt-provider">
+                  <strong>Provider:</strong> {{ appt.provider }}
+                </p>
+              }
+            </mat-card-content>
+            <mat-card-actions>
+              <button
+                mat-stroked-button
+                color="primary"
+                (click)="downloadCalendar(appt)"
+                [attr.aria-label]="'Add ' + appt.type + ' on ' + (appt.date | date:'fullDate') + ' to calendar'">
+                <mat-icon>calendar_today</mat-icon>
+                Add to Calendar
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        </li>
+      }
+    </ul>
+  }
+</section>

@@ -1,0 +1,58 @@
+<aside
+  class="bed-detail-panel"
+  [class.bed-detail-panel--open]="isOpen"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="bed ? 'Bed ' + bed.bedId + ' details' : 'Bed details'">
+
+  @if (bed) {
+    <header class="bed-detail-panel__header">
+      <h2>Bed {{ bed.bedId }}</h2>
+      <button mat-icon-button aria-label="Close panel" (click)="close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <div class="bed-detail-panel__body">
+      <p class="bed-detail-panel__status">
+        Status: <strong>{{ bed.status }}</strong>
+      </p>
+
+      @if (bed.status === 'OCCUPIED') {
+        <p class="bed-detail-panel__patient">
+          Patient: <strong>{{ patientDisplayName ?? '—' }}</strong>
+        </p>
+
+        @if (bed.riskTier) {
+          <mat-chip [class]="riskChipClass" disableRipple>
+            {{ bed.riskTier }} RISK
+          </mat-chip>
+        }
+
+        <p class="bed-detail-panel__discharge">
+          Predicted discharge:
+          <strong>
+            {{ bed.predictedDischargeTime
+               ? (bed.predictedDischargeTime | date:'short')
+               : '—' }}
+          </strong>
+        </p>
+
+        <p class="bed-detail-panel__nurse">
+          Assigned nurse: <strong>{{ bed.assignedNurse ?? '—' }}</strong>
+        </p>
+      }
+
+      @if (bed.status === 'VACANT') {
+        <button
+          mat-raised-button
+          color="primary"
+          class="bed-detail-panel__assign-btn"
+          (click)="onAssignBed()"
+          [attr.aria-label]="'Assign bed ' + bed.bedId">
+          Assign Bed
+        </button>
+      }
+    </div>
+  }
+</aside>

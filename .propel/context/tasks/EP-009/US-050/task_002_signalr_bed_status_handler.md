@@ -1,7 +1,7 @@
 # TASK-002: SignalR `bed_status_changed` Handler — Real-Time Cell State Updates
 
 > **Story:** US-050 | **Effort:** 6 hours | **Layer:** Frontend — Real-Time
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

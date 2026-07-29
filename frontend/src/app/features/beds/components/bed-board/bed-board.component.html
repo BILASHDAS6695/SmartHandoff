@@ -1,0 +1,59 @@
+<!-- Skeleton loaders: shown while loading (UI-007) -->
+@if (loading()) {
+  <div class="bed-board__grid" aria-busy="true" aria-label="Loading bed board">
+    @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
+      <div class="bed-cell bed-cell--skeleton"></div>
+    }
+  </div>
+}
+
+<!-- Error state -->
+@if (error()) {
+  <p class="bed-board__error" role="alert">{{ error() }}</p>
+}
+
+<!-- Unit filter toolbar (US-050 TASK-004) -->
+@if (!loading() && !error()) {
+  <div class="bed-board__toolbar" role="toolbar" aria-label="Filter beds by unit">
+    <mat-button-toggle-group
+      [value]="selectedUnit()"
+      (change)="onUnitFilterChange($event.value)"
+      aria-label="Unit filter">
+      @for (unit of availableUnits(); track unit) {
+        <mat-button-toggle [value]="unit" [attr.aria-pressed]="selectedUnit() === unit">
+          {{ unit }}
+        </mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </div>
+}
+
+<!-- Bed grid (responsive CSS Grid layout) -->
+@if (!loading() && !error()) {
+  <div class="bed-board__grid" role="grid" aria-label="Bed board floor plan">
+    @for (bed of filteredBeds(); track bed.bedId) {
+      <app-bed-cell
+        [bed]="bed"
+        (click)="onBedClick(bed)"
+        (keydown.enter)="onBedClick(bed)">
+      </app-bed-cell>
+    }
+    @if (filteredBeds().length === 0) {
+      <p class="bed-board__empty" role="status" aria-live="polite">
+        @if (selectedUnit() === 'ALL') {
+          No beds available across all units. Please refresh or contact support.
+        } @else {
+          No available beds in unit <strong>{{ selectedUnit() }}</strong>. Try another unit.
+        }
+      </p>
+    }
+  </div>
+}
+
+<!-- Detail panel (US-050 TASK-003) -->
+@if (selectedBed()) {
+  <app-bed-detail-panel
+    [bed]="selectedBed()"
+    (closed)="onPanelClosed()">
+  </app-bed-detail-panel>
+}

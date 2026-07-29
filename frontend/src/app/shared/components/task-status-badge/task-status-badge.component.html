@@ -1,0 +1,17 @@
+<!-- Task status badge with icon and ARIA live region for screen reader announcements -->
+<span
+  class="task-badge"
+  [ngClass]="'task-badge--' + status().toLowerCase().replace('_', '-')"
+  [matTooltip]="taskName + ': ' + statusLabel()"
+  role="status"
+  [attr.aria-label]="taskName + ' status: ' + statusLabel()"
+>
+  <mat-icon
+    class="task-badge__icon"
+    [class.task-badge__icon--spinning]="isSpinning()"
+    aria-hidden="true"
+  >
+    {{ statusIcon() }}
+  </mat-icon>
+  <span class="task-badge__label">{{ statusLabel() }}</span>
+</span>

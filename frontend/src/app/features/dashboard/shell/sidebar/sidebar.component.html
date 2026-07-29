@@ -1,0 +1,19 @@
+<mat-nav-list>
+  <mat-list-item
+    *ngFor="let item of menuItems"
+    [routerLink]="item.route"
+    routerLinkActive="active"
+    (click)="onLinkClick()"
+  >
+    <mat-icon
+      matListItemIcon
+      [matBadge]="item.badge?.() || null"
+      [matBadgeHidden]="!item.badge?.() || item.badge?.() === 0"
+      matBadgeColor="warn"
+      matBadgeSize="small"
+    >
+      {{ item.icon }}
+    </mat-icon>
+    <span matListItemTitle>{{ item.label }}</span>
+  </mat-list-item>
+</mat-nav-list>

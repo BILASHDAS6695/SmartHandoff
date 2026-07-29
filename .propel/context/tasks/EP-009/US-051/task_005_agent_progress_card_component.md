@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Shared Component + Pipe
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [FR-072, UI-005]

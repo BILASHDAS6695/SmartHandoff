@@ -1,5 +1,18 @@
 /* Global styles for SmartHandoff frontend */
 
+@use '@angular/material' as mat;
+@use './styles/palette';
+@use './styles/theme' as sh-theme;
+@use './styles/variables';
+
+// Apply light theme by default
+@include sh-theme.apply-light-theme();
+
+// Apply dark theme when .dark-theme class is added to <html>
+.dark-theme {
+  @include sh-theme.apply-dark-theme();
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

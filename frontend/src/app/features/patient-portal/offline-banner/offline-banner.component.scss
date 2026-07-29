@@ -1,0 +1,25 @@
+// Offline banner styles (US-054).
+// Colour tokens align with Angular Material amber warning palette.
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: #fff8e1; // Material amber-50
+  border-left: 4px solid #ffa000; // Material amber-700
+  border-radius: 4px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #5d4037; // Material brown-700 — sufficient contrast on amber-50
+
+  &__icon {
+    color: #ffa000;
+    font-size: 20px;
+    height: 20px;
+    width: 20px;
+  }
+
+  &__message {
+    font-weight: 500;
+  }
+}

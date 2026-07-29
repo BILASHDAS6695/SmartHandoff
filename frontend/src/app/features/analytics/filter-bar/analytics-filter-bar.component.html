@@ -1,0 +1,53 @@
+<!--
+  Filter bar template for the analytics dashboard.
+
+  Accessibility:
+    - Form has role="search" with aria-label identifying it as the KPI filter form
+    - Date range group has aria-label for screen reader context
+    - Apply button has aria-label
+  Design refs:
+    US-061 DoD — MatDateRangePicker; unit dropdown; URL query params
+    web-accessibility-standards — WCAG 2.2 Level AA; keyboard navigation
+-->
+<form
+  [formGroup]="filterForm"
+  (ngSubmit)="applyFilter()"
+  role="search"
+  aria-label="KPI dashboard filter controls"
+  class="filter-bar"
+>
+  <mat-form-field appearance="outline" class="date-range-field">
+    <mat-label>Date range</mat-label>
+    <mat-date-range-input
+      [rangePicker]="rangePicker"
+      formGroupName="dateRange"
+      aria-label="Date range for KPI data"
+    >
+      <input matStartDate formControlName="start" placeholder="Start date" aria-label="Start date" />
+      <input matEndDate formControlName="end" placeholder="End date" aria-label="End date" />
+    </mat-date-range-input>
+    <mat-hint>MM/DD/YYYY – MM/DD/YYYY</mat-hint>
+    <mat-datepicker-toggle matIconSuffix [for]="rangePicker" aria-label="Open date range picker" />
+    <mat-date-range-picker #rangePicker />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="unit-field">
+    <mat-label>Unit</mat-label>
+    <mat-select formControlName="unit" aria-label="Filter by hospital unit">
+      <mat-option [value]="null">All units</mat-option>
+      @for (unit of availableUnits; track unit) {
+        <mat-option [value]="unit">{{ unit }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button
+    mat-flat-button
+    color="primary"
+    type="submit"
+    [disabled]="filterForm.invalid"
+    aria-label="Apply KPI dashboard filters"
+  >
+    Apply
+  </button>
+</form>

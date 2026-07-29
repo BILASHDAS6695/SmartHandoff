@@ -1,0 +1,58 @@
+::ng-deep mat-toolbar {
+  background-color: var(--sh-color-primary);
+  color: white;
+
+  .toolbar-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0 16px;
+
+    .app-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      button {
+        color: white;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+
+      .user-button {
+        margin-left: 8px;
+
+        .user-avatar {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background-color: rgba(255, 255, 255, 0.25);
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+      }
+    }
+  }
+}
+
+mat-menu {
+  [matMenuTriggerFor] {
+    min-width: 180px;
+  }
+}

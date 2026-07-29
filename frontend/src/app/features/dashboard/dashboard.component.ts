@@ -7,6 +7,10 @@
  *   - Fetches initial task list via EncounterTasksApiService
  *   - Updates task list in real-time when events are received
  *
+ * US-048 Integration:
+ *   - Uses new connect() method with JoinGroupsRequest
+ *   - Subscribes to new event types: adt_event_received, alert_created, bed_status_changed
+ *
  * Design:
  *   - Standalone component (Angular 17+)
  *   - Uses signals for reactive state management
@@ -18,14 +22,17 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { SignalRService, TaskUpdatedEvent } from '../../core/signalr';
+import { SignalRService, TaskUpdatedPayload, JoinGroupsRequest } from '../../core/signalr';
 import { EncounterTasksApiService } from '../../core/api';
 import { AgentTaskResponse, TaskStatus } from '../../core/models';
+import { AuthService } from '../../core/auth/auth.service';
+import { DocumentQueueComponent } from '../documents/components/document-queue/document-queue.component';
+import { DocumentQueueStore } from '../documents/store/document-queue.store';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DocumentQueueComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -33,8 +40,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly signalR = inject(SignalRService);
   private readonly tasksApi = inject(EncounterTasksApiService);
+  private readonly authService = inject(AuthService);
+  private readonly queueStore = inject(DocumentQueueStore);
 
   private taskSub?: Subscription;
+  private documentCreatedSub?: Subscription;
   
   // Reactive state using signals
   readonly encounterId = signal<string>('');
@@ -68,7 +78,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return grouped;
   });
 
+  /** Computed signal: true if current user is a physician */
+  readonly isPhysician = computed(() =>
+    this.authService.currentUser()?.role === 'physician'
+  );
+
   ngOnInit(): void {
+    // Subscribe to document_created events and update queue count for physicians
+    this.documentCreatedSub = this.signalR.documentCreated$.subscribe((payload) => {
+      // Only update for physicians with PENDING_REVIEW documents
+      if (
+        payload.status === 'PENDING_REVIEW' &&
+        this.authService.currentUser()?.role === 'physician'
+      ) {
+        this.queueStore.increment();
+      }
+    });
+
     // Extract encounter ID from route params
     this.route.params.subscribe(params => {
       const encounterId = params['encounterId'] || params['id'];
@@ -84,9 +110,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.taskSub?.unsubscribe();
-    this.signalR.stopConnection().catch(error => {
-      console.error('Error stopping SignalR connection:', error);
-    });
+    this.documentCreatedSub?.unsubscribe();
+    void this.signalR.disconnect();
   }
 
   /**
@@ -120,8 +145,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       // 1. Fetch initial task list
       await this._loadInitialTasks(encounterId);
 
-      // 2. Start SignalR connection
-      await this.signalR.startConnection(encounterId);
+      // 2. Start SignalR connection with group subscriptions
+      const currentUser = this.authService.currentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const joinRequest: JoinGroupsRequest = {
+        units: currentUser.units || [],
+        roles: [currentUser.role] || [],
+      };
+
+      await this.signalR.connect(joinRequest);
 
       // 3. Subscribe to real-time task updates
       this._subscribeToTaskUpdates();
@@ -149,39 +184,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private _subscribeToTaskUpdates(): void {
     this.taskSub = this.signalR.taskUpdated$.subscribe({
-      next: (event: TaskUpdatedEvent) => {
+      next: (event: TaskUpdatedPayload) => {
         this._applyTaskUpdate(event);
       },
-      error: error => {
+      error: (error: unknown) => {
         console.error('SignalR task update error:', error);
         this.errorMessage.set('Real-time updates interrupted. Consider refreshing.');
       }
     });
   }
 
-  private _applyTaskUpdate(event: TaskUpdatedEvent): void {
+  private _applyTaskUpdate(event: TaskUpdatedPayload): void {
     const currentTasks = this.tasks();
-    const taskIndex = currentTasks.findIndex(t => t.id === event.task_id);
+    const taskIndex = currentTasks.findIndex(t => t.id === event.taskId);
 
     if (taskIndex >= 0) {
       // Update existing task
       const updatedTasks = [...currentTasks];
       updatedTasks[taskIndex] = {
         ...updatedTasks[taskIndex],
-        status: event.new_status,
-        completed_time: event.new_status === TaskStatus.COMPLETED 
-          ? event.updated_at 
+        status: event.newStatus,
+        completed_time: event.newStatus === 'COMPLETED' 
+          ? event.completedAt || new Date().toISOString()
           : updatedTasks[taskIndex].completed_time,
       };
       this.tasks.set(updatedTasks);
     } else {
       // New task arrived — fetch full details from API
-      this.tasksApi.getTaskById(event.task_id).subscribe({
+      this.tasksApi.getTaskById(event.taskId).subscribe({
         next: task => {
           this.tasks.set([...this.tasks(), task]);
         },
         error: error => {
-          console.error(`Failed to fetch new task ${event.task_id}:`, error);
+          console.error(`Failed to fetch new task ${event.taskId}:`, error);
         }
       });
     }

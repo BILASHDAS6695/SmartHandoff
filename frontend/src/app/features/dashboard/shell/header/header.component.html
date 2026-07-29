@@ -1,0 +1,47 @@
+<mat-toolbar color="primary">
+  <div class="toolbar-content">
+    <!-- Left side: App title -->
+    <span class="app-title">SmartHandoff</span>
+
+    <!-- Spacer -->
+    <span class="spacer"></span>
+
+    <!-- Right side: Notifications, Theme toggle, User menu -->
+    <div class="header-actions">
+      <!-- Notifications -->
+      <button
+        mat-icon-button
+        [matBadge]="notificationCount"
+        matBadgeColor="warn"
+        [matTooltip]="'You have ' + notificationCount + ' notifications'"
+      >
+        <mat-icon>notifications</mat-icon>
+      </button>
+
+      <!-- Theme toggle -->
+      <button
+        mat-icon-button
+        (click)="toggleTheme()"
+        [matTooltip]="isDarkMode() ? 'Light mode' : 'Dark mode'"
+      >
+        <mat-icon>{{ isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
+      <!-- User menu -->
+      <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-button">
+        <span class="user-avatar">{{ getUserInitials() }}</span>
+      </button>
+
+      <mat-menu #userMenu="matMenu">
+        <button mat-menu-item disabled>
+          <span>{{ currentUser()?.['email'] || 'User' }}</span>
+        </button>
+        <mat-divider></mat-divider>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </div>
+  </div>
+</mat-toolbar>

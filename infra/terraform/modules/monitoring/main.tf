@@ -564,3 +564,106 @@ resource "google_monitoring_alert_policy" "pgcron_job_failure_alert" {
   depends_on = [google_logging_metric.pgcron_job_failure]
 }
 
+# ── BigQuery Export Job — Failure Alert ──────────────────────────────────────
+# Detects Cloud Run job execution failures for the bq-export job.
+# Triggered by US-062 AC Scenario 4: non-zero exit code from main.py.
+#
+# Design refs:
+#   US-062 AC Scenario 4 — alert on export failure; email data team
+#   design.md §10 — observability; structured logs
+
+resource "google_logging_metric" "bq_export_failure" {
+  project = var.project_id
+  name    = "bq_export_job_failure_${var.environment}"
+
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_job\"",
+    "resource.labels.job_name=\"bq-export-${var.environment}\"",
+    "jsonPayload.severity=\"ERROR\"",
+    "jsonPayload.message=~\"BigQuery nightly export job FAILED\"",
+  ])
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+    display_name = "BQ Export Job Failure (${var.environment})"
+  }
+}
+
+resource "google_monitoring_notification_channel" "data_team_email" {
+  count        = var.data_team_alert_email != "" ? 1 : 0
+  project      = var.project_id
+  display_name = "Data Team Email (${var.environment})"
+  type         = "email"
+
+  labels = {
+    email_address = var.data_team_alert_email
+  }
+}
+
+resource "google_monitoring_alert_policy" "bq_export_failure" {
+  count        = var.data_team_alert_email != "" ? 1 : 0
+  project      = var.project_id
+  display_name = "BQ Export Job Failure — ${var.environment}"
+  combiner     = "OR"
+  enabled      = true
+
+  conditions {
+    display_name = "Cloud Run job bq-export exited with failure"
+
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.bq_export_failure.name}\" AND resource.type=\"cloud_run_job\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"  # Fire immediately on first failure occurrence
+
+      aggregations {
+        alignment_period   = "300s"  # 5-minute evaluation window
+        per_series_aligner = "ALIGN_COUNT"
+      }
+    }
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.data_team_email[0].name,
+  ]
+
+  alert_strategy {
+    auto_close = "86400s"  # Auto-close alert after 24 hours if no further failures
+  }
+
+  user_labels = {
+    severity    = "p3"
+    environment = var.environment
+    managed_by  = "terraform"
+    component   = "bq-export"
+  }
+
+  documentation {
+    content = <<-EOT
+      ## BigQuery Nightly Export Job Failure
+
+      The `bq-export-${var.environment}` Cloud Run job has failed.
+
+      **Immediate actions:**
+      1. Check Cloud Logging for job logs: `resource.type="cloud_run_job" AND resource.labels.job_name="bq-export-${var.environment}"`
+      2. Identify the root cause from the structured ERROR log entry
+      3. If transient (Cloud SQL connectivity, BigQuery quota): re-trigger the job manually with the same EXPORT_DATE_OVERRIDE value
+      4. If PHI schema violation detected: escalate to Data Privacy Officer immediately
+
+      **Manual re-run command:**
+      ```
+      gcloud run jobs execute bq-export-${var.environment} --region=${var.region} --project=${var.project_id}
+      ```
+
+      **Runbook:** SmartHandoff Analytics — BQ Export Failure Runbook
+    EOT
+    mime_type = "text/markdown"
+  }
+
+  depends_on = [
+    google_logging_metric.bq_export_failure,
+    google_monitoring_notification_channel.data_team_email,
+  ]
+}

@@ -6,9 +6,9 @@ epic: EP-012
 sprint: 2
 layer: Testing
 estimate: 3h
-priority: Must Heat
-status: Draft
-date: 2026-07-17
+priority: Must Have
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer + Frontend Engineer
 upstream: [US-061/TASK-001, US-061/TASK-002, US-061/TASK-003, US-061/TASK-004, US-061/TASK-005]
 ---
@@ -16,7 +16,7 @@ upstream: [US-061/TASK-001, US-061/TASK-002, US-061/TASK-003, US-061/TASK-004, U
 # TASK-006: Unit Tests — KPI API De-identification, RBAC Enforcement & Chart Data Mapping
 
 > **Story:** US-061 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Testing | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

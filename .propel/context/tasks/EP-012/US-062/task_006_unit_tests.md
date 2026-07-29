@@ -1,14 +1,14 @@
 ---
 id: TASK-006
-title: "Unit Tests — De-identification Pipeline & Schema PHI Guard"
+title: "Unit Tests — BigQuery Schema, De-id Pipeline & Writer Integration"
 user_story: US-062
 epic: EP-012
 sprint: 2
 layer: Testing
 estimate: 2h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [TASK-001, TASK-002, TASK-003]
 ---
@@ -16,7 +16,7 @@ upstream: [TASK-001, TASK-002, TASK-003]
 # TASK-006: Unit Tests — De-identification Pipeline & Schema PHI Guard
 
 > **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Testing | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

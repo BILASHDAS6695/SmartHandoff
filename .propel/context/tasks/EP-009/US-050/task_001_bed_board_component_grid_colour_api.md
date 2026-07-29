@@ -1,7 +1,7 @@
 # TASK-001: BedBoardComponent — CSS Grid Layout, Colour Map, and Beds API Integration
 
 > **Story:** US-050 | **Effort:** 12 hours | **Layer:** Frontend — Component
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

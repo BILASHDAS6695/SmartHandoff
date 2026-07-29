@@ -1,0 +1,234 @@
+<div class="patient-list-container">
+  <!-- Toolbar: search + unit filter -->
+  <div class="patient-list__toolbar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search patients</mat-label>
+      <input
+        matInput
+        [formControl]="searchControl"
+        placeholder="Last name, first name…"
+        aria-label="Search patients by name"
+        autocomplete="off"
+      />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="unit-filter">
+      <mat-label>Unit</mat-label>
+      <mat-select [formControl]="unitControl" aria-label="Filter by unit">
+        @for (unit of availableUnits(); track unit) {
+          <mat-option [value]="unit">{{ unit }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Loading bar -->
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading patients"></mat-progress-bar>
+  }
+
+  <!-- Skeleton loaders — shown while loading and no data yet -->
+  @if (loading() && patients().length === 0) {
+    <div class="skeleton-rows" aria-busy="true" aria-label="Loading patient list">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="skeleton-row">
+          <div class="skeleton skeleton--badge"></div>
+          <div class="skeleton skeleton--text-wide"></div>
+          <div class="skeleton skeleton--text-narrow"></div>
+          <div class="skeleton skeleton--text-narrow"></div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (error()) {
+    <div class="patient-list__error" role="alert">
+      <mat-icon color="warn">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button color="warn" (click)="retry()">
+        <mat-icon>refresh</mat-icon> Retry
+      </button>
+    </div>
+  }
+
+  <!-- Data table -->
+  @if (!loading() || patients().length > 0) {
+    @if (!error()) {
+      @if (useVirtualScroll()) {
+        <!-- Virtual scroll for large lists (>50 rows) -->
+        <cdk-virtual-scroll-viewport class="patient-table-viewport" itemSize="48">
+          <table
+            mat-table
+            [dataSource]="patients()"
+            class="patient-table"
+            aria-label="Patient list"
+          >
+            <!-- Risk Tier Column -->
+            <ng-container matColumnDef="risk_tier">
+              <th mat-header-cell *matHeaderCellDef>Risk</th>
+              <td mat-cell *matCellDef="let row">
+                <app-risk-badge [tier]="row.risk_tier" />
+              </td>
+            </ng-container>
+
+            <!-- Last Name Column -->
+            <ng-container matColumnDef="last_name">
+              <th mat-header-cell *matHeaderCellDef>Last Name</th>
+              <td mat-cell *matCellDef="let row">{{ row.last_name }}</td>
+            </ng-container>
+
+            <!-- First Name Column -->
+            <ng-container matColumnDef="first_name">
+              <th mat-header-cell *matHeaderCellDef>First Name</th>
+              <td mat-cell *matCellDef="let row">{{ row.first_name }}</td>
+            </ng-container>
+
+            <!-- MRN Column -->
+            <ng-container matColumnDef="mrn_masked">
+              <th mat-header-cell *matHeaderCellDef>MRN</th>
+              <td mat-cell *matCellDef="let row">{{ row.mrn_masked }}</td>
+            </ng-container>
+
+            <!-- Room Column -->
+            <ng-container matColumnDef="room_number">
+              <th mat-header-cell *matHeaderCellDef>Room</th>
+              <td mat-cell *matCellDef="let row">{{ row.room_number }}</td>
+            </ng-container>
+
+            <!-- Admission Date Column -->
+            <ng-container matColumnDef="admission_date">
+              <th mat-header-cell *matHeaderCellDef>Admitted</th>
+              <td mat-cell *matCellDef="let row">
+                {{ row.admission_date | date : 'MMM d, y' }}
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="navigateToDetail(row.encounter_id)"
+                  [attr.aria-label]="'View details for ' + row.last_name + ', ' + row.first_name"
+                >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              class="patient-row"
+              (click)="navigateToDetail(row.encounter_id)"
+              (keyup.enter)="navigateToDetail(row.encounter_id)"
+              tabindex="0"
+              [attr.aria-label]="row.last_name + ' ' + row.first_name + ' risk ' + row.risk_tier"
+            ></tr>
+
+            <!-- No data row -->
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+                No patients found for the selected unit and search criteria.
+              </td>
+            </tr>
+          </table>
+        </cdk-virtual-scroll-viewport>
+      } @else {
+        <!-- Standard table for small lists (≤50 rows) -->
+        <table
+          mat-table
+          [dataSource]="patients()"
+          class="patient-table"
+          aria-label="Patient list"
+        >
+          <!-- Risk Tier Column -->
+          <ng-container matColumnDef="risk_tier">
+            <th mat-header-cell *matHeaderCellDef>Risk</th>
+            <td mat-cell *matCellDef="let row">
+              <app-risk-badge [tier]="row.risk_tier" />
+            </td>
+          </ng-container>
+
+          <!-- Last Name Column -->
+          <ng-container matColumnDef="last_name">
+            <th mat-header-cell *matHeaderCellDef>Last Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.last_name }}</td>
+          </ng-container>
+
+          <!-- First Name Column -->
+          <ng-container matColumnDef="first_name">
+            <th mat-header-cell *matHeaderCellDef>First Name</th>
+            <td mat-cell *matCellDef="let row">{{ row.first_name }}</td>
+          </ng-container>
+
+          <!-- MRN Column -->
+          <ng-container matColumnDef="mrn_masked">
+            <th mat-header-cell *matHeaderCellDef>MRN</th>
+            <td mat-cell *matCellDef="let row">{{ row.mrn_masked }}</td>
+          </ng-container>
+
+          <!-- Room Column -->
+          <ng-container matColumnDef="room_number">
+            <th mat-header-cell *matHeaderCellDef>Room</th>
+            <td mat-cell *matCellDef="let row">{{ row.room_number }}</td>
+          </ng-container>
+
+          <!-- Admission Date Column -->
+          <ng-container matColumnDef="admission_date">
+            <th mat-header-cell *matHeaderCellDef>Admitted</th>
+            <td mat-cell *matCellDef="let row">
+              {{ row.admission_date | date : 'MMM d, y' }}
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="navigateToDetail(row.encounter_id)"
+                [attr.aria-label]="'View details for ' + row.last_name + ', ' + row.first_name"
+              >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            class="patient-row"
+            (click)="navigateToDetail(row.encounter_id)"
+            (keyup.enter)="navigateToDetail(row.encounter_id)"
+            tabindex="0"
+            [attr.aria-label]="row.last_name + ' ' + row.first_name + ' risk ' + row.risk_tier"
+          ></tr>
+
+          <!-- No data row -->
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+              No patients found for the selected unit and search criteria.
+            </td>
+          </tr>
+        </table>
+      }
+
+      <mat-paginator
+        [length]="totalCount()"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[25, 50, 100]"
+        (page)="onPageChange($event)"
+        aria-label="Patient list pagination"
+      ></mat-paginator>
+    }
+  }
+</div>

@@ -1,0 +1,56 @@
+// AppointmentSummaryComponent styles
+// US-055 DoD: mobile-friendly layout
+
+.appointment-summary {
+  padding: 16px;
+}
+
+.appointments-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1565c0;
+}
+
+.appointment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.appointment-card {
+  mat-card {
+    border-radius: 8px;
+  }
+}
+
+.appt-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: #212121;
+}
+
+.appt-date,
+.appt-time,
+.appt-provider {
+  font-size: 14px;
+  margin: 4px 0;
+  color: #424242;
+}
+
+.appointments-error {
+  color: #c62828;
+  font-size: 14px;
+}
+
+.appointments-empty {
+  color: #616161;
+  font-size: 14px;
+}

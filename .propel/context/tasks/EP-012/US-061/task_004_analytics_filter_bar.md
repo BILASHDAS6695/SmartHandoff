@@ -7,8 +7,8 @@ sprint: 2
 layer: Frontend / Component
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Frontend Engineer
 upstream: [US-061/TASK-003]
 ---
@@ -16,7 +16,7 @@ upstream: [US-061/TASK-003]
 # TASK-004: Analytics Filter Bar — MatDateRangePicker, Unit Dropdown & URL Query Param Sync
 
 > **Story:** US-061 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Frontend / Component | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

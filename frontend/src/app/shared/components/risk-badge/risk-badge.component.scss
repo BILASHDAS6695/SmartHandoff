@@ -1,0 +1,42 @@
+// CSS custom properties defined in global styles; declared here as fallbacks.
+:host {
+  --risk-high: #b71c1c;
+  --risk-high-text: #ffffff;
+  --risk-medium: #f57f17;
+  --risk-medium-text: #000000;
+  --risk-low: #1b5e20;
+  --risk-low-text: #ffffff;
+  --risk-unknown: #616161;
+  --risk-unknown-text: #ffffff;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.6;
+
+  &--high {
+    background-color: var(--risk-high);
+    color: var(--risk-high-text);
+  }
+
+  &--medium {
+    background-color: var(--risk-medium);
+    color: var(--risk-medium-text);
+  }
+
+  &--low {
+    background-color: var(--risk-low);
+    color: var(--risk-low-text);
+  }
+
+  &--unscored {
+    background-color: var(--risk-unknown);
+    color: var(--risk-unknown-text);
+  }
+}

@@ -45,6 +45,13 @@
   @if (!isLoading() && !errorMessage()) {
     <div class="dashboard-content">
       
+      <!-- Document Approval Queue — Physician Only -->
+      @if (isPhysician()) {
+        <section class="document-queue-section" aria-label="Document approval section">
+          <app-document-queue />
+        </section>
+      }
+      
       <!-- Task Summary Cards -->
       <section class="task-summary">
         <div class="summary-card">

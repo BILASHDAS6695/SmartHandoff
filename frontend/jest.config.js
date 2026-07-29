@@ -26,5 +26,5 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: ['node_modules/(?!(@angular|rxjs|@microsoft/signalr)/)'],
+  transformIgnorePatterns: ['node_modules/(?!(@angular|rxjs|@microsoft/signalr|jspdf|jspdf-autotable|fflate|fast-png|uuid)/)'],
 };

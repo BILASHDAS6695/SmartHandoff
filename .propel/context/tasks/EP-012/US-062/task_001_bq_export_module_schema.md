@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend / Data
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [US-062, US-001, US-006, DR-017]
@@ -16,7 +16,7 @@ upstream: [US-062, US-001, US-006, DR-017]
 # TASK-001: BigQuery Export Module — Project Structure, Schema Definition & Client Initialisation
 
 > **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

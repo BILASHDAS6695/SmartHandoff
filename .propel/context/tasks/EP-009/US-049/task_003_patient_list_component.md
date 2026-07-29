@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Feature Component
 estimate: 5h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [FR-071, FR-074, UI-004]

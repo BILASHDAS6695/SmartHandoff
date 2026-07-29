@@ -1,0 +1,56 @@
+// CSS custom properties for SmartHandoff design tokens.
+// Light mode defaults — overridden by .dark-theme class on <html>.
+// Use these tokens in all component SCSS files instead of hard-coded hex values.
+
+:root {
+  // Brand colours
+  --sh-color-primary: #0d47a1;
+  --sh-color-primary-light: #5472d3;
+  --sh-color-primary-dark: #002171;
+  --sh-color-accent: #00897b;
+  --sh-color-accent-light: #4db6ac;
+  --sh-color-accent-dark: #005b4f;
+  --sh-color-warn: #b71c1c;
+  --sh-color-warn-light: #e57373;
+  --sh-color-warn-dark: #7f0000;
+
+  // Surfaces
+  --sh-surface-background: #f4f6f9;
+  --sh-surface-card: #ffffff;
+  --sh-surface-sidebar: #1a2a4a;
+  --sh-surface-sidebar-text: #ffffff;
+
+  // Text
+  --sh-text-primary: rgba(0, 0, 0, 0.87);
+  --sh-text-secondary: rgba(0, 0, 0, 0.6);
+  --sh-text-disabled: rgba(0, 0, 0, 0.38);
+
+  // Spacing scale
+  --sh-spacing-xs: 4px;
+  --sh-spacing-sm: 8px;
+  --sh-spacing-md: 16px;
+  --sh-spacing-lg: 24px;
+  --sh-spacing-xl: 32px;
+  --sh-spacing-2xl: 48px;
+
+  // Border radius
+  --sh-radius-sm: 4px;
+  --sh-radius-md: 8px;
+  --sh-radius-lg: 12px;
+
+  // Shadows
+  --sh-shadow-card: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --sh-shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+// Dark mode token overrides — applied when ThemeService adds .dark-theme to <html>
+.dark-theme {
+  --sh-surface-background: #121212;
+  --sh-surface-card: #1e1e1e;
+  --sh-surface-sidebar: #0a1929;
+  --sh-surface-sidebar-text: rgba(255, 255, 255, 0.87);
+  --sh-text-primary: rgba(255, 255, 255, 0.87);
+  --sh-text-secondary: rgba(255, 255, 255, 0.6);
+  --sh-text-disabled: rgba(255, 255, 255, 0.38);
+  --sh-shadow-card: 0 2px 4px rgba(0, 0, 0, 0.4);
+}

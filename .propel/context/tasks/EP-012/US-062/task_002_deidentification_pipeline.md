@@ -1,22 +1,22 @@
 ---
 id: TASK-002
-title: "De-identification Pipeline — SHA-256 Hashing & PHI Scrubbing"
+title: "De-identification Pipeline — PHI Masking, Aggregation & Schema Mapping"
 user_story: US-062
 epic: EP-012
 sprint: 2
 layer: Backend / Data
-estimate: 2h
+estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [TASK-001, DR-017, PRV-003]
 ---
 
 # TASK-002: De-identification Pipeline — SHA-256 Hashing & PHI Scrubbing
 
-> **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 3 h
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

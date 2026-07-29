@@ -1,0 +1,52 @@
+<!-- analytics.component.html — shell template; filter bar and charts composed in TASK-004/005 -->
+<section class="analytics-shell" aria-label="KPI Analytics Dashboard">
+  <header class="analytics-header">
+    <h1>Analytics Dashboard</h1>
+    <app-analytics-filter-bar
+      [initialFilters]="initialFilters"
+      [availableUnits]="availableUnits"
+      (filterChange)="onFilterChange($event)"
+    />
+    
+    <!-- Export actions for MANAGER and ADMIN roles -->
+    <div class="export-actions" aria-label="Export KPI report">
+      <button
+        class="export-button export-csv"
+        [disabled]="isExportingCsv"
+        (click)="onExportCsv()"
+        aria-label="Export KPI data as CSV file"
+      >
+        <span *ngIf="!isExportingCsv">⬇ Export CSV</span>
+        <span *ngIf="isExportingCsv">Exporting...</span>
+      </button>
+
+      <button
+        class="export-button export-pdf"
+        [disabled]="isExportingPdf"
+        (click)="onExportPdf()"
+        aria-label="Export KPI report as PDF document"
+      >
+        <span *ngIf="!isExportingPdf">📄 Export PDF</span>
+        <span *ngIf="isExportingPdf">Generating PDF...</span>
+      </button>
+
+      <div *ngIf="exportError" class="export-error" role="alert" aria-live="assertive">
+        {{ exportError }}
+      </div>
+    </div>
+  </header>
+
+  <ng-container *ngIf="kpiData$ | async as kpiData; else loading">
+    <div class="kpi-charts-grid">
+      <app-discharge-time-chart [data]="kpiData.data" class="kpi-chart-card" />
+      <app-readmission-rate-chart [data]="kpiData.data" class="kpi-chart-card" />
+      <app-med-recon-rate-chart [data]="kpiData.data" class="kpi-chart-card" />
+      <app-bed-utilisation-chart [data]="kpiData.data" class="kpi-chart-card" />
+      <app-agent-success-rate-chart [data]="kpiData.data" class="kpi-chart-card" />
+    </div>
+  </ng-container>
+
+  <ng-template #loading>
+    <div role="status" aria-live="polite" class="loading-state">Loading KPI data…</div>
+  </ng-template>
+</section>

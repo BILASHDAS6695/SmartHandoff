@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend / Data
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [TASK-001, TASK-002, DR-017]
@@ -16,7 +16,7 @@ upstream: [TASK-001, TASK-002, DR-017]
 # TASK-003: BigQuery Idempotent Writer — WRITE_TRUNCATE Partition Load & Job Entrypoint
 
 > **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

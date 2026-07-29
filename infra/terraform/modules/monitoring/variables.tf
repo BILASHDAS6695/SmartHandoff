@@ -58,3 +58,9 @@ variable "compliance_officer_emails" {
   description = "Email addresses of compliance officers granted read access to the PHI audit log bucket"
   default     = []
 }
+
+variable "data_team_alert_email" {
+  type        = string
+  description = "Email address for data team alert notifications (BigQuery export failures)"
+  default     = ""
+}

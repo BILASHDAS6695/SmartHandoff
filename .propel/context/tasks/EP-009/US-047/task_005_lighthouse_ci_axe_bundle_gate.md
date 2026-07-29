@@ -7,7 +7,7 @@ sprint: 2
 layer: DevOps / QA
 estimate: 3h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [TASK-001, TASK-002, TASK-004, TR-002, NFR-001, NFR-034]

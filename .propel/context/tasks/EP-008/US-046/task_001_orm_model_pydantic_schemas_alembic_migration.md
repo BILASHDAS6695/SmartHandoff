@@ -7,8 +7,9 @@ sprint: 2
 layer: Backend / Data
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
+completion_date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-007, US-008, US-043]
 ---

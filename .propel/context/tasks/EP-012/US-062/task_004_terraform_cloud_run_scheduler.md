@@ -7,7 +7,7 @@ sprint: 2
 layer: IaC
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [TASK-003, US-001, DR-017]
@@ -16,7 +16,7 @@ upstream: [TASK-003, US-001, DR-017]
 # TASK-004: Terraform — Cloud Run Job, Cloud Scheduler Trigger & Secret Mounts
 
 > **Story:** US-062 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** IaC | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

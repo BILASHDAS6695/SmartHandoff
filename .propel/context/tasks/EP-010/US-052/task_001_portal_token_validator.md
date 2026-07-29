@@ -7,7 +7,7 @@ sprint: 2
 layer: Backend / Middleware
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Backend Engineer
 upstream: [SEC-003, AIR-043]

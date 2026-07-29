@@ -1,0 +1,66 @@
+.alert-modal {
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  &__error {
+    color: var(--mat-sys-error);
+    padding: 8px 0;
+  }
+
+  &__drug-pair {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  &__severity {
+    font-size: 14px;
+    margin: 0 0 12px;
+
+    &[data-severity='HIGH'] {
+      color: var(--color-risk-high);
+    }
+
+    &[data-severity='MEDIUM'] {
+      color: var(--color-risk-medium);
+    }
+
+    &[data-severity='LOW'] {
+      color: var(--color-risk-low);
+    }
+  }
+
+  &__description {
+    margin: 12px 0;
+    padding: 8px;
+    background: var(--mat-sys-surface-dim);
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+
+    p {
+      margin: 0 0 8px;
+    }
+  }
+
+  &__radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  &__note-field {
+    width: 100% !important;
+    margin-top: 12px;
+  }
+
+  &__btn-spinner {
+    display: inline-block !important;
+    margin-right: 4px;
+  }
+}

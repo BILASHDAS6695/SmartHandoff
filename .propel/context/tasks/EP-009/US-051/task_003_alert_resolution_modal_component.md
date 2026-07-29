@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Feature Component
 estimate: 2h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [FR-072, US-031]
@@ -15,8 +15,8 @@ upstream: [FR-072, US-031]
 
 # TASK-003: Implement `AlertResolutionModalComponent` — MatDialog with Resolution Controls
 
-> **Story:** US-051 | **Epic:** EP-009 | **Sprint:** 2 | **Layer:** Frontend — Feature Component | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Story:** US-051 | **Epic:** EP-009 | **Sprint:** 2 | **Layer:** Frontend — Feature Component | **Est:** 3 h
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

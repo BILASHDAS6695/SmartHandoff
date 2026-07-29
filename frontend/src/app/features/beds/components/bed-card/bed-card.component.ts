@@ -8,7 +8,7 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icons';
+import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { BedItem } from '../../models/bed.model';
 import { DischargeWindowComponent } from '../discharge-window/discharge-window.component';

@@ -1,0 +1,21 @@
+# Urgency keyword/phrase list for US-044 Phase 1 detection.
+# All phrases are matched case-insensitively.
+# Add or remove phrases without code changes — update and redeploy config only.
+#
+# Design ref: US-044 AC Scenario 2
+keywords:
+  - "chest pain"
+  - "can't breathe"
+  - "cannot breathe"
+  - "severe bleeding"
+  - "unconscious"
+  - "not breathing"
+  - "stroke"
+  - "suicide"
+  - "heart attack"
+  - "seizure"
+  - "anaphylaxis"
+  - "allergic reaction"
+  - "unresponsive"
+  - "collapsed"
+  - "overdose"

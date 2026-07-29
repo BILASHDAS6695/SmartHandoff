@@ -7,8 +7,8 @@ sprint: 2
 layer: Backend / API
 estimate: 1.5h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-045/TASK-001, US-045/TASK-002, US-045/TASK-003]
 ---
@@ -16,7 +16,7 @@ upstream: [US-045/TASK-001, US-045/TASK-002, US-045/TASK-003]
 # TASK-004: GET /api/v1/chat/escalations — Patient-Scoped & Staff Query Endpoint
 
 > **Story:** US-045 | **Epic:** EP-008 | **Sprint:** 2 | **Layer:** Backend / API | **Est:** 1.5 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** ✅ Complete | **Date:** 2026-07-29
 
 ---
 

@@ -5,3 +5,19 @@
 # FastAPI + ASGI server
 fastapi>=0.111,<1.0
 uvicorn[standard]>=0.29,<1.0
+
+# JWT & Authentication (US-052)
+python-jose[cryptography]>=3.3,<4.0
+bcrypt>=4.1,<5.0
+pydantic-settings>=2.0,<3.0
+
+# Redis client for OTP storage & rate limiting (US-052)
+redis[hiredis]>=5.0,<6.0
+
+# HTTP client for Notification Service (US-052, US-064)
+httpx>=0.24,<1.0
+
+# Testing & Development
+pytest>=7.4,<8.0
+pytest-asyncio>=0.21,<1.0
+fakeredis[aioredis]>=2.20,<3.0

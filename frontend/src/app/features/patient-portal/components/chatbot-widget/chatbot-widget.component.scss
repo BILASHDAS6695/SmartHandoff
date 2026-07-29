@@ -1,0 +1,179 @@
+// ChatbotWidget styles
+// US-055 Technical Notes: mobile 85% viewport height; desktop right-side panel
+// US-055 DoD: mobile-friendly; urgency CSS override in TASK-003
+
+:host {
+  --widget-width: 400px;
+  --widget-height: 560px;
+}
+
+.chatbot-bubble {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+}
+
+.chatbot-panel {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: var(--widget-width);
+  height: var(--widget-height);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
+  overflow: hidden;
+
+  @media (max-width: 767px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 85vh;
+    bottom: 0;
+    border-radius: 0;
+  }
+}
+
+.chatbot-header {
+  padding: 16px;
+  background: #1565c0;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.chatbot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+
+  &--patient {
+    align-self: flex-end;
+    background: #e3f2fd;
+    color: #0d47a1;
+  }
+
+  &--assistant {
+    align-self: flex-start;
+    background: #f5f5f5;
+    color: #212121;
+  }
+
+  &--typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 14px;
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #9e9e9e;
+      animation: blink 1.4s infinite both;
+
+      &:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      &:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+    }
+  }
+}
+
+@keyframes blink {
+  0%, 80%, 100% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.chatbot-input {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid #e0e0e0;
+
+  .chatbot-field {
+    flex: 1;
+  }
+}
+
+// Urgency banner — US-055 AC Scenario 4
+// Full-width red banner with call-911 link; overrides standard message width constraint
+.urgency-banner {
+  width: 100%;
+  background: #c62828;
+  color: #fff;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(198, 40, 40, 0.4);
+
+  .urgency-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .urgency-content {
+    flex: 1;
+  }
+
+  .urgency-heading {
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0 0 6px;
+  }
+
+  .urgency-body {
+    font-size: 13px;
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+
+  .urgency-call-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    color: #c62828;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.15s ease;
+
+    &:hover,
+    &:focus {
+      background: #ffebee;
+      outline: 2px solid #c62828;
+      outline-offset: 2px;
+    }
+  }
+}
+

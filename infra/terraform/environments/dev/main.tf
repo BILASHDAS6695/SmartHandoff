@@ -214,6 +214,23 @@ data "google_secret_manager_secret_version" "pagerduty_key" {
   secret  = "smarthandoff-pagerduty-integration-key-${var.environment}"
 }
 
+# ── BigQuery Nightly Export Job ─────────────────────────────────────────────
+module "bq_export" {
+  source = "../../modules/bq_export"
+
+  project_id                      = var.project_id
+  environment                     = var.environment
+  region                          = var.region
+  container_image                 = var.bq_export_container_image
+  cloud_sql_connection_name       = module.cloud_sql.primary_connection_name
+  db_name                         = var.db_name
+  db_user                         = var.db_user
+  db_password_secret_id           = module.cloud_sql.db_password_secret_id
+  deidentification_salt_secret_id = var.deidentification_salt_secret_id
+
+  depends_on = [module.cloud_sql, google_project_service.apis]
+}
+
 # ── Cloud Monitoring (canary error-rate alerts + rollback triggers) ───────
 module "monitoring" {
   source      = "../../modules/monitoring"
@@ -228,6 +245,7 @@ module "monitoring" {
   cloudbuild_sa_email       = var.cloudbuild_sa_email
   pagerduty_integration_key = data.google_secret_manager_secret_version.pagerduty_key.secret_data
   compliance_officer_emails = var.compliance_officer_emails
+  data_team_alert_email     = var.data_team_alert_email
 
-  depends_on = [google_project_service.apis, google_cloudbuild_trigger.main_push]
+  depends_on = [google_project_service.apis, google_cloudbuild_trigger.main_push, module.bq_export]
 }

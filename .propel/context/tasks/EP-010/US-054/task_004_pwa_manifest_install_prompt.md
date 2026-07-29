@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend / PWA
 estimate: 2h
 priority: Should Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [US-054/TASK-002, NFR-033]
@@ -16,7 +16,7 @@ upstream: [US-054/TASK-002, NFR-033]
 # TASK-004: PWA Manifest + Install Prompt Component — manifest.webmanifest and BeforeInstallPromptEvent
 
 > **Story:** US-054 | **Epic:** EP-010 | **Sprint:** 2 | **Layer:** Frontend / PWA | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29 | **UI Gap Closed:** PWA Install Button Integrated
 
 ---
 

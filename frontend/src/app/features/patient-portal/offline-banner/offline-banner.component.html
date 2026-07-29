@@ -1,0 +1,16 @@
+<!--
+  Offline status banner (US-054 Scenario 2).
+  role="status" + aria-live="polite": non-disruptive screen reader announcement.
+  @if signal: renders only when offline; automatically removed when online.
+-->
+@if (networkStatus.isOffline()) {
+  <div
+    class="offline-banner"
+    role="status"
+    aria-live="polite"
+    aria-atomic="true"
+  >
+    <mat-icon aria-hidden="true" class="offline-banner__icon">wifi_off</mat-icon>
+    <span class="offline-banner__message">You're viewing cached instructions</span>
+  </div>
+}

@@ -1,0 +1,12 @@
+# Hospital-specific emergency contact configuration for US-044.
+# Displayed immediately in the chat UI when urgency is detected.
+# Contains no PHI — these are institutional contacts only.
+#
+# Design ref: US-044 Technical Notes
+emergency:
+  primary_number: "911"
+  hospital_number: "1-800-HOSPITAL"
+  display_message: >
+    ⚠ Emergency Alert: This sounds serious. Call 911 immediately or go to the
+    nearest emergency room. Your care team has been notified.
+  care_team_alert_channel: "notification-requests"

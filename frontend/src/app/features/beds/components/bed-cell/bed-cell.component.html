@@ -1,0 +1,14 @@
+<mat-card
+  class="bed-cell"
+  [ngClass]="statusClass"
+  [attr.aria-label]="ariaLabel"
+  role="button"
+  tabindex="0">
+  <span class="bed-cell__id">{{ bed.bedId }}</span>
+  <span class="bed-cell__patient">{{ bed.patientName | maskName }}</span>
+  <span class="bed-cell__discharge">
+    {{ bed.predictedDischargeTime
+       ? (bed.predictedDischargeTime | date:'shortTime')
+       : '—' }}
+  </span>
+</mat-card>

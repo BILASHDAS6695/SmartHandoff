@@ -1,0 +1,46 @@
+// Material 17 theme definitions — light and dark variants.
+// Imported into styles.scss and applied via CSS class on <html>.
+
+@use '@angular/material' as mat;
+@use './palette' as palette;
+
+// Typography — use Material default with Inter font override
+$sh-typography: mat.define-typography-config(
+  $font-family: 'Inter, Roboto, "Helvetica Neue", sans-serif',
+);
+
+// Light theme
+$sh-light-theme: mat.define-light-theme(
+  (
+    color: (
+      primary: palette.$sh-primary-palette,
+      accent: palette.$sh-accent-palette,
+      warn: palette.$sh-warn-palette,
+    ),
+    typography: $sh-typography,
+    density: 0,
+  )
+);
+
+// Dark theme — same palette, dark surface colours
+$sh-dark-theme: mat.define-dark-theme(
+  (
+    color: (
+      primary: palette.$sh-primary-palette,
+      accent: palette.$sh-accent-palette,
+      warn: palette.$sh-warn-palette,
+    ),
+    typography: $sh-typography,
+    density: 0,
+  )
+);
+
+// Mixin to apply light theme
+@mixin apply-light-theme() {
+  @include mat.all-component-colors($sh-light-theme);
+}
+
+// Mixin to apply dark theme
+@mixin apply-dark-theme() {
+  @include mat.all-component-colors($sh-dark-theme);
+}

@@ -7,8 +7,8 @@ sprint: 2
 layer: Backend / API
 estimate: 2h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-063, US-061/TASK-002, US-057]
 ---
@@ -16,7 +16,7 @@ upstream: [US-063, US-061/TASK-002, US-057]
 # TASK-001: Export Router — Endpoint Scaffold, Query Parameters & RBAC Enforcement
 
 > **Story:** US-063 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / API | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Draft | **Date:** 2026-07-29
 
 ---
 

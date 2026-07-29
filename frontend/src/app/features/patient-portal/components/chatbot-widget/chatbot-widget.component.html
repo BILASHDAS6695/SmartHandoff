@@ -1,0 +1,74 @@
+<!-- Chatbot Widget — floating bubble + expandable panel
+     US-055 DoD: floating chat bubble bottom-right; expand/collapse; message history; typing indicator
+     US-055 AC Scenario 4: urgency-message class applied for TASK-003 CSS override
+-->
+
+<!-- Floating bubble trigger -->
+<button
+  mat-fab
+  color="primary"
+  class="chatbot-bubble"
+  aria-label="Open patient chatbot"
+  (click)="toggle()">
+  <mat-icon>{{ isOpen() ? 'close' : 'chat' }}</mat-icon>
+</button>
+
+<!-- Chat panel -->
+@if (isOpen()) {
+  <section class="chatbot-panel" role="dialog" aria-label="Patient chatbot">
+    <header class="chatbot-header">
+      <span>Ask your care assistant</span>
+    </header>
+
+    <div class="chatbot-messages" aria-live="polite" aria-atomic="false">
+      @for (msg of messages(); track msg.id) {
+        @if (msg.isTyping) {
+          <div class="message message--assistant message--typing" aria-label="Assistant is typing">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        } @else if (msg.urgency) {
+          <!-- Urgency Banner — US-055 AC Scenario 4 -->
+          <div class="urgency-banner" role="alert" aria-live="assertive">
+            <mat-icon class="urgency-icon" aria-hidden="true">warning</mat-icon>
+            <div class="urgency-content">
+              <p class="urgency-heading">⚠️ Emergency — Call 911 Immediately</p>
+              <p class="urgency-body">{{ msg.content }}</p>
+              <a
+                href="tel:911"
+                class="urgency-call-btn"
+                aria-label="Call 911 emergency services">
+                <mat-icon aria-hidden="true">phone</mat-icon>
+                Call 911
+              </a>
+            </div>
+          </div>
+        } @else {
+          <div
+            class="message message--{{ msg.role }}"
+            role="listitem">
+            <p>{{ msg.content }}</p>
+          </div>
+        }
+      }
+    </div>
+
+    <form class="chatbot-input" (ngSubmit)="sendMessage()" autocomplete="off">
+      <mat-form-field appearance="outline" class="chatbot-field">
+        <input
+          matInput
+          [formControl]="messageControl"
+          placeholder="Type your question…"
+          aria-label="Chat message input"
+          (keydown.enter)="sendMessage()" />
+      </mat-form-field>
+      <button
+        mat-icon-button
+        color="primary"
+        type="submit"
+        [disabled]="isSending() || messageControl.invalid"
+        aria-label="Send message">
+        <mat-icon>send</mat-icon>
+      </button>
+    </form>
+  </section>
+}

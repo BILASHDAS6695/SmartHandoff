@@ -7,8 +7,8 @@ sprint: 2
 layer: Backend / Data
 estimate: 3h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-063/TASK-001, US-061/TASK-001]
 ---
@@ -16,7 +16,7 @@ upstream: [US-063/TASK-001, US-061/TASK-001]
 # TASK-003: Chart Renderer — Server-Side Matplotlib KPI Chart PNG Generation
 
 > **Story:** US-063 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 3 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Draft | **Date:** 2026-07-29
 
 ---
 

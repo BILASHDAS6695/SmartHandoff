@@ -1,0 +1,155 @@
+/**
+ * Live ADT Events panel styles
+ * US-048 TASK-003
+ */
+
+.adt-feed-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fafafa;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  &__viewport {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #999;
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+}
+
+.event-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 150px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  height: 56px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f5f5f5;
+  }
+}
+
+.event-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+
+  &--admit {
+    background-color: #c8e6c9;
+    color: #1b5e20;
+  }
+
+  &--discharge {
+    background-color: #ffccbc;
+    color: #bf360c;
+  }
+
+  &--transfer {
+    background-color: #bbdefb;
+    color: #01579b;
+  }
+
+  &--default {
+    background-color: #e0e0e0;
+    color: #424242;
+  }
+}
+
+.event-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.event-encounter {
+  font-size: 13px;
+  color: #666;
+  font-family: 'Courier New', monospace;
+}
+
+.event-timestamp {
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+}
+
+.connection-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ccc;
+  transition: background-color 0.3s ease;
+
+  &--connected {
+    background-color: #4caf50;
+  }
+
+  &--reconnecting {
+    background-color: #ff9800;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  &--disconnected {
+    background-color: #f44336;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

@@ -1,0 +1,64 @@
+.bed-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+// Unit filter toolbar (US-050 TASK-004)
+.bed-board__toolbar {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+// Main bed grid — CSS Grid auto-fill layout (responsive 1024px to 2560px)
+.bed-board__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+
+  // Skeleton loader animation
+  @for $i from 1 through 12 {
+    > :nth-child(#{$i}):only-child .bed-cell--skeleton {
+      animation-delay: #{$i * 50}ms;
+    }
+  }
+}
+
+// Empty state message
+.bed-board__empty {
+  grid-column: 1 / -1;
+  padding: 24px;
+  text-align: center;
+  color: #757575;
+}
+
+// Error message
+.bed-board__error {
+  padding: 12px 16px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+// Responsive breakpoint: 1024px list view (US-050 TASK-004 AC6)
+@media (max-width: 1023px) {
+  .bed-board__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Enhanced grid spacing for wider screens
+@media (min-width: 2560px) {
+  .bed-board__grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+}

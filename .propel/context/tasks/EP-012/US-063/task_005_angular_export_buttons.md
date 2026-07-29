@@ -7,8 +7,8 @@ sprint: 2
 layer: Frontend
 estimate: 2h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Frontend Engineer
 upstream: [US-063/TASK-001, US-061/TASK-003, US-061/TASK-004]
 ---
@@ -16,7 +16,7 @@ upstream: [US-063/TASK-001, US-061/TASK-003, US-061/TASK-004]
 # TASK-005: Angular Export Buttons — CSV & PDF Download Controls on Analytics Dashboard
 
 > **Story:** US-063 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Frontend | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Draft | **Date:** 2026-07-29
 
 ---
 

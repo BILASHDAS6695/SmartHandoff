@@ -1,0 +1,294 @@
+// Discharge Instructions Component — US-053 mobile-first responsive layout
+// Design refs:
+//   US-053 AC Scenario 3 — 375 px single-column stacked layout
+//   US-053 DoD           — touch targets ≥44 px; mobile-first below 768 px
+//   NFR-033              — mobile-first approach; primary patient devices: iOS/Android
+//   NFR-034              — Angular Material WCAG 2.1 AA baseline
+
+// ─── Breakpoints ────────────────────────────────────────────────────────────
+$bp-mobile: 375px;
+$bp-tablet: 768px;
+
+// ─── Page container ─────────────────────────────────────────────────────────
+.instructions-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: var(--mat-body-font-family, Roboto, sans-serif);
+
+  // Loading / error states centred
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+  }
+
+  .error-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    background-color: #fdecea;
+    color: #b71c1c;
+    margin-bottom: 16px;
+  }
+}
+
+// ─── Page header + language switcher ────────────────────────────────────────
+.instructions-header {
+  display: flex;
+  flex-direction: column;        // Stack on mobile
+  gap: 12px;
+  margin-bottom: 24px;
+
+  @media (min-width: $bp-tablet) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.instructions-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--mat-text-primary, rgba(0 0 0 / 87%));
+
+  @media (max-width: $bp-mobile) {
+    font-size: 1.25rem;
+  }
+}
+
+// Language switcher — touch targets ≥44 px (US-053 DoD; WCAG 2.5.5)
+.language-switcher {
+  align-self: flex-start;
+
+  ::ng-deep .mat-button-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    line-height: 44px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  ::ng-deep .mat-button-toggle-checked {
+    background-color: var(--mat-primary-500, #1976d2);
+    color: #ffffff;
+  }
+}
+
+// ─── Header controls layout: action buttons + language switcher ──────────────
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+
+  @media (min-width: $bp-tablet) {
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto;
+  }
+}
+
+// Action buttons: PDF download + PWA install (US-054)
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  @media (min-width: $bp-tablet) {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .action-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+    min-height: 44px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 0.875rem;
+
+    ::ng-deep mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background-color: rgba(0 0 0 / 4%);
+    }
+
+    @media (max-width: $bp-mobile) {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+// ─── Sections container — single-column stack on mobile ─────────────────────
+.sections-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ─── Individual section card ─────────────────────────────────────────────────
+.instruction-section {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid rgba(0 0 0 / 12%);
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0 0 0 / 10%);
+
+  // Section header row: icon + heading side by side
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    mat-icon {
+      color: var(--mat-primary-500, #1976d2);
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+  }
+
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--mat-text-primary, rgba(0 0 0 / 87%));
+
+    @media (max-width: $bp-mobile) {
+      font-size: 1rem;
+    }
+  }
+
+  mat-divider {
+    margin-bottom: 12px;
+  }
+
+  .section-body {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--mat-text-secondary, rgba(0 0 0 / 60%));
+    margin: 0;
+  }
+}
+
+// ─── Medication list ──────────────────────────────────────────────────────────
+.medication-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  .medication-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0 0 0 / 6%);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .med-notes {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--mat-text-hint, rgba(0 0 0 / 38%));
+      margin-top: 2px;
+    }
+  }
+}
+
+// ─── Follow-up appointment list ──────────────────────────────────────────────
+.followup-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  .followup-item {
+    padding: 8px 0;
+    font-size: 0.9375rem;
+    border-bottom: 1px solid rgba(0 0 0 / 6%);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .followup-contact {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--mat-primary-500, #1976d2);
+      margin-top: 2px;
+    }
+  }
+}
+
+// ─── Warning list ────────────────────────────────────────────────────────────
+.warning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  .warning-item {
+    padding: 6px 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.5;
+
+    &::before {
+      content: '• ';
+      color: var(--color-danger, #d32f2f);
+      font-weight: 700;
+    }
+  }
+}
+
+// ─── Warning section overrides (applied by WarningSectionDirective) ──────────
+// Rules applied via appWarningSection directive host class binding (TASK-004).
+// Colour alone does not convey meaning (WCAG 1.4.1) — supplemented by ⚠ icon
+// and explicit "Call 911" header text.
+.warning-section {
+  border: 2px solid var(--color-danger, #d32f2f) !important;
+  border-radius: 8px;
+  background-color: var(--color-warning-bg, #fff8e1) !important;
+
+  .section-header {
+    align-items: flex-start;
+  }
+
+  .warning-icon {
+    color: var(--color-danger, #d32f2f);
+    font-size: 28px;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    color: var(--color-danger, #d32f2f);
+    font-weight: 700;
+  }
+
+  .warning-item {
+    font-weight: 500;
+    padding: 6px 0;
+
+    &::before {
+      content: '• ';
+      color: var(--color-danger, #d32f2f);
+      font-weight: 700;
+    }
+  }
+}

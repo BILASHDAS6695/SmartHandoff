@@ -7,8 +7,8 @@ sprint: 2
 layer: Backend / Data
 estimate: 2h
 priority: Must Have
-status: Draft
-date: 2026-07-17
+status: Complete
+date: 2026-07-29
 assignee: Backend Engineer
 upstream: [US-061, US-009, DR-007, TR-010]
 ---
@@ -16,7 +16,7 @@ upstream: [US-061, US-009, DR-007, TR-010]
 # TASK-001: KPI Read Model — Pydantic Schemas & SQLAlchemy Read-Replica Query Service
 
 > **Story:** US-061 | **Epic:** EP-012 | **Sprint:** 2 | **Layer:** Backend / Data | **Est:** 2 h
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-29
 
 ---
 

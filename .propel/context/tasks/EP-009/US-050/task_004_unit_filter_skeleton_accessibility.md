@@ -1,7 +1,7 @@
 # TASK-004: Unit Filter (MatButtonToggle + sessionStorage) and WCAG Accessibility
 
 > **Story:** US-050 | **Effort:** 8 hours | **Layer:** Frontend — UX/A11y
-> **Status:** Draft | **Date:** 2026-07-17
+> **Status:** Complete | **Date:** 2026-07-17
 
 ---
 

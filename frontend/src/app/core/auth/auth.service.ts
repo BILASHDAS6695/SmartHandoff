@@ -75,6 +75,20 @@ export class AuthService {
   }
 
   /**
+   * Read a claim from the current JWT payload.
+   * Returns null if not authenticated or claim is absent.
+   *
+   * Usage:
+   *   const preferredLang = this.auth.getPatientClaim<'fr' | 'en'>('preferred_language');
+   */
+  getPatientClaim<T = unknown>(claimKey: string): T | null {
+    const user = this.currentUser();
+    if (!user) return null;
+    const value = (user as unknown as Record<string, unknown>)[claimKey];
+    return value !== undefined ? (value as T) : null;
+  }
+
+  /**
    * Exchange an OIDC id_token for a SmartHandoff application JWT.
    *
    * Called by LoginCallbackComponent after receiving the OIDC code-exchange response.

@@ -1,0 +1,78 @@
+<!-- PatientOtpComponent HTML template (US-052 TASK-005) -->
+<div class="otp-container">
+  <div class="otp-header">
+    <h1>Enter your verification code</h1>
+    <p class="otp-instructions">
+      We've sent a 6-digit code to your phone. Enter it below.
+    </p>
+  </div>
+
+  <!-- Countdown timer -->
+  <div class="timer-section">
+    <div class="countdown" [class.expired]="isExpired()">
+      <span class="timer-label">Code expires in:</span>
+      <span class="timer-value">{{ countdownDisplay }}</span>
+    </div>
+  </div>
+
+  <!-- OTP input fields -->
+  <div class="otp-inputs">
+    <input
+      *ngFor="let digit of digits(); let i = index"
+      #otpInput
+      type="text"
+      maxlength="1"
+      inputmode="numeric"
+      pattern="[0-9]"
+      [value]="digit"
+      [disabled]="isExpired() || isSubmitting()"
+      [attr.aria-label]="'Digit ' + (i + 1) + ' of 6'"
+      autocomplete="one-time-code"
+      (input)="onDigitInput(i, $event)"
+      (keydown)="onDigitKeydown(i, $event)"
+      (paste)="onPaste($event)"
+      class="otp-input"
+    />
+  </div>
+
+  <!-- Error message -->
+  <div
+    *ngIf="errorMessage()"
+    class="error-message"
+    role="alert"
+    [class.expired-error]="isExpired()"
+  >
+    {{ errorMessage() }}
+  </div>
+
+  <!-- Action buttons -->
+  <div class="otp-actions">
+    <button
+      *ngIf="!isExpired()"
+      (click)="submit()"
+      [disabled]="!isComplete || isSubmitting()"
+      class="submit-btn"
+    >
+      <mat-spinner
+        *ngIf="isSubmitting()"
+        diameter="16"
+        class="spinner"
+      ></mat-spinner>
+      <span *ngIf="!isSubmitting()">Verify</span>
+    </button>
+
+    <button
+      *ngIf="isExpired()"
+      (click)="requestNewOtp()"
+      class="request-new-btn"
+    >
+      Request a new code
+    </button>
+  </div>
+
+  <!-- Help text -->
+  <div class="help-text">
+    <p>Didn't receive a code?</p>
+    <a href="#" class="help-link">Contact support</a>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+mat-nav-list {
+  padding: 0;
+
+  mat-list-item {
+    height: 48px;
+    border-left: 4px solid transparent;
+    margin-bottom: 8px;
+
+    &.active {
+      border-left-color: var(--sh-color-primary);
+      background-color: rgba(13, 71, 161, 0.08);
+    }
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+  }
+}

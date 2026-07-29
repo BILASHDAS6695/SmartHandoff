@@ -1,0 +1,18 @@
+// Filter bar layout — horizontal flex, responsive wrap for narrow viewports
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 0;
+}
+
+.date-range-field {
+  min-width: 280px;
+  flex: 1 1 280px;
+}
+
+.unit-field {
+  min-width: 180px;
+  flex: 0 1 180px;
+}

@@ -7,7 +7,7 @@ sprint: 2
 layer: Frontend — Testing + QA
 estimate: 1h
 priority: Must Have
-status: Draft
+status: Complete
 date: 2026-07-17
 assignee: Frontend Engineer
 upstream: [NFR-034, US-049]
