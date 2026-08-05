@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { environment } from '../../../../environments/environment';
@@ -54,7 +55,24 @@ export class LoginCallbackComponent implements OnInit {
     try {
       await this.#handleCallback();
     } catch (err) {
-      console.error('OIDC callback error:', err);
+      if (err instanceof HttpErrorResponse) {
+        const backendDetail = err.error?.detail || err.error?.message || JSON.stringify(err.error);
+        console.error('❌ OIDC callback exchange failed', {
+          status: err.status,
+          statusText: err.statusText,
+          detail: backendDetail,
+          rawError: err.error,
+        });
+        
+        // Log more details about the error
+        if (err.status === 400) {
+          console.error('💡 400 Bad Request likely means: Invalid authorization code, expired code, or mismatched redirect_uri');
+        } else if (err.status === 401) {
+          console.error('💡 401 Unauthorized: Client authentication failed or authorization code is invalid');
+        }
+      } else {
+        console.error('❌ OIDC callback error:', err);
+      }
       this.error = true;
       // Clean up PKCE artefacts on failure
       sessionStorage.removeItem('pkce_code_verifier');
@@ -90,32 +108,46 @@ export class LoginCallbackComponent implements OnInit {
       throw new Error('PKCE code_verifier missing from session storage');
     }
 
-    // Exchange code for tokens at IdP token endpoint
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
+    // Exchange code for tokens via backend (secure - keeps client_secret on server)
+    const codeExchangeBody = {
       code,
-      redirect_uri: `${window.location.origin}/auth/callback`,
-      client_id: environment.oidcClientId,
       code_verifier: codeVerifier,
+      redirect_uri: `${window.location.origin}/auth/callback`,
+    };
+
+    // Ensure proper JSON encoding and headers
+    console.log('📤 Sending code exchange request with body:', {
+      code: codeExchangeBody.code.substring(0, 20) + '...',
+      code_verifier: codeExchangeBody.code_verifier.substring(0, 20) + '...',
+      redirect_uri: codeExchangeBody.redirect_uri,
     });
 
-    const tokenResponse = await firstValueFrom(
-      this.http.post<OidcTokenResponse>(
-        `${environment.idpBaseUrl}/token`,
-        body.toString(),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-      )
-    );
+    try {
+      const tokenResponse = await firstValueFrom(
+        this.http.post<{ access_token: string; token_type: string; expires_in: number }>(
+          `${environment.apiBaseUrl}/api/v1/auth/exchange-code`,
+          codeExchangeBody,
+          { 
+            headers: { 'Content-Type': 'application/json' },
+            withCredentials: true,
+          }
+        )
+      );
 
-    // Exchange OIDC id_token for SmartHandoff app JWT
-    await this.authService.exchangeIdToken(tokenResponse.id_token);
+      console.log('✅ Code exchange successful. Token received.');
 
-    // Clean up PKCE artefacts — they are single-use only
-    sessionStorage.removeItem('pkce_code_verifier');
-    sessionStorage.removeItem('oidc_state');
+      // Store the SmartHandoff application JWT
+      this.authService.setToken(tokenResponse.access_token);
 
-    // Navigate to dashboard or the originally requested URL
-    const returnUrl = this.route.snapshot.queryParams['returnUrl'] ?? '/dashboard';
-    await this.router.navigateByUrl(returnUrl);
+      // Clean up PKCE artefacts — they are single-use only
+      sessionStorage.removeItem('pkce_code_verifier');
+      sessionStorage.removeItem('oidc_state');
+
+      // Navigate to dashboard or the originally requested URL
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'] ?? '/dashboard';
+      await this.router.navigateByUrl(returnUrl);
+    } catch (err) {
+      throw err; // Re-throw to be handled by ngOnInit error handler
+    }
   }
 }

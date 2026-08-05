@@ -58,7 +58,7 @@ async def create_pharmacist_alert(
     encounter_id: uuid.UUID,
     payload: PharmacistAlertCreate,
     db: Annotated[AsyncSession, Depends(get_write_db)],
-    current_user: Annotated[TokenClaims, Depends(require_permission("alert", "create"))],
+    current_user: Annotated[TokenClaims, Depends(require_permission("alert", "write"))],
 ) -> PharmacistAlertRead:
     """Persist a pharmacist alert and publish a Pub/Sub notification.
 

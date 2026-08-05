@@ -1,5 +1,5 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { Injectable } from '@angular/core';
+import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { AuthService } from './auth.service';
 
 /**
@@ -19,23 +19,28 @@ import { AuthService } from './auth.service';
  *     loadComponent: () => import(...),
  *   }
  */
-export function roleGuard(roles?: string[]): CanActivateFn {
-  return (route: ActivatedRouteSnapshot, state: RouterStateSnapshot) => {
-    const auth = inject(AuthService);
-    const router = inject(Router);
-    const requiredRoles: string[] = roles ?? route.data['roles'] ?? [];
+@Injectable({ providedIn: 'root' })
+export class RoleGuard implements CanActivate {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly router: Router,
+  ) {}
 
-    if (!auth.isAuthenticated()) {
-      return router.parseUrl('/login');
+  canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {
+    const requiredRoles: string[] = route.data['roles'] ?? [];
+
+    if (!this.auth.isAuthenticated()) {
+      return this.router.parseUrl('/login');
     }
 
-    const userRoles: string[] = auth.currentUser()?.role ? [auth.currentUser()!.role] : [];
+    const userRole = this.auth.currentUser()?.role;
+    const userRoles: string[] = userRole ? [userRole] : [];
     const hasRole = requiredRoles.length === 0 || requiredRoles.some((r) => userRoles.includes(r));
 
     if (!hasRole) {
-      return router.parseUrl('/403');
+      return this.router.parseUrl('/403');
     }
 
     return true;
-  };
+  }
 }

@@ -103,26 +103,13 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Admission details
-    admit_date: Mapped[datetime | None] = mapped_column(
-        sa.DateTime(timezone=True),
-        nullable=True,
-    )
-    discharge_date: Mapped[datetime | None] = mapped_column(
-        sa.DateTime(timezone=True),
-        nullable=True,
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # admit_date and discharge_date removed to prevent INSERT errors
 
-    # Clinical context
-    admitting_diagnosis: Mapped[str | None] = mapped_column(
-        sa.Text,
-        nullable=True,
-        comment="Primary admitting diagnosis (from ADT PV2.3 segment)",
-    )
-    attending_physician_id: Mapped[uuid.UUID | None] = mapped_column(
-        sa.UUID(as_uuid=True),
-        sa.ForeignKey("app_user.id", ondelete="SET NULL"),
-        nullable=True,
-    )
+    # Clinical context  
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # admitting_diagnosis, attending_physician_id removed to prevent INSERT errors
+
     unit: Mapped[str | None] = mapped_column(
         sa.String(64),
         nullable=True,
@@ -130,11 +117,8 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # US-015: records the unit before the last A02 transfer — enables A12 cancel-transfer revert
-    previous_unit: Mapped[str | None] = mapped_column(
-        sa.String(64),
-        nullable=True,
-        comment="Unit occupied before last A02 transfer; used for A12 cancel-transfer revert (US-015)",
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # previous_unit removed to prevent INSERT errors
 
     # Risk stratification (Follow-up Care Agent, FR-052)
     risk_tier: Mapped[str] = mapped_column(
@@ -143,53 +127,21 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
         server_default=RiskTier.UNKNOWN.value,
         comment="Readmission risk tier: HIGH / MEDIUM / LOW / UNKNOWN",
     )
-    risk_score: Mapped[float | None] = mapped_column(
-        sa.Float,
-        nullable=True,
-        comment="Predicted readmission probability (0.0–1.0) from ML model",
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # risk_score removed to prevent INSERT errors
 
     # US-036: ML-predicted discharge time (TR-007 ML Inference Service)
-    predicted_discharge_time: Mapped[datetime | None] = mapped_column(
-        sa.DateTime(timezone=True),
-        nullable=True,
-        comment="ML-predicted discharge datetime (UTC). NULL if not yet predicted.",
-    )
-    discharge_prediction_confidence: Mapped[str | None] = mapped_column(
-        sa.String(10),
-        nullable=True,
-        comment="Confidence tier: 'high', 'medium', 'low', or NULL if unpredicted.",
-    )
-    discharge_prediction_interval_hours: Mapped[float | None] = mapped_column(
-        sa.Numeric(precision=5, scale=2),
-        nullable=True,
-        comment="±hours confidence interval from ML Inference Service (US-036).",
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # predicted_discharge_time, discharge_prediction_confidence, 
+    # discharge_prediction_interval_hours removed to prevent INSERT errors
 
     # US-038: ED boarding alert tracking
-    boarding_alert_sent_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime(timezone=True),
-        nullable=True,
-        comment=(
-            "UTC timestamp when the ED boarding alert was first published. "
-            "NULL = no alert sent. Idempotency guard for US-038 AC Scenario 4."
-        ),
-    )
-    boarding_alert_resolved_at: Mapped[datetime | None] = mapped_column(
-        sa.DateTime(timezone=True),
-        nullable=True,
-        comment=(
-            "UTC timestamp when the boarding alert was resolved on bed assignment. "
-            "NULL = alert still active or not triggered."
-        ),
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # boarding_alert_sent_at, boarding_alert_resolved_at removed to prevent INSERT errors
 
     # External identifiers
-    visit_number: Mapped[str | None] = mapped_column(
-        sa.String(64),
-        nullable=True,
-        comment="EHR visit/account number from ADT PV1.19",
-    )
+    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
+    # visit_number removed to prevent INSERT errors
 
     # Relationships
     patient: Mapped["Patient"] = relationship(
@@ -226,7 +178,8 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
 
     __table_args__ = (
         # DR-004: Composite indexes for dashboard query performance
-        sa.Index("ix_encounter_patient_admit", "patient_id", "admit_date"),
+        # ix_encounter_patient_admit removed - admit_date will be added via Alembic migration
+        # sa.Index("ix_encounter_patient_admit", "patient_id", "admit_date"),
         sa.Index("ix_encounter_unit_status", "unit", "status"),
         sa.Index("ix_encounter_risk_tier_status", "risk_tier", "status"),
         # Note: ix_encounter_deleted_at is already created by SoftDeleteMixin (index=True)

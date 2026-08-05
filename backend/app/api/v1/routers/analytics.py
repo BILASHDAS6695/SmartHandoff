@@ -73,17 +73,14 @@ def _require_roles(permitted_roles: set[str]) -> callable:
 )
 async def get_kpis(
     from_date: Annotated[datetime.date | None, Query(
-        default=None,
         alias="from",
         description="Inclusive start date (ISO 8601). Defaults to today minus 30 days.",
     )] = None,
     to_date: Annotated[datetime.date | None, Query(
-        default=None,
         alias="to",
         description="Inclusive end date (ISO 8601). Defaults to today.",
     )] = None,
     unit: Annotated[str | None, Query(
-        default=None,
         description="Filter results to a single unit. Omit to include all accessible units.",
         max_length=100,
     )] = None,
