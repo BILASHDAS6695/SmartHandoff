@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from '@core/auth/role.guard';
+import { RoleGuard } from '@core/auth/role.guard';
 
 /**
  * Analytics feature routes.
@@ -14,7 +14,8 @@ export const ANALYTICS_ROUTES: Routes = [
       import('./analytics.component').then(
         (m) => m.AnalyticsComponent,
       ),
-    canActivate: [roleGuard(['MANAGER', 'ADMIN'])],
+    canActivate: [RoleGuard],
+    data: { roles: ['MANAGER', 'ADMIN'] },
     title: 'Analytics Dashboard — SmartHandoff',
   },
 ];

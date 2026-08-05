@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -39,9 +39,6 @@ export class AuthService {
   // Storing in Angular signal so components can reactively respond to auth state.
   readonly #tokenSignal = signal<string | null>(null);
 
-  /** IdleTimeoutService — wired for 30-minute idle logout (US-059). */
-  private readonly idleTimeoutService = inject(IdleTimeoutService);
-
   /** Reactive auth state for components to consume without exposing the token. */
   readonly isAuthenticated = computed(() => {
     const token = this.#tokenSignal();
@@ -59,6 +56,7 @@ export class AuthService {
   constructor(
     private readonly http: HttpClient,
     private readonly router: Router,
+    private readonly idleTimeoutService: IdleTimeoutService,
   ) {}
 
   /**
@@ -101,6 +99,14 @@ export class AuthService {
       })
     );
     this.#setSession(response.access_token);
+  }
+
+  /**
+   * Set the application JWT token directly (for code exchange flow).
+   * Used when the backend already returned the final JWT.
+   */
+  setToken(token: string): void {
+    this.#setSession(token);
   }
 
   /**

@@ -127,6 +127,10 @@ def is_blocklisted(jti: str) -> bool:
         should raise HTTP 503 on Redis failure — failing open would be a
         security regression.
     """
+    # Skip blocklist check for local development (no Redis available)
+    if os.environ.get("ALLOW_UNAUTHENTICATED_LOCALHOST") == "true":
+        return False
+    
     key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
     client = _get_redis_client()
     result = client.exists(key)

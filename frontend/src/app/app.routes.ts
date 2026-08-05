@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { AuthGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -15,43 +15,43 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
   },
   {
     path: 'patients',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/patients/patients.routes').then((m) => m.PATIENTS_ROUTES),
   },
   {
     path: 'beds',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/beds/beds.routes').then((m) => m.BEDS_ROUTES),
   },
   {
     path: 'documents',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/documents/documents.routes').then((m) => m.DOCUMENTS_ROUTES),
   },
   {
     path: 'medications',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/medications/medications.routes').then((m) => m.MEDICATIONS_ROUTES),
   },
   {
     path: 'analytics',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/analytics/analytics.routes').then((m) => m.ANALYTICS_ROUTES),
   },
   {
     path: 'admin',
-    canActivate: [authGuard],
+    canActivate: [AuthGuard],
     loadChildren: () =>
       import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },

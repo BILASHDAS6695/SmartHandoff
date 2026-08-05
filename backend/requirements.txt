@@ -38,3 +38,6 @@ sentence-transformers>=2.7.0
 
 # --- Prometheus metrics (US-018) ---
 prometheus_client>=0.20.0
+
+# --- APScheduler for background jobs ---
+apscheduler>=3.10.0

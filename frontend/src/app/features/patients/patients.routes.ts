@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { roleGuard } from '../../core/auth/role.guard';
+import { RoleGuard } from '../../core/auth/role.guard';
 
 export const PATIENTS_ROUTES: Routes = [
   {
@@ -9,7 +9,7 @@ export const PATIENTS_ROUTES: Routes = [
   },
   {
     path: ':patientId/medications',
-    canActivate: [roleGuard],
+    canActivate: [RoleGuard],
     data: { roles: ['pharmacist', 'physician'] },
     loadComponent: () =>
       import('../medications/components/medication-review/medication-review.component').then(

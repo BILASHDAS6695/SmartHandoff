@@ -288,3 +288,21 @@ class get_db_session_context:
         if self._session is not None:
             return await self._session.__aexit__(exc_type, exc_val, exc_tb)
         return None
+
+
+def get_write_session() -> get_db_session_context:
+    """Return a context manager for getting a write session in background tasks.
+
+    Use for APScheduler jobs, Pub/Sub subscribers, and other background contexts
+    where FastAPI dependency injection is not available.
+
+    Usage::
+
+        async with get_write_session() as db:
+            # ... perform database operations ...
+            await db.commit()  # if needed
+
+    Returns:
+        A context manager that yields an AsyncSession connected to the write engine.
+    """
+    return get_db_session_context()

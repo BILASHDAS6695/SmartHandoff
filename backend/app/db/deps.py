@@ -38,7 +38,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import read_session_factory, write_session_factory
+from app.db import session as db_session
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,26 @@ async def get_write_db() -> AsyncGenerator[AsyncSession, None]:
       `await db.rollback()` is called automatically on exception by the
       try/finally block.
     """
-    if write_session_factory is None:
-        raise RuntimeError(
-            "write_session_factory is not initialised. "
-            "Ensure create_db_engines() was called during application startup."
-        )
-    async with write_session_factory() as session:
+    # Diagnostic: Log the actual state before checking
+    logger.warning(
+        f"🔍 get_write_db() called - write_session_factory is None: {db_session.write_session_factory is None}, "
+        f"type: {type(db_session.write_session_factory)}"
+    )
+    
+    if db_session.write_session_factory is None:
+        logger.error("❌ CRITICAL: write_session_factory is None at request time!")
+        logger.warning("🔄 Attempting lazy initialization of database engines...")
+        try:
+            db_session.create_db_engines()
+            logger.warning("✅ Lazy database initialization succeeded")
+        except Exception as init_exc:
+            logger.error(f"❌ Lazy database initialization failed: {init_exc}")
+            raise RuntimeError(
+                "write_session_factory is not initialised and lazy initialization failed. "
+                "Check database connection settings."
+            ) from init_exc
+    
+    async with db_session.write_session_factory() as session:
         try:
             yield session
         except Exception:
@@ -78,12 +92,18 @@ async def get_read_db() -> AsyncGenerator[AsyncSession, None]:
     The session is automatically closed and the connection returned to the
     replica connection pool when the request finishes.
     """
-    if read_session_factory is None:
-        raise RuntimeError(
-            "read_session_factory is not initialised. "
-            "Ensure create_db_engines() was called during application startup."
-        )
-    async with read_session_factory() as session:
+    if db_session.read_session_factory is None:
+        logger.warning("🔄 read_session_factory is None, attempting lazy initialization...")
+        try:
+            db_session.create_db_engines()
+            logger.warning("✅ Lazy database initialization succeeded for read_db")
+        except Exception as init_exc:
+            logger.error(f"❌ Lazy database initialization failed: {init_exc}")
+            raise RuntimeError(
+                "read_session_factory is not initialised and lazy initialization failed."
+            ) from init_exc
+    
+    async with db_session.read_session_factory() as session:
         yield session
 
 

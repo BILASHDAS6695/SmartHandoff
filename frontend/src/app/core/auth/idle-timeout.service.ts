@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Injectable, Inject, OnDestroy } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
@@ -37,12 +37,14 @@ const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
  */
 @Injectable({ providedIn: 'root' })
 export class IdleTimeoutService implements OnDestroy {
-  private readonly document = inject(DOCUMENT);
-  private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
-
   private idleSubscription: Subscription | null = null;
   private dialogRef: MatDialogRef<SessionExpiredDialogComponent> | null = null;
+
+  constructor(
+    @Inject(DOCUMENT) private readonly document: Document,
+    private readonly router: Router,
+    private readonly dialog: MatDialog,
+  ) {}
 
   /**
    * Start monitoring user activity. Must be called after successful login.

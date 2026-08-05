@@ -39,7 +39,7 @@ gcloud run deploy $ServiceName `
     --timeout=300 `
     --port=8080 `
     --add-cloudsql-instances=$DatabaseInstance `
-    --set-env-vars="DATABASE_URL=postgresql+asyncpg://postgres:SmartHandoff%40123@/smarthandoff?host=/cloudsql/$DatabaseInstance"
+    --set-env-vars="DATABASE_URL=postgresql+asyncpg://postgres:SmartHandoff%40123@/smarthandoff?host=/cloudsql/$DatabaseInstance,CORS_ORIGINS=https://smarthandoff-frontend-52528248131.us-central1.run.app"
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n========================================" -ForegroundColor Green

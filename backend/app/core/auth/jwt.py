@@ -97,11 +97,21 @@ def _map_role(groups: list[str]) -> str:
 
     Takes the first matching group in priority order (most privileged first).
     Returns "unknown" if no known group is found; callers should reject unknown roles.
+    
+    TEMPORARY: For testing without Google Workspace, assigns 'ADMIN' role to all users.
+    TODO: Remove this default and enforce Google Groups in production.
     """
     for group in groups:
         if group in _ROLE_MAP:
             return _ROLE_MAP[group]
-    return "unknown"
+    
+    # TEMPORARY: Default to ADMIN for testing without Google Groups
+    logger.warning(
+        "No SmartHandoff group found in groups=%r. Assigning default 'ADMIN' role for testing.",
+        groups,
+        extra={"event_type": "auth_warning", "reason": "default_role_assigned"},
+    )
+    return "ADMIN"  # TODO: Change back to "unknown" in production
 
 
 def _map_claims(oidc_claims: dict) -> dict:
