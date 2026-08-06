@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SCR-010b — Patient Portal Instructions | SmartHandoff Hi-Fi Wireframe</title>
+  <style>
+    :root{
+      --color-brand-primary:#2563EB;--color-surface-page:#F9FAFB;--color-surface-card:#FFFFFF;
+      --color-text-primary:#111827;--color-text-secondary:#4B5563;
+      --color-border-default:#E5E7EB;--color-grey-100:#F3F4F6;--color-grey-700:#374151;
+      --color-alert-critical:#DC2626;--color-alert-critical-bg:#FEF2F2;
+      --color-alert-warning:#D97706;--color-alert-warning-bg:#FFFBEB;
+      --color-alert-success:#16A34A;--color-alert-success-bg:#F0FDF4;
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+      --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
+      --radius-md:8px;--radius-lg:12px;--radius-xl:16px;--radius-2xl:24px;--radius-full:9999px;
+      --font-family-base:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-family-base);background:#F0F9FF;color:var(--color-text-primary);}
+    .wf-meta{background:#1E3A8A;color:#fff;padding:8px 20px;font-size:11px;display:flex;justify-content:space-between;align-items:center;}
+    .wf-badge{background:rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-weight:600;font-size:10px;}
+
+    .viewport-wrap{display:flex;justify-content:center;align-items:flex-start;padding:24px;gap:32px;flex-wrap:wrap;}
+    .mobile-frame{width:375px;min-height:780px;background:#fff;border-radius:32px;box-shadow:var(--shadow-xl);overflow:hidden;position:relative;border:2px solid var(--color-border-default);}
+    .mobile-notch{height:28px;background:#111827;border-radius:32px 32px 0 0;display:flex;align-items:center;justify-content:center;}
+    .mobile-notch div{width:80px;height:4px;background:rgba(255,255,255,.3);border-radius:var(--radius-full);}
+
+    .portal-header{background:var(--color-brand-primary);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+    .back-btn{color:#fff;font-size:20px;cursor:pointer;background:none;border:none;}
+    .portal-title{color:#fff;font-size:16px;font-weight:700;}
+    .lang-sel{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:var(--radius-md);padding:4px 10px;font-size:12px;cursor:pointer;}
+
+    .portal-body{padding:16px;display:flex;flex-direction:column;gap:14px;background:var(--color-surface-page);min-height:calc(100% - 60px);}
+
+    .tab-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+    .tab{padding:8px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1.5px solid var(--color-border-default);background:#fff;color:var(--color-text-secondary);}
+    .tab.active{background:var(--color-brand-primary);color:#fff;border-color:var(--color-brand-primary);}
+
+    .section-card{background:#fff;border-radius:var(--radius-2xl);box-shadow:var(--shadow-md);padding:16px;border:1px solid var(--color-border-default);}
+    .section-title{font-size:16px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .section-list{list-style:none;}
+    .section-list li{font-size:14px;color:var(--color-text-primary);padding:8px 0;border-bottom:1px solid var(--color-border-default);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+    .section-list li:last-child{border-bottom:none;}
+    .section-list li::before{content:'•';color:var(--color-brand-primary);font-size:18px;flex-shrink:0;line-height:1.2;}
+
+    .warning-card{background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-2xl);padding:16px;}
+    .warning-title{font-size:16px;font-weight:700;color:var(--color-alert-critical);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .warning-list{list-style:none;}
+    .warning-list li{font-size:14px;padding:6px 0;border-bottom:1px solid #FECACA;display:flex;align-items:center;gap:8px;}
+    .warning-list li:last-child{border-bottom:none;}
+    .warning-list li::before{content:'!';background:var(--color-alert-critical);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+
+    .pdf-btn{width:100%;padding:14px;background:transparent;color:var(--color-brand-primary);border:1.5px solid var(--color-brand-primary);border-radius:var(--radius-xl);font-size:14px;font-weight:600;cursor:pointer;text-align:center;}
+
+    .chat-fab{position:absolute;bottom:20px;right:20px;width:56px;height:56px;background:var(--color-brand-primary);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,.4);cursor:pointer;}
+    .chat-fab svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.5;}
+
+    .frame-label{text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-secondary);margin-bottom:8px;}
+    .meta-panels{display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;max-width:1200px;margin:0 auto;}
+    .panel{background:#fff;border:1px solid var(--color-border-default);border-radius:var(--radius-lg);padding:14px;flex:1;min-width:300px;}
+    .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-secondary);margin-bottom:10px;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
+    .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
+    .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  </style>
+</head>
+<body>
+
+<div class="wf-meta">
+  <div>
+    <span class="wf-badge">Hi-Fi</span>&nbsp;
+    <strong>SCR-010b — Patient Portal Instructions</strong>
+    &nbsp;|&nbsp; Route: <code>/portal/instructions</code>
+    &nbsp;|&nbsp; Persona: P-05 Patient Pat (Mobile 375px)
+    &nbsp;|&nbsp; Priority: Must Have &nbsp;|&nbsp; UC: UC-011
+  </div>
+  <span>SmartHandoff · generate-wireframe · 2026-08-06</span>
+</div>
+
+<div class="viewport-wrap">
+  <div>
+    <div class="frame-label">Discharge Instructions — Activity Tab</div>
+    <div class="mobile-frame">
+      <div class="mobile-notch"><div></div></div>
+
+      <div class="portal-header">
+        <button class="back-btn" onclick="location.href='wireframe-SCR-010-patient-portal.html'">‹</button>
+        <div class="portal-title">Discharge Instructions</div>
+        <select class="lang-sel" title="UXR-031: Always-visible language selector">
+          <option>EN</option><option>ES</option><option>FR</option><option>ZH</option><option>PT</option>
+        </select>
+      </div>
+
+      <div class="portal-body">
+        <div class="tab-bar">
+          <div class="tab active">Activity</div>
+          <div class="tab">Diet</div>
+          <div class="tab">Warning Signs</div>
+          <div class="tab">When to Call</div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🏃 Activity</div>
+          <ul class="section-list">
+            <li>Walk 5–10 minutes each day. Increase slowly.</li>
+            <li>Avoid lifting anything heavier than 10 pounds.</li>
+            <li>Do not drive until your doctor says it is okay.</li>
+            <li>Rest when you feel tired. Sleep 7–8 hours each night.</li>
+          </ul>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🍽️ Diet</div>
+          <ul class="section-list">
+            <li>Follow a low-sodium (low-salt) diet.</li>
+            <li>Limit fluids to about 2 litres per day unless told otherwise.</li>
+            <li>Weigh yourself every morning. Call if you gain 2 pounds in 1 day.</li>
+          </ul>
+        </div>
+
+        <div class="warning-card">
+          <div class="warning-title">🚨 Go to ER Now</div>
+          <ul class="warning-list">
+            <li>Chest pain or tightness</li>
+            <li>Severe shortness of breath</li>
+            <li>Fainting or severe dizziness</li>
+            <li>Coughing up blood</li>
+          </ul>
+        </div>
+
+        <button class="pdf-btn">📄 Download Instructions</button>
+      </div>
+
+      <div class="chat-fab" title="UXR-032: Persistent chatbot FAB">
+        <svg viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="meta-panels">
+  <div class="panel">
+    <div class="panel-label">Screen States</div>
+    <div class="chips">
+      <span class="chip on">Activity tab</span>
+      <span class="chip">Diet tab</span>
+      <span class="chip">Warning signs tab</span>
+      <span class="chip">When to call tab</span>
+      <span class="chip">PDF download loading</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-label">UXR / FR Coverage</div>
+    <div class="chips">
+      <span class="uxr-tag">UXR-001 Responsive 375px</span>
+      <span class="uxr-tag">UXR-002 WCAG AA Contrast</span>
+      <span class="uxr-tag">UXR-030 6th-Grade Reading Level</span>
+      <span class="uxr-tag">UXR-031 Language Selector</span>
+      <span class="uxr-tag">UXR-032 Persistent Chatbot FAB</span>
+      <span class="uxr-tag">UXR-033 Urgency → Emergency Card</span>
+      <span class="uxr-tag">UXR-035 PDF Download</span>
+      <span class="uxr-tag">FR-021 Patient-Friendly Instructions</span>
+    </div>
+  </div>
+</div>
+
+<!-- Wireframe Navigation Panel -->
+<style>
+  .wf-nav-panel { background:#1E3A8A; color:#fff; padding:16px 24px; font-family:var(--font-family-base); font-size:12px; }
+  .wf-nav-panel strong { display:block; margin-bottom:10px; font-size:13px; }
+  .wf-nav-group { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; align-items:center; }
+  .wf-nav-group-label { color:#93C5FD; font-weight:600; min-width:80px; }
+  .wf-nav-panel a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:4px; background:rgba(255,255,255,.15); white-space:nowrap; }
+  .wf-nav-panel a:hover { background:rgba(255,255,255,.3); }
+  .wf-nav-panel a.current { background:#2563EB; font-weight:700; }
+</style>
+<div class="wf-nav-panel">
+  <strong>🧭 Wireframe Navigation</strong>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Auth:</span>
+    <a href="wireframe-SCR-001-login.html">Login</a>
+    <a href="wireframe-SCR-010-patient-portal.html">Patient Portal Home</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Staff:</span>
+    <a href="wireframe-SCR-002-dashboard-home.html">Dashboard</a>
+    <a href="wireframe-SCR-003-patient-list.html">Patient List</a>
+    <a href="wireframe-SCR-004-patient-detail.html">Patient Detail</a>
+    <a href="wireframe-SCR-005-medication-review.html">Medication Review</a>
+    <a href="wireframe-SCR-006-document-review.html">Document Review</a>
+    <a href="wireframe-SCR-007-bed-board.html">Bed Board</a>
+    <a href="wireframe-SCR-008-agent-monitor.html">Agent Monitor</a>
+    <a href="wireframe-SCR-009-analytics-dashboard.html">Analytics</a>
+    <a href="wireframe-SCR-011-admin-settings.html">Admin Settings</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Portal:</span>
+    <a href="wireframe-SCR-010-patient-portal.html">Home</a>
+    <a href="wireframe-SCR-010a-patient-portal-medications.html">Medications</a>
+    <a href="wireframe-SCR-010b-patient-portal-instructions.html" class="current">Instructions</a>
+    <a href="wireframe-SCR-010c-patient-portal-follow-up.html">Follow-up</a>
+  </div>
+</div>
+
+</body>
+</html>

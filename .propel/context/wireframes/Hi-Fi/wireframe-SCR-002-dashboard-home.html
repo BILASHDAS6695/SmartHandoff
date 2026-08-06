@@ -216,7 +216,7 @@
 
   <!-- Topbar -->
   <div class="topbar">
-    <div class="topbar-logo">
+    <div class="topbar-logo" style="cursor:pointer" onclick="location.href='wireframe-SCR-002-dashboard-home.html'" title="Back to Dashboard">
       <div class="topbar-logo-mark">
         <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
       </div>
@@ -238,26 +238,26 @@
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="nav-section-label">Navigation</div>
-    <div class="nav-item active">
+    <div class="nav-item active" onclick="location.href='wireframe-SCR-002-dashboard-home.html'" style="cursor:pointer">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Dashboard
     </div>
-    <div class="nav-item">
+    <div class="nav-item" onclick="location.href='wireframe-SCR-003-patient-list.html'" style="cursor:pointer">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       Patients
       <span class="nav-badge" style="background:#2563EB">142</span>
     </div>
     <!-- Role-gated items (Nurse role — Bed Board hidden) -->
     <div class="nav-section-label" style="margin-top:8px">Role-Gated</div>
-    <div class="nav-item" style="opacity:.4; cursor:not-allowed;" title="UXR-020: Not visible to Nurse role">
+    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-007-bed-board.html'">
       <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M8 7V5a2 2 0 00-4 0v2"/></svg>
       Bed Board <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">BedMgr only</span>
     </div>
-    <div class="nav-item" style="opacity:.4; cursor:not-allowed;" title="UXR-020: Not visible to Nurse role">
+    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-009-analytics-dashboard.html'">
       <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
       Analytics <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">Manager only</span>
     </div>
-    <div class="nav-item" style="opacity:.4; cursor:not-allowed;" title="UXR-020: Not visible to Nurse role">
+    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-011-admin-settings.html'">
       <svg viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
       Admin <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">Admin only</span>
     </div>
@@ -285,7 +285,7 @@
               <span class="priority-chip urgent">URGENT</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: Smith, John — Unit 4W</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Smith, John</a> — Unit 4W</span>
               <span class="task-due">Due 15:00</span>
             </div>
           </div>
@@ -294,7 +294,7 @@
               <span class="task-name">Review handoff checklist</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: Patel, Rita — Unit 3N</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Patel, Rita</a> — Unit 3N</span>
               <span class="task-due">Due 16:30</span>
             </div>
           </div>
@@ -304,7 +304,7 @@
               <span class="priority-chip critical">CRITICAL</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: Nguyen, Lee — ICU</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Nguyen, Lee</a> — ICU</span>
               <span class="task-due">Due ASAP</span>
             </div>
           </div>
@@ -313,11 +313,11 @@
               <span class="task-name">Complete transfer note</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: Garcia, Maria — 3N</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Garcia, Maria</a> — 3N</span>
               <span class="task-due">Due 17:00</span>
             </div>
           </div>
-          <a class="view-all" href="#">View all 7 tasks →</a>
+          <a class="view-all" href="wireframe-SCR-004-patient-detail.html">View all 7 tasks →</a>
         </div>
       </div>
 
@@ -403,7 +403,7 @@
             <span class="risk-score" style="color:var(--color-risk-low)">0.18</span>
             <span class="risk-chip low">LOW</span>
           </div>
-          <a class="view-all" href="#">View all patients →</a>
+          <a class="view-all" href="wireframe-SCR-003-patient-list.html">View all patients →</a>
         </div>
       </div>
 
@@ -476,6 +476,44 @@
       <span class="uxr-tag">UXR-022 ADT Feed Auto-scroll</span>
       <span class="uxr-tag">UXR-023 Risk Score Chips</span>
     </div>
+  </div>
+</div>
+
+<!-- Wireframe Navigation Panel -->
+<style>
+  .wf-nav-panel { background:#1E3A8A; color:#fff; padding:16px 24px; font-family:var(--font-family-base); font-size:12px; }
+  .wf-nav-panel strong { display:block; margin-bottom:10px; font-size:13px; }
+  .wf-nav-group { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; align-items:center; }
+  .wf-nav-group-label { color:#93C5FD; font-weight:600; min-width:80px; }
+  .wf-nav-panel a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:4px; background:rgba(255,255,255,.15); white-space:nowrap; }
+  .wf-nav-panel a:hover { background:rgba(255,255,255,.3); }
+  .wf-nav-panel a.current { background:#2563EB; font-weight:700; }
+</style>
+<div class="wf-nav-panel">
+  <strong>🧭 Wireframe Navigation</strong>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Auth:</span>
+    <a href="wireframe-SCR-001-login.html">Login</a>
+    <a href="wireframe-SCR-010-patient-portal.html">Patient Portal Home</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Staff:</span>
+    <a href="wireframe-SCR-002-dashboard-home.html" class="current">Dashboard</a>
+    <a href="wireframe-SCR-003-patient-list.html">Patient List</a>
+    <a href="wireframe-SCR-004-patient-detail.html">Patient Detail</a>
+    <a href="wireframe-SCR-005-medication-review.html">Medication Review</a>
+    <a href="wireframe-SCR-006-document-review.html">Document Review</a>
+    <a href="wireframe-SCR-007-bed-board.html">Bed Board</a>
+    <a href="wireframe-SCR-008-agent-monitor.html">Agent Monitor</a>
+    <a href="wireframe-SCR-009-analytics-dashboard.html">Analytics</a>
+    <a href="wireframe-SCR-011-admin-settings.html">Admin Settings</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Portal:</span>
+    <a href="wireframe-SCR-010-patient-portal.html">Home</a>
+    <a href="wireframe-SCR-010a-patient-portal-medications.html">Medications</a>
+    <a href="wireframe-SCR-010b-patient-portal-instructions.html">Instructions</a>
+    <a href="wireframe-SCR-010c-patient-portal-follow-up.html">Follow-up</a>
   </div>
 </div>
 
