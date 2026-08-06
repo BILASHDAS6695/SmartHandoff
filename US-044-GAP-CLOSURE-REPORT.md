@@ -37,8 +37,6 @@ All requirements from US-044 task files have been implemented and verified. **On
 | `test_emergency_handler.py` | `urgency/emergency_handler.py` | Alert payload PHI bounds; Pub/Sub publish called; urgency_flag DB write; concurrent execution |
 ```
 
-**Resolution**:
-Created `/Users/keerthanarajendran/SMARTHANDOFF/SmartHandoff/backend/tests/unit/agents/patient_comm/urgency/test_emergency_handler.py` with 12 comprehensive test methods covering:
 
 1. **EmergencyAlertHandlerReply** (2 tests):
    - `test_returns_hardcoded_reply_immediately` — Verifies reply is from config, not LLM-dependent

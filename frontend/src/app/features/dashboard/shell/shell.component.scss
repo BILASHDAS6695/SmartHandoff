@@ -1,24 +1,46 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 56px;
+}
+
 mat-sidenav-container {
   height: 100vh;
+  padding-top: 56px;
 
   mat-sidenav {
-    width: 256px;
-    background-color: var(--sh-surface-sidebar);
+    width: 240px;
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb;
 
     @media (max-width: 768px) {
-      width: 256px;
+      width: 240px;
     }
   }
 
   mat-sidenav-content {
     display: flex;
     flex-direction: column;
+    background-color: #f9fafb;
+    min-height: calc(100vh - 56px);
   }
 
   .content {
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
-    background-color: var(--sh-surface-background);
+    padding: 0;
+    background-color: #f9fafb;
   }
+}
+
+::ng-deep .user-menu-panel {
+  margin-top: 6px;
 }

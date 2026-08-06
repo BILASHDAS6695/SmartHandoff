@@ -3,7 +3,7 @@ import {
   __require,
   __spreadProps,
   __spreadValues
-} from "./chunk-J25FJFZE.js";
+} from "./chunk-KBUIKKCC.js";
 
 // node_modules/@microsoft/signalr/dist/esm/Errors.js
 var HttpError = class extends Error {
@@ -171,7 +171,7 @@ var NullLogger = class {
 NullLogger.instance = new NullLogger();
 
 // node_modules/@microsoft/signalr/dist/esm/Utils.js
-var VERSION = "8.0.17";
+var VERSION = "7.0.14";
 var Arg = class {
   static isRequired(val, name) {
     if (val === null || val === void 0) {
@@ -189,23 +189,23 @@ var Arg = class {
     }
   }
 };
-var Platform = class _Platform {
+var Platform = class {
   // react-native has a window but no document so we should check both
   static get isBrowser() {
-    return !_Platform.isNode && typeof window === "object" && typeof window.document === "object";
+    return typeof window === "object" && typeof window.document === "object";
   }
   // WebWorkers don't have a window object so the isBrowser check would fail
   static get isWebWorker() {
-    return !_Platform.isNode && typeof self === "object" && "importScripts" in self;
+    return typeof self === "object" && "importScripts" in self;
   }
   // react-native has a window but no document
   static get isReactNative() {
-    return !_Platform.isNode && typeof window === "object" && typeof window.document === "undefined";
+    return typeof window === "object" && typeof window.document === "undefined";
   }
   // Node apps shouldn't have a window object, but WebWorkers don't either
   // so we need to check for both WebWorker and window
   static get isNode() {
-    return typeof process !== "undefined" && process.release && process.release.name === "node";
+    return !this.isBrowser && !this.isWebWorker && !this.isReactNative;
   }
 };
 function getDataDetail(data, includeContent) {
@@ -391,14 +391,10 @@ var FetchHttpClient = class extends HttpClient {
   constructor(logger) {
     super();
     this._logger = logger;
-    if (typeof fetch === "undefined" || Platform.isNode) {
+    if (typeof fetch === "undefined") {
       const requireFunc = typeof __webpack_require__ === "function" ? __non_webpack_require__ : __require;
       this._jar = new (requireFunc("tough-cookie")).CookieJar();
-      if (typeof fetch === "undefined") {
-        this._fetchType = requireFunc("node-fetch");
-      } else {
-        this._fetchType = fetch;
-      }
+      this._fetchType = requireFunc("node-fetch");
       this._fetchType = requireFunc("fetch-cookie")(this._fetchType, this._jar);
     } else {
       this._fetchType = fetch.bind(getGlobalThis());
@@ -684,8 +680,6 @@ var MessageType;
   MessageType2[MessageType2["CancelInvocation"] = 5] = "CancelInvocation";
   MessageType2[MessageType2["Ping"] = 6] = "Ping";
   MessageType2[MessageType2["Close"] = 7] = "Close";
-  MessageType2[MessageType2["Ack"] = 8] = "Ack";
-  MessageType2[MessageType2["Sequence"] = 9] = "Sequence";
 })(MessageType || (MessageType = {}));
 
 // node_modules/@microsoft/signalr/dist/esm/Subject.js
@@ -718,171 +712,9 @@ var Subject = class {
   }
 };
 
-// node_modules/@microsoft/signalr/dist/esm/MessageBuffer.js
-var MessageBuffer = class {
-  constructor(protocol, connection, bufferSize) {
-    this._bufferSize = 1e5;
-    this._messages = [];
-    this._totalMessageCount = 0;
-    this._waitForSequenceMessage = false;
-    this._nextReceivingSequenceId = 1;
-    this._latestReceivedSequenceId = 0;
-    this._bufferedByteCount = 0;
-    this._reconnectInProgress = false;
-    this._protocol = protocol;
-    this._connection = connection;
-    this._bufferSize = bufferSize;
-  }
-  _send(message) {
-    return __async(this, null, function* () {
-      const serializedMessage = this._protocol.writeMessage(message);
-      let backpressurePromise = Promise.resolve();
-      if (this._isInvocationMessage(message)) {
-        this._totalMessageCount++;
-        let backpressurePromiseResolver = () => {
-        };
-        let backpressurePromiseRejector = () => {
-        };
-        if (isArrayBuffer(serializedMessage)) {
-          this._bufferedByteCount += serializedMessage.byteLength;
-        } else {
-          this._bufferedByteCount += serializedMessage.length;
-        }
-        if (this._bufferedByteCount >= this._bufferSize) {
-          backpressurePromise = new Promise((resolve, reject) => {
-            backpressurePromiseResolver = resolve;
-            backpressurePromiseRejector = reject;
-          });
-        }
-        this._messages.push(new BufferedItem(serializedMessage, this._totalMessageCount, backpressurePromiseResolver, backpressurePromiseRejector));
-      }
-      try {
-        if (!this._reconnectInProgress) {
-          yield this._connection.send(serializedMessage);
-        }
-      } catch {
-        this._disconnected();
-      }
-      yield backpressurePromise;
-    });
-  }
-  _ack(ackMessage) {
-    let newestAckedMessage = -1;
-    for (let index = 0; index < this._messages.length; index++) {
-      const element = this._messages[index];
-      if (element._id <= ackMessage.sequenceId) {
-        newestAckedMessage = index;
-        if (isArrayBuffer(element._message)) {
-          this._bufferedByteCount -= element._message.byteLength;
-        } else {
-          this._bufferedByteCount -= element._message.length;
-        }
-        element._resolver();
-      } else if (this._bufferedByteCount < this._bufferSize) {
-        element._resolver();
-      } else {
-        break;
-      }
-    }
-    if (newestAckedMessage !== -1) {
-      this._messages = this._messages.slice(newestAckedMessage + 1);
-    }
-  }
-  _shouldProcessMessage(message) {
-    if (this._waitForSequenceMessage) {
-      if (message.type !== MessageType.Sequence) {
-        return false;
-      } else {
-        this._waitForSequenceMessage = false;
-        return true;
-      }
-    }
-    if (!this._isInvocationMessage(message)) {
-      return true;
-    }
-    const currentId = this._nextReceivingSequenceId;
-    this._nextReceivingSequenceId++;
-    if (currentId <= this._latestReceivedSequenceId) {
-      if (currentId === this._latestReceivedSequenceId) {
-        this._ackTimer();
-      }
-      return false;
-    }
-    this._latestReceivedSequenceId = currentId;
-    this._ackTimer();
-    return true;
-  }
-  _resetSequence(message) {
-    if (message.sequenceId > this._nextReceivingSequenceId) {
-      this._connection.stop(new Error("Sequence ID greater than amount of messages we've received."));
-      return;
-    }
-    this._nextReceivingSequenceId = message.sequenceId;
-  }
-  _disconnected() {
-    this._reconnectInProgress = true;
-    this._waitForSequenceMessage = true;
-  }
-  _resend() {
-    return __async(this, null, function* () {
-      const sequenceId = this._messages.length !== 0 ? this._messages[0]._id : this._totalMessageCount + 1;
-      yield this._connection.send(this._protocol.writeMessage({ type: MessageType.Sequence, sequenceId }));
-      const messages = this._messages;
-      for (const element of messages) {
-        yield this._connection.send(element._message);
-      }
-      this._reconnectInProgress = false;
-    });
-  }
-  _dispose(error) {
-    error !== null && error !== void 0 ? error : error = new Error("Unable to reconnect to server.");
-    for (const element of this._messages) {
-      element._rejector(error);
-    }
-  }
-  _isInvocationMessage(message) {
-    switch (message.type) {
-      case MessageType.Invocation:
-      case MessageType.StreamItem:
-      case MessageType.Completion:
-      case MessageType.StreamInvocation:
-      case MessageType.CancelInvocation:
-        return true;
-      case MessageType.Close:
-      case MessageType.Sequence:
-      case MessageType.Ping:
-      case MessageType.Ack:
-        return false;
-    }
-  }
-  _ackTimer() {
-    if (this._ackTimerHandle === void 0) {
-      this._ackTimerHandle = setTimeout(() => __async(this, null, function* () {
-        try {
-          if (!this._reconnectInProgress) {
-            yield this._connection.send(this._protocol.writeMessage({ type: MessageType.Ack, sequenceId: this._latestReceivedSequenceId }));
-          }
-        } catch {
-        }
-        clearTimeout(this._ackTimerHandle);
-        this._ackTimerHandle = void 0;
-      }), 1e3);
-    }
-  }
-};
-var BufferedItem = class {
-  constructor(message, id, resolver, rejector) {
-    this._message = message;
-    this._id = id;
-    this._resolver = resolver;
-    this._rejector = rejector;
-  }
-};
-
 // node_modules/@microsoft/signalr/dist/esm/HubConnection.js
 var DEFAULT_TIMEOUT_IN_MS = 30 * 1e3;
 var DEFAULT_PING_INTERVAL_IN_MS = 15 * 1e3;
-var DEFAULT_STATEFUL_RECONNECT_BUFFER_SIZE = 1e5;
 var HubConnectionState;
 (function(HubConnectionState2) {
   HubConnectionState2["Disconnected"] = "Disconnected";
@@ -892,25 +724,16 @@ var HubConnectionState;
   HubConnectionState2["Reconnecting"] = "Reconnecting";
 })(HubConnectionState || (HubConnectionState = {}));
 var HubConnection = class _HubConnection {
-  /** @internal */
-  // Using a public static factory method means we can have a private constructor and an _internal_
-  // create method that can be used by HubConnectionBuilder. An "internal" constructor would just
-  // be stripped away and the '.d.ts' file would have no constructor, which is interpreted as a
-  // public parameter-less constructor.
-  static create(connection, logger, protocol, reconnectPolicy, serverTimeoutInMilliseconds, keepAliveIntervalInMilliseconds, statefulReconnectBufferSize) {
-    return new _HubConnection(connection, logger, protocol, reconnectPolicy, serverTimeoutInMilliseconds, keepAliveIntervalInMilliseconds, statefulReconnectBufferSize);
-  }
-  constructor(connection, logger, protocol, reconnectPolicy, serverTimeoutInMilliseconds, keepAliveIntervalInMilliseconds, statefulReconnectBufferSize) {
+  constructor(connection, logger, protocol, reconnectPolicy) {
     this._nextKeepAlive = 0;
     this._freezeEventListener = () => {
-      this._logger.log(LogLevel.Warning, "The page is being frozen, this will likely lead to the connection being closed and messages being lost. For more information see the docs at https://learn.microsoft.com/aspnet/core/signalr/javascript-client#bsleep");
+      this._logger.log(LogLevel.Warning, "The page is being frozen, this will likely lead to the connection being closed and messages being lost. For more information see the docs at https://docs.microsoft.com/aspnet/core/signalr/javascript-client#bsleep");
     };
     Arg.isRequired(connection, "connection");
     Arg.isRequired(logger, "logger");
     Arg.isRequired(protocol, "protocol");
-    this.serverTimeoutInMilliseconds = serverTimeoutInMilliseconds !== null && serverTimeoutInMilliseconds !== void 0 ? serverTimeoutInMilliseconds : DEFAULT_TIMEOUT_IN_MS;
-    this.keepAliveIntervalInMilliseconds = keepAliveIntervalInMilliseconds !== null && keepAliveIntervalInMilliseconds !== void 0 ? keepAliveIntervalInMilliseconds : DEFAULT_PING_INTERVAL_IN_MS;
-    this._statefulReconnectBufferSize = statefulReconnectBufferSize !== null && statefulReconnectBufferSize !== void 0 ? statefulReconnectBufferSize : DEFAULT_STATEFUL_RECONNECT_BUFFER_SIZE;
+    this.serverTimeoutInMilliseconds = DEFAULT_TIMEOUT_IN_MS;
+    this.keepAliveIntervalInMilliseconds = DEFAULT_PING_INTERVAL_IN_MS;
     this._logger = logger;
     this._protocol = protocol;
     this.connection = connection;
@@ -928,6 +751,14 @@ var HubConnection = class _HubConnection {
     this._connectionState = HubConnectionState.Disconnected;
     this._connectionStarted = false;
     this._cachedPingMessage = this._protocol.writeMessage({ type: MessageType.Ping });
+  }
+  /** @internal */
+  // Using a public static factory method means we can have a private constructor and an _internal_
+  // create method that can be used by HubConnectionBuilder. An "internal" constructor would just
+  // be stripped away and the '.d.ts' file would have no constructor, which is interpreted as a
+  // public parameter-less constructor.
+  static create(connection, logger, protocol, reconnectPolicy) {
+    return new _HubConnection(connection, logger, protocol, reconnectPolicy);
   }
   /** Indicates the state of the {@link HubConnection} to the server. */
   get state() {
@@ -997,13 +828,9 @@ var HubConnection = class _HubConnection {
       });
       yield this.connection.start(this._protocol.transferFormat);
       try {
-        let version = this._protocol.version;
-        if (!this.connection.features.reconnect) {
-          version = 1;
-        }
         const handshakeRequest = {
           protocol: this._protocol.name,
-          version
+          version: this._protocol.version
         };
         this._logger.log(LogLevel.Debug, "Sending handshake request.");
         yield this._sendMessage(this._handshakeProtocol.writeHandshakeRequest(handshakeRequest));
@@ -1014,16 +841,6 @@ var HubConnection = class _HubConnection {
         yield handshakePromise;
         if (this._stopDuringStartError) {
           throw this._stopDuringStartError;
-        }
-        const useStatefulReconnect = this.connection.features.reconnect || false;
-        if (useStatefulReconnect) {
-          this._messageBuffer = new MessageBuffer(this._protocol, this.connection, this._statefulReconnectBufferSize);
-          this.connection.features.disconnected = this._messageBuffer._disconnected.bind(this._messageBuffer);
-          this.connection.features.resend = () => {
-            if (this._messageBuffer) {
-              return this._messageBuffer._resend();
-            }
-          };
         }
         if (!this.connection.features.inherentKeepAlive) {
           yield this._sendMessage(this._cachedPingMessage);
@@ -1044,7 +861,6 @@ var HubConnection = class _HubConnection {
   stop() {
     return __async(this, null, function* () {
       const startPromise = this._startPromise;
-      this.connection.features.reconnect = false;
       this._stopPromise = this._stopInternal();
       yield this._stopPromise;
       try {
@@ -1062,7 +878,6 @@ var HubConnection = class _HubConnection {
       this._logger.log(LogLevel.Debug, `Call to HttpConnection.stop(${error}) ignored because the connection is already in the disconnecting state.`);
       return this._stopPromise;
     }
-    const state = this._connectionState;
     this._connectionState = HubConnectionState.Disconnecting;
     this._logger.log(LogLevel.Debug, "Stopping HubConnection.");
     if (this._reconnectDelayHandle) {
@@ -1072,21 +887,10 @@ var HubConnection = class _HubConnection {
       this._completeClose();
       return Promise.resolve();
     }
-    if (state === HubConnectionState.Connected) {
-      this._sendCloseMessage();
-    }
     this._cleanupTimeout();
     this._cleanupPingTimer();
     this._stopDuringStartError = error || new AbortError("The connection was stopped before the hub handshake could complete.");
     return this.connection.stop(error);
-  }
-  _sendCloseMessage() {
-    return __async(this, null, function* () {
-      try {
-        yield this._sendWithProtocol(this._createCloseMessage());
-      } catch {
-      }
-    });
   }
   /** Invokes a streaming hub method on the server using the specified name and arguments.
    *
@@ -1139,11 +943,7 @@ var HubConnection = class _HubConnection {
    * @param message The js object to serialize and send.
    */
   _sendWithProtocol(message) {
-    if (this._messageBuffer) {
-      return this._messageBuffer._send(message);
-    } else {
-      return this._sendMessage(this._protocol.writeMessage(message));
-    }
+    return this._sendMessage(this._protocol.writeMessage(message));
   }
   /** Invokes a hub method on the server using the specified name and arguments. Does not wait for a response from the receiver.
    *
@@ -1269,14 +1069,9 @@ var HubConnection = class _HubConnection {
     if (data) {
       const messages = this._protocol.parseMessages(data, this._logger);
       for (const message of messages) {
-        if (this._messageBuffer && !this._messageBuffer._shouldProcessMessage(message)) {
-          continue;
-        }
         switch (message.type) {
           case MessageType.Invocation:
-            this._invokeClientMethod(message).catch((e) => {
-              this._logger.log(LogLevel.Error, `Invoke client method threw error: ${getErrorString(e)}`);
-            });
+            this._invokeClientMethod(message);
             break;
           case MessageType.StreamItem:
           case MessageType.Completion: {
@@ -1305,16 +1100,6 @@ var HubConnection = class _HubConnection {
             }
             break;
           }
-          case MessageType.Ack:
-            if (this._messageBuffer) {
-              this._messageBuffer._ack(message);
-            }
-            break;
-          case MessageType.Sequence:
-            if (this._messageBuffer) {
-              this._messageBuffer._resetSequence(message);
-            }
-            break;
           default:
             this._logger.log(LogLevel.Warning, `Invalid message type: ${message.type}.`);
             break;
@@ -1449,10 +1234,6 @@ var HubConnection = class _HubConnection {
     if (this._connectionStarted) {
       this._connectionState = HubConnectionState.Disconnected;
       this._connectionStarted = false;
-      if (this._messageBuffer) {
-        this._messageBuffer._dispose(error !== null && error !== void 0 ? error : new Error("Connection closed."));
-        this._messageBuffer = void 0;
-      }
       if (Platform.isBrowser) {
         window.document.removeEventListener("freeze", this._freezeEventListener);
       }
@@ -1696,9 +1477,6 @@ var HubConnection = class _HubConnection {
       type: MessageType.Completion
     };
   }
-  _createCloseMessage() {
-    return { type: MessageType.Close };
-  }
 };
 
 // node_modules/@microsoft/signalr/dist/esm/DefaultReconnectPolicy.js
@@ -1797,10 +1575,6 @@ var AbortController2 = class {
 
 // node_modules/@microsoft/signalr/dist/esm/LongPollingTransport.js
 var LongPollingTransport = class {
-  // This is an internal type, not exported from 'index' so this is really just internal.
-  get pollAborted() {
-    return this._pollAbort.aborted;
-  }
   constructor(httpClient, logger, options) {
     this._httpClient = httpClient;
     this._logger = logger;
@@ -1809,6 +1583,10 @@ var LongPollingTransport = class {
     this._running = false;
     this.onreceive = null;
     this.onclose = null;
+  }
+  // This is an internal type, not exported from 'index' so this is really just internal.
+  get pollAborted() {
+    return this._pollAbort.aborted;
   }
   connect(url, transferFormat) {
     return __async(this, null, function* () {
@@ -1914,23 +1692,8 @@ var LongPollingTransport = class {
           timeout: this._options.timeout,
           withCredentials: this._options.withCredentials
         };
-        let error;
-        try {
-          yield this._httpClient.delete(this._url, deleteOptions);
-        } catch (err) {
-          error = err;
-        }
-        if (error) {
-          if (error instanceof HttpError) {
-            if (error.statusCode === 404) {
-              this._logger.log(LogLevel.Trace, "(LongPolling transport) A 404 response was returned from sending a DELETE request.");
-            } else {
-              this._logger.log(LogLevel.Trace, `(LongPolling transport) Error sending a DELETE request: ${error}`);
-            }
-          }
-        } else {
-          this._logger.log(LogLevel.Trace, "(LongPolling transport) DELETE request accepted.");
-        }
+        yield this._httpClient.delete(this._url, deleteOptions);
+        this._logger.log(LogLevel.Trace, "(LongPolling transport) DELETE request sent.");
       } finally {
         this._logger.log(LogLevel.Trace, "(LongPolling transport) Stop finished.");
         this._raiseOnClose();
@@ -2373,9 +2136,6 @@ var HttpConnection = class {
         if (!negotiateResponse.negotiateVersion || negotiateResponse.negotiateVersion < 1) {
           negotiateResponse.connectionToken = negotiateResponse.connectionId;
         }
-        if (negotiateResponse.useStatefulReconnect && this._options._useStatefulReconnect !== true) {
-          return Promise.reject(new FailedToNegotiateWithServerError("Client didn't negotiate Stateful Reconnect but the server did."));
-        }
         return negotiateResponse;
       } catch (e) {
         let errorMessage = "Failed to complete negotiation with the server: " + e;
@@ -2409,7 +2169,7 @@ var HttpConnection = class {
       const transports = negotiateResponse.availableTransports || [];
       let negotiate = negotiateResponse;
       for (const endpoint of transports) {
-        const transportOrError = this._resolveTransportOrError(endpoint, requestedTransport, requestedTransferFormat, (negotiate === null || negotiate === void 0 ? void 0 : negotiate.useStatefulReconnect) === true);
+        const transportOrError = this._resolveTransportOrError(endpoint, requestedTransport, requestedTransferFormat);
         if (transportOrError instanceof Error) {
           transportExceptions.push(`${endpoint.transport} failed:`);
           transportExceptions.push(transportOrError);
@@ -2465,31 +2225,10 @@ var HttpConnection = class {
   }
   _startTransport(url, transferFormat) {
     this.transport.onreceive = this.onreceive;
-    if (this.features.reconnect) {
-      this.transport.onclose = (e) => __async(this, null, function* () {
-        let callStop = false;
-        if (this.features.reconnect) {
-          try {
-            this.features.disconnected();
-            yield this.transport.connect(url, transferFormat);
-            yield this.features.resend();
-          } catch {
-            callStop = true;
-          }
-        } else {
-          this._stopConnection(e);
-          return;
-        }
-        if (callStop) {
-          this._stopConnection(e);
-        }
-      });
-    } else {
-      this.transport.onclose = (e) => this._stopConnection(e);
-    }
+    this.transport.onclose = (e) => this._stopConnection(e);
     return this.transport.connect(url, transferFormat);
   }
-  _resolveTransportOrError(endpoint, requestedTransport, requestedTransferFormat, useStatefulReconnect) {
+  _resolveTransportOrError(endpoint, requestedTransport, requestedTransferFormat) {
     const transport = HttpTransportType[endpoint.transport];
     if (transport === null || transport === void 0) {
       this._logger.log(LogLevel.Debug, `Skipping transport '${endpoint.transport}' because it is not supported by this client.`);
@@ -2504,7 +2243,6 @@ var HttpConnection = class {
           } else {
             this._logger.log(LogLevel.Debug, `Selecting transport '${HttpTransportType[transport]}'.`);
             try {
-              this.features.reconnect = transport === HttpTransportType.WebSockets ? useStatefulReconnect : void 0;
               return this._constructTransport(transport);
             } catch (ex) {
               return ex;
@@ -2576,25 +2314,18 @@ var HttpConnection = class {
     return aTag.href;
   }
   _resolveNegotiateUrl(url) {
-    const negotiateUrl = new URL(url);
-    if (negotiateUrl.pathname.endsWith("/")) {
-      negotiateUrl.pathname += "negotiate";
-    } else {
-      negotiateUrl.pathname += "/negotiate";
+    const index = url.indexOf("?");
+    let negotiateUrl = url.substring(0, index === -1 ? url.length : index);
+    if (negotiateUrl[negotiateUrl.length - 1] !== "/") {
+      negotiateUrl += "/";
     }
-    const searchParams = new URLSearchParams(negotiateUrl.searchParams);
-    if (!searchParams.has("negotiateVersion")) {
-      searchParams.append("negotiateVersion", this._negotiateVersion.toString());
+    negotiateUrl += "negotiate";
+    negotiateUrl += index === -1 ? "" : url.substring(index);
+    if (negotiateUrl.indexOf("negotiateVersion") === -1) {
+      negotiateUrl += index === -1 ? "?" : "&";
+      negotiateUrl += "negotiateVersion=" + this._negotiateVersion;
     }
-    if (searchParams.has("useStatefulReconnect")) {
-      if (searchParams.get("useStatefulReconnect") === "true") {
-        this._options._useStatefulReconnect = true;
-      }
-    } else if (this._options._useStatefulReconnect === true) {
-      searchParams.append("useStatefulReconnect", "true");
-    }
-    negotiateUrl.search = searchParams.toString();
-    return negotiateUrl.toString();
+    return negotiateUrl;
   }
 };
 function transportMatches(requestedTransport, actualTransport) {
@@ -2680,7 +2411,7 @@ var JSON_HUB_PROTOCOL_NAME = "json";
 var JsonHubProtocol = class {
   constructor() {
     this.name = JSON_HUB_PROTOCOL_NAME;
-    this.version = 2;
+    this.version = 1;
     this.transferFormat = TransferFormat.Text;
   }
   /** Creates an array of {@link @microsoft/signalr.HubMessage} objects from the specified serialized representation.
@@ -2719,12 +2450,6 @@ var JsonHubProtocol = class {
           break;
         case MessageType.Close:
           break;
-        case MessageType.Ack:
-          this._isAckMessage(parsedMessage);
-          break;
-        case MessageType.Sequence:
-          this._isSequenceMessage(parsedMessage);
-          break;
         default:
           logger.log(LogLevel.Information, "Unknown message type '" + parsedMessage.type + "' ignored.");
           continue;
@@ -2761,16 +2486,6 @@ var JsonHubProtocol = class {
       this._assertNotEmptyString(message.error, "Invalid payload for Completion message.");
     }
     this._assertNotEmptyString(message.invocationId, "Invalid payload for Completion message.");
-  }
-  _isAckMessage(message) {
-    if (typeof message.sequenceId !== "number") {
-      throw new Error("Invalid SequenceId for Ack message.");
-    }
-  }
-  _isSequenceMessage(message) {
-    if (typeof message.sequenceId !== "number") {
-      throw new Error("Invalid SequenceId for Sequence message.");
-    }
   }
   _assertNotEmptyString(value, errorMessage) {
     if (typeof value !== "string" || value === "") {
@@ -2847,36 +2562,6 @@ var HubConnectionBuilder = class {
     }
     return this;
   }
-  /** Configures {@link @microsoft/signalr.HubConnection.serverTimeoutInMilliseconds} for the {@link @microsoft/signalr.HubConnection}.
-   *
-   * @returns The {@link @microsoft/signalr.HubConnectionBuilder} instance, for chaining.
-   */
-  withServerTimeout(milliseconds) {
-    Arg.isRequired(milliseconds, "milliseconds");
-    this._serverTimeoutInMilliseconds = milliseconds;
-    return this;
-  }
-  /** Configures {@link @microsoft/signalr.HubConnection.keepAliveIntervalInMilliseconds} for the {@link @microsoft/signalr.HubConnection}.
-   *
-   * @returns The {@link @microsoft/signalr.HubConnectionBuilder} instance, for chaining.
-   */
-  withKeepAliveInterval(milliseconds) {
-    Arg.isRequired(milliseconds, "milliseconds");
-    this._keepAliveIntervalInMilliseconds = milliseconds;
-    return this;
-  }
-  /** Enables and configures options for the Stateful Reconnect feature.
-   *
-   * @returns The {@link @microsoft/signalr.HubConnectionBuilder} instance, for chaining.
-   */
-  withStatefulReconnect(options) {
-    if (this.httpConnectionOptions === void 0) {
-      this.httpConnectionOptions = {};
-    }
-    this.httpConnectionOptions._useStatefulReconnect = true;
-    this._statefulReconnectBufferSize = options === null || options === void 0 ? void 0 : options.bufferSize;
-    return this;
-  }
   /** Creates a {@link @microsoft/signalr.HubConnection} from the configuration options specified in this builder.
    *
    * @returns {HubConnection} The configured {@link @microsoft/signalr.HubConnection}.
@@ -2890,7 +2575,7 @@ var HubConnectionBuilder = class {
       throw new Error("The 'HubConnectionBuilder.withUrl' method must be called before building the connection.");
     }
     const connection = new HttpConnection(this.url, httpConnectionOptions);
-    return HubConnection.create(connection, this.logger || NullLogger.instance, this.protocol || new JsonHubProtocol(), this.reconnectPolicy, this._serverTimeoutInMilliseconds, this._keepAliveIntervalInMilliseconds, this._statefulReconnectBufferSize);
+    return HubConnection.create(connection, this.logger || NullLogger.instance, this.protocol || new JsonHubProtocol(), this.reconnectPolicy);
   }
 };
 function isLogger(logger) {

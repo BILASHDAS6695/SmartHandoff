@@ -269,9 +269,6 @@ NOW         → Complete 5 action items (15-20 min)
 
 ---
 
-## 📋 File Location Summary
-
-All files located in: `/Users/keerthanarajendran/SMARTHANDOFF/SmartHandoff/`
 
 ```
 US-051-EXECUTIVE-SUMMARY.md

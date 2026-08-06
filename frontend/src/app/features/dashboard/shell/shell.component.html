@@ -1,16 +1,17 @@
+<app-header class="fixed-header"></app-header>
+
 <mat-sidenav-container>
   <mat-sidenav
     #sidenav
     [mode]="sidenavMode()"
     [opened]="sidenavOpened()"
     fixedInViewport
-    fixedTopGap="64"
+    fixedTopGap="56"
   >
     <app-sidebar (linkClicked)="onSidebarLinkClicked()"></app-sidebar>
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <app-header></app-header>
     <main class="content">
       <router-outlet></router-outlet>
     </main>

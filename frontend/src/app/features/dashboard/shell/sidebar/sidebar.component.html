@@ -1,19 +1,26 @@
-<mat-nav-list>
-  <mat-list-item
-    *ngFor="let item of menuItems"
-    [routerLink]="item.route"
-    routerLinkActive="active"
-    (click)="onLinkClick()"
-  >
-    <mat-icon
-      matListItemIcon
-      [matBadge]="item.badge?.() || null"
-      [matBadgeHidden]="!item.badge?.() || item.badge?.() === 0"
-      matBadgeColor="warn"
-      matBadgeSize="small"
-    >
-      {{ item.icon }}
-    </mat-icon>
-    <span matListItemTitle>{{ item.label }}</span>
-  </mat-list-item>
-</mat-nav-list>
+<div class="sidebar-content">
+  @for (section of sections; track section.title) {
+    <div class="nav-section">
+      <span class="nav-section-title">{{ section.title }}</span>
+      <nav>
+        @for (item of section.items; track item.label) {
+          <a
+            class="nav-item"
+            [class.active]="isActive(item.route)"
+            [routerLink]="item.route"
+            (click)="onLinkClick()"
+          >
+            <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+            <span class="nav-label">{{ item.label }}</span>
+            @if (item.badge?.()) {
+              <span class="nav-badge">{{ item.badge!() }}</span>
+            }
+            @if (item.tag) {
+              <span class="nav-tag">{{ item.tag }}</span>
+            }
+          </a>
+        }
+      </nav>
+    </div>
+  }
+</div>

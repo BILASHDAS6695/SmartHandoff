@@ -119,9 +119,6 @@ Testing Readiness:     ████████████████░░░
 
 ---
 
-## 📁 File Locations
-
-All files are in: `/Users/keerthanarajendran/SMARTHANDOFF/SmartHandoff/`
 
 ```
 ✅ US-051-EXECUTIVE-SUMMARY.md

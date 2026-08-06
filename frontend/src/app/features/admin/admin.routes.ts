@@ -10,8 +10,15 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./admin-panel/admin-panel.component').then(
-        (m) => m.AdminPanelComponent,
-      ),
+      import('../dashboard/shell/shell.component').then((m) => m.ShellComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./admin-panel/admin-panel.component').then(
+            (m) => m.AdminPanelComponent,
+          ),
+      },
+    ],
   },
 ];
