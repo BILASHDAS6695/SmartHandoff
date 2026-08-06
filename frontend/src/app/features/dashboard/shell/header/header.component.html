@@ -1,47 +1,117 @@
 <mat-toolbar color="primary">
   <div class="toolbar-content">
-    <!-- Left side: App title -->
-    <span class="app-title">SmartHandoff</span>
 
-    <!-- Spacer -->
-    <span class="spacer"></span>
+    <!-- Left side -->
+    <div class="app-brand" routerLink="/dashboard">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+      </div>
 
-    <!-- Right side: Notifications, Theme toggle, User menu -->
-    <div class="header-actions">
-      <!-- Notifications -->
-      <button
-        mat-icon-button
-        [matBadge]="notificationCount"
-        matBadgeColor="warn"
-        [matTooltip]="'You have ' + notificationCount + ' notifications'"
-      >
-        <mat-icon>notifications</mat-icon>
-      </button>
-
-      <!-- Theme toggle -->
-      <button
-        mat-icon-button
-        (click)="toggleTheme()"
-        [matTooltip]="isDarkMode() ? 'Light mode' : 'Dark mode'"
-      >
-        <mat-icon>{{ isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
-      </button>
-
-      <!-- User menu -->
-      <button mat-icon-button [matMenuTriggerFor]="userMenu" class="user-button">
-        <span class="user-avatar">{{ getUserInitials() }}</span>
-      </button>
-
-      <mat-menu #userMenu="matMenu">
-        <button mat-menu-item disabled>
-          <span>{{ currentUser()?.['email'] || 'User' }}</span>
-        </button>
-        <mat-divider></mat-divider>
-        <button mat-menu-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
-        </button>
-      </mat-menu>
+      <span class="app-title">SmartHandoff</span>
     </div>
+
+    <!-- Search -->
+    <div class="header-search">
+      <mat-icon class="search-icon">search</mat-icon>
+
+      <input
+        type="text"
+        placeholder="Search patients by name or MRN..."
+        aria-label="Search"
+      />
+    </div>
+
+    <!-- Right Side -->
+    <div class="header-actions">
+
+      <!-- Notification -->
+      <button
+        mat-icon-button
+        class="notification-btn"
+        [matTooltip]="'You have ' + notificationCount + ' notifications'">
+
+        <mat-icon>notifications</mat-icon>
+
+        <span class="notification-dot"></span>
+
+      </button>
+
+      <!-- User -->
+      <button
+        mat-icon-button
+        class="user-menu-trigger"
+        [matMenuTriggerFor]="userMenu">
+
+        <span class="user-avatar">
+          {{ getUserInitials() }}
+        </span>
+
+        <mat-icon class="dropdown-icon">
+          arrow_drop_down
+        </mat-icon>
+
+      </button>
+
+    </div>
+
   </div>
 </mat-toolbar>
+
+<!-- USER MENU -->
+
+<mat-menu
+  #userMenu="matMenu"
+  panelClass="user-menu-panel"
+  xPosition="before"
+  yPosition="below"
+  [overlapTrigger]="false">
+
+  <div class="user-menu-header">
+
+    <span class="user-avatar large">
+      {{ getUserInitials() }}
+    </span>
+
+    <div class="user-info">
+
+      <span class="user-email">
+        {{ currentUser()?.email || 'User' }}
+      </span>
+
+      <span class="user-role">
+        {{ currentUser()?.role || 'Staff' }}
+      </span>
+
+    </div>
+
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <button
+    mat-menu-item
+    (click)="toggleTheme()">
+
+    <mat-icon>
+      {{ isDarkMode() ? 'light_mode' : 'dark_mode' }}
+    </mat-icon>
+
+    <span>
+      {{ isDarkMode() ? 'Light mode' : 'Dark mode' }}
+    </span>
+
+  </button>
+
+  <button
+    mat-menu-item
+    (click)="logout()">
+
+    <mat-icon>logout</mat-icon>
+
+    <span>Logout</span>
+
+  </button>
+
+</mat-menu>

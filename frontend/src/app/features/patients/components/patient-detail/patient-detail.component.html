@@ -1,0 +1,147 @@
+<main class="patient-detail-main">
+  <!-- Back button -->
+  <button class="back-btn" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    Back to Patients
+  </button>
+
+  <!-- Patient header -->
+  <div class="patient-header">
+    <div class="patient-name">{{ patient().name }}</div>
+    <div class="patient-meta">
+      <span><strong>MRN:</strong> {{ patient().mrn }}</span>
+      <span><strong>DOB:</strong> {{ patient().dob }} ({{ patient().age }}y)</span>
+      <span><strong>Unit:</strong> {{ patient().unit }}</span>
+      <span><strong>Room:</strong> {{ patient().room }}</span>
+      <span><strong>Admitted:</strong> {{ patient().admissionDate }}</span>
+      <span><strong>Attending:</strong> {{ patient().attending }}</span>
+    </div>
+    <div class="risk-score-display">
+      <span class="risk-label">Readmission Risk</span>
+      <div class="risk-bar-large">
+        <div class="risk-bar-fill" [class]="getRiskClass(patient().riskLevel)" [style.width.%]="getRiskBarWidth(patient().riskScore)"></div>
+      </div>
+      <span class="risk-chip-large" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskScore | number:'1.2-2' }} {{ patient().riskLevel }}</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    @for (tab of tabs(); track tab) {
+      <div
+        class="tab"
+        [class.active]="activeTab() === tab"
+        (click)="setTab(tab)"
+        tabindex="0"
+        (keydown.enter)="setTab(tab)">
+        {{ tab }}
+      </div>
+    }
+  </div>
+
+  <!-- Overview content -->
+  @if (activeTab() === 'Overview') {
+    <div class="grid-2">
+      <!-- Pending Approvals -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Pending Approvals</h3>
+        </div>
+        <div class="card-body">
+          <div class="approval-card">
+            <div class="ai-badge">
+              <mat-icon>auto_awesome</mat-icon>
+              AI-Assisted
+            </div>
+            <div class="approval-title">Discharge Summary Review</div>
+            <div class="approval-meta">Generated 14:32 · 2 edits by Dr. David Chen</div>
+            <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">Review & Sign</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Alerts -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Active Alerts</h3>
+        </div>
+        <div class="card-body">
+          @for (alert of alerts(); track alert.title) {
+            <div class="alert-item" [class]="alert.type">
+              <div class="alert-header">
+                <mat-icon>{{ alert.type === 'critical' ? 'error' : 'warning' }}</mat-icon>
+                {{ alert.title }}
+              </div>
+              <div class="alert-text">{{ alert.text }}</div>
+              @if (alert.link) {
+                <a class="alert-link">{{ alert.link }}</a>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Agent Tasks -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Agent Tasks</h3>
+        </div>
+        <div class="card-body">
+          @for (task of agentTasks(); track task.name) {
+            <div class="agent-row">
+              <span class="status-dot" [class]="getStatusDotClass(task.status)"></span>
+              <span class="agent-name">{{ task.name }}</span>
+              <span class="agent-status-badge">
+                {{ task.status === 'ok' ? 'Complete' : task.status === 'warn' ? 'Action Needed' : 'Pending' }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Risk Factors -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Risk Factors</h3>
+        </div>
+        <div class="card-body">
+          <ul class="risk-factors">
+            @for (factor of riskFactors(); track factor.text) {
+              <li>
+                <span class="rf-dot"></span>
+                {{ factor.text }}
+              </li>
+            }
+          </ul>
+          <a class="view-plan">View full care plan →</a>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'Documents') {
+    <div class="card">
+      <div class="card-header">
+        <h3>Documents</h3>
+      </div>
+      <div class="card-body">
+        @for (doc of documents(); track doc.title) {
+          <div class="document-row">
+            <div class="doc-info">
+              <strong>{{ doc.title }}</strong>
+              @if (doc.aiAssisted) {
+                <span class="ai-badge-small">AI</span>
+              }
+            </div>
+            <span class="doc-status" [class.approved]="doc.status === 'Approved'">{{ doc.status }}</span>
+            <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">
+              {{ doc.status === 'Approved' ? 'View' : 'Review' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</main>

@@ -11,11 +11,18 @@ export const ANALYTICS_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./analytics.component').then(
-        (m) => m.AnalyticsComponent,
-      ),
+      import('../dashboard/shell/shell.component').then((m) => m.ShellComponent),
     canActivate: [RoleGuard],
     data: { roles: ['MANAGER', 'ADMIN'] },
-    title: 'Analytics Dashboard — SmartHandoff',
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./analytics.component').then(
+            (m) => m.AnalyticsComponent,
+          ),
+        title: 'Analytics Dashboard — SmartHandoff',
+      },
+    ],
   },
 ];

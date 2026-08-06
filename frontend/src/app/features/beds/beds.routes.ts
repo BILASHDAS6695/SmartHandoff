@@ -4,6 +4,13 @@ export const BEDS_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./beds-board/beds-board.component').then((m) => m.BedsBoardComponent),
+      import('../dashboard/shell/shell.component').then((m) => m.ShellComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./components/bed-board/bed-board.component').then((m) => m.BedBoardComponent),
+      },
+    ],
   },
 ];

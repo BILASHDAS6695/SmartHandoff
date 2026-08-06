@@ -1,0 +1,140 @@
+<section class="admin-shell" aria-label="Admin settings">
+  <!-- Admin sub-nav -->
+  <aside class="admin-sidebar">
+    <h2>Admin Sections</h2>
+    @for (tab of adminTabs(); track tab) {
+      <div
+        class="admin-nav-item"
+        [class.active]="activeTab() === tab"
+        (click)="setTab(tab)"
+        tabindex="0"
+        (keydown.enter)="setTab(tab)">
+        {{ tab }}
+      </div>
+    }
+  </aside>
+
+  <!-- Content area -->
+  <div class="content">
+    @if (activeTab() === 'User Management') {
+      <div class="page-header">
+        <h1>User Management</h1>
+        <button class="btn-add" (click)="addUser()">+ Add User</button>
+      </div>
+
+      <!-- User table -->
+      <div class="card">
+        <div class="card-header">
+          <h2>
+            Staff Accounts
+            <span class="user-count">24 users</span>
+          </h2>
+          <span class="uxr-badge">UXR-013 Role-filtered: Admin sees all roles</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Last Login</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.email) {
+              <tr [class.inactive-row]="user.status === 'Inactive'">
+                <td><strong>{{ user.name }}</strong></td>
+                <td>{{ user.email }}</td>
+                <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ user.role }}</span></td>
+                <td><span class="status-chip" [class]="getStatusClass(user.status)">{{ user.status }}</span></td>
+                <td>{{ user.lastLogin }}</td>
+                <td>
+                  <div class="action-row">
+                    <button class="btn-sm edit" (click)="editUser(user)">Edit</button>
+                    @if (user.status === 'Active') {
+                      <button class="btn-sm disable" (click)="toggleUserStatus(user)" title="UXR-025: Confirm — all sessions revoked">Disable</button>
+                    } @else {
+                      <button class="btn-sm reenable" (click)="toggleUserStatus(user)">Re-enable</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (activeTab() === 'Audit Log') {
+      <div class="page-header">
+        <h1>Audit Log</h1>
+        <button class="btn-export" (click)="exportAuditCsv()">Export CSV</button>
+      </div>
+
+      <div class="card">
+        <div class="filter-row">
+          <div class="filter-select">
+            <mat-select [value]="selectedDateFilter()" (selectionChange)="selectedDateFilter.set($event.value)" aria-label="Date filter">
+              @for (filter of dateFilters(); track filter) {
+                <mat-option [value]="filter">{{ filter }}</mat-option>
+              }
+            </mat-select>
+          </div>
+          <div class="filter-select">
+            <mat-select [value]="selectedUserFilter()" (selectionChange)="selectedUserFilter.set($event.value)" aria-label="User filter">
+              @for (filter of userFilters(); track filter) {
+                <mat-option [value]="filter">{{ filter }}</mat-option>
+              }
+            </mat-select>
+          </div>
+          <div class="filter-select">
+            <mat-select [value]="selectedEventFilter()" (selectionChange)="selectedEventFilter.set($event.value)" aria-label="Event type filter">
+              @for (filter of eventFilters(); track filter) {
+                <mat-option [value]="filter">{{ filter }}</mat-option>
+              }
+            </mat-select>
+          </div>
+          <button class="btn-filter" (click)="applyAuditFilters()">Apply Filters</button>
+          <span class="uxr-badge phi-badge">UXR-014 PHI masked in all log entries</span>
+        </div>
+        @for (entry of auditLog(); track entry.time + entry.user) {
+          <div class="audit-row">
+            <span class="audit-time">{{ entry.time }}</span>
+            <span class="audit-user">{{ entry.user }}</span>
+            <span class="audit-action">{{ entry.action }}</span>
+            <span class="audit-target">{{ entry.target }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'System Configuration') {
+      <div class="page-header">
+        <h1>System Configuration</h1>
+      </div>
+      <div class="card config-card">
+        <div class="card-header">
+          <h2>Application Settings</h2>
+        </div>
+        <div class="config-row">
+          <span class="config-label">Session timeout (minutes)</span>
+          <span class="config-value">30</span>
+        </div>
+        <div class="config-row">
+          <span class="config-label">MFA required for admin users</span>
+          <span class="config-value enabled">Enabled</span>
+        </div>
+        <div class="config-row">
+          <span class="config-label">Audit log retention (days)</span>
+          <span class="config-value">90</span>
+        </div>
+        <div class="config-row">
+          <span class="config-label">PHI masking default</span>
+          <span class="config-value enabled">Enabled</span>
+        </div>
+      </div>
+    }
+  </div>
+</section>

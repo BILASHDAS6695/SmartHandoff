@@ -1,79 +1,71 @@
 <!-- document-review.component.html -->
 <!-- Dual-pane document review layout (US-028 Scenario 1) -->
 <!-- Accessible: both panes are keyboard-navigable; WCAG 2.1 AA labels applied -->
-<div class="review-shell" *ngIf="vm; else loadingTpl" role="main">
-
-  <div class="dual-pane-container">
-
-    <!-- LEFT PANE: Read-only AI draft -->
-    <section
-      #leftPane
-      class="pane pane--readonly"
-      aria-label="AI-generated draft (read-only)"
-      tabindex="0"
-    >
-      <!-- US-029: AI-Assisted banner at the top of both panes -->
-      <sh-ai-assisted-label-banner
-        [aiAssistedLabel]="vm.ai_assisted_label"
-        [documentStatus]="vm.status"
-        [reviewedByDisplayName]="vm.reviewed_by_display_name"
-        [approvedAt]="vm.approved_at"
-      />
-      
-      <header class="pane__header">
-        <h2 class="pane__title">AI Draft</h2>
-        <span class="pane__badge pane__badge--readonly" aria-label="Read only">Read-only</span>
-      </header>
-      <div
-        class="pane__content"
-        [innerHTML]="vm.aiDraftHtml"
-        contenteditable="false"
-        aria-readonly="true"
-      ></div>
-    </section>
-
-    <!-- RIGHT PANE: Editable copy -->
-    <section
-      #rightPane
-      class="pane pane--editable"
-      aria-label="Editable document copy"
-      tabindex="0"
-    >
-      <!-- US-029: AI-Assisted banner at the top of both panes -->
-      <sh-ai-assisted-label-banner
-        [aiAssistedLabel]="vm.ai_assisted_label"
-        [documentStatus]="vm.status"
-        [reviewedByDisplayName]="vm.reviewed_by_display_name"
-        [approvedAt]="vm.approved_at"
-      />
-      
-      <header class="pane__header">
-        <h2 class="pane__title">Edit</h2>
-        <span
-          *ngIf="vm.status === 'PENDING_REVIEW'"
-          class="pane__badge pane__badge--pending"
-          aria-label="Pending review"
-        >Pending Review</span>
-      </header>
-
-      <sh-document-editor
-        [documentId]="documentId"
-        [initialContent]="vm.content"
-        [aiDraft]="vm.aiDraftContent"
-        (saveDraft)="onSaveDraft($event)"
-        [isSaving]="isSaving"
-      />
-    </section>
-
+<main class="document-review-main" role="main">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Document Review — {{ patientName() }} — {{ documentTitle() }}</h1>
+    <div class="ai-badge">
+      <mat-icon>auto_awesome</mat-icon>
+      <span class="uxr-badge">UXR-007 AI-Assisted — Review Required</span>
+    </div>
   </div>
 
-  <!-- Change log timeline -->
-  <sh-change-log-timeline [documentId]="documentId" />
+  <!-- Fallback banner -->
+  @if (fallbackVisible()) {
+    <div class="fallback-banner" role="alert">
+      ⚠ AI generation timed out — template-based summary used. Review carefully before approving.
+    </div>
+  }
 
-</div>
+  <!-- Dual-pane editor -->
+  <div class="dual-pane">
+    <!-- AI Draft pane -->
+    <div class="pane ai-pane-col">
+      <div class="pane-header">
+        <h3>AI Draft (read-only)</h3>
+        <span class="meta">Generated {{ aiGeneratedAt() }} · Vertex AI</span>
+      </div>
+      <div class="pane-body ai-pane">
+        <div class="doc-heading">{{ documentTitle() }}</div>
+        @for (field of fields(); track field.label) {
+          <div class="doc-field">
+            <label>{{ field.label }}</label>
+            <p class="ai-text">{{ field.aiText }}</p>
+          </div>
+        }
+      </div>
+    </div>
 
-<ng-template #loadingTpl>
-  <div class="loading-container" role="status" aria-label="Loading document">
-    <mat-progress-spinner mode="indeterminate" diameter="48" />
+    <!-- Editable pane -->
+    <div class="pane">
+      <div class="pane-header">
+        <h3>Editable Copy</h3>
+        <span class="meta">Dr. David Chen · 14:37</span>
+      </div>
+      <div class="pane-body edit-pane">
+        <div class="doc-heading">{{ documentTitle() }}</div>
+        @for (field of fields(); track field.label) {
+          <div class="doc-field">
+            <label>{{ field.label }}</label>
+            <p contenteditable="true" class="editable-text">{{ field.editedText }}</p>
+          </div>
+        }
+      </div>
+    </div>
   </div>
-</ng-template>
+
+  <!-- Change log -->
+  <div class="change-log">
+    {{ changeLog() }}
+  </div>
+
+  <!-- Bottom actions -->
+  <div class="bottom-actions">
+    <button class="btn-reject" (click)="rejectDocument()" title="UXR-025: Rejection reason required">← Reject & Return</button>
+    <div class="action-group">
+      <button class="btn-save" (click)="saveDraft()">Save Draft</button>
+      <button class="btn-approve" (click)="approveDocument()" title="UXR-025: Confirm modal before signing">Approve & Sign ✓</button>
+    </div>
+  </div>
+</main>
