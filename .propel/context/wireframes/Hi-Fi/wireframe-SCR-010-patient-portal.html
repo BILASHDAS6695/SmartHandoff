@@ -141,7 +141,7 @@
 
       <div class="portal-body">
 
-        <div class="portal-card">
+        <div class="portal-card" onclick="location.href='wireframe-SCR-010a-patient-portal-medications.html'" role="link" tabindex="0">
           <div class="card-icon-row">
             <div class="card-icon med">💊</div>
             <span class="card-title" style="font-size:var(--portal-text-base)">My Medications</span>
@@ -150,7 +150,7 @@
           <div class="card-subtitle">5 medications — review your discharge list</div>
         </div>
 
-        <div class="portal-card">
+        <div class="portal-card" onclick="location.href='wireframe-SCR-010b-patient-portal-instructions.html'" role="link" tabindex="0">
           <div class="card-icon-row">
             <div class="card-icon doc">📋</div>
             <span class="card-title" style="font-size:var(--portal-text-base)">Discharge Instructions</span>
@@ -159,7 +159,7 @@
           <div class="card-subtitle">Activity · Diet · Warning Signs</div>
         </div>
 
-        <div class="portal-card">
+        <div class="portal-card" onclick="location.href='wireframe-SCR-010c-patient-portal-follow-up.html'" role="link" tabindex="0">
           <div class="card-icon-row">
             <div class="card-icon appt">📅</div>
             <span class="card-title" style="font-size:var(--portal-text-base)">Follow-up Appointment</span>
@@ -262,6 +262,44 @@
       <span class="uxr-tag">UXR-035 PDF Download</span>
       <span class="uxr-tag">UXR-036 Thumb-Reachable Layout</span>
     </div>
+  </div>
+</div>
+
+<!-- Wireframe Navigation Panel -->
+<style>
+  .wf-nav-panel { background:#1E3A8A; color:#fff; padding:16px 24px; font-family:var(--font-family-base); font-size:12px; }
+  .wf-nav-panel strong { display:block; margin-bottom:10px; font-size:13px; }
+  .wf-nav-group { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; align-items:center; }
+  .wf-nav-group-label { color:#93C5FD; font-weight:600; min-width:80px; }
+  .wf-nav-panel a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:4px; background:rgba(255,255,255,.15); white-space:nowrap; }
+  .wf-nav-panel a:hover { background:rgba(255,255,255,.3); }
+  .wf-nav-panel a.current { background:#2563EB; font-weight:700; }
+</style>
+<div class="wf-nav-panel">
+  <strong>🧭 Wireframe Navigation</strong>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Auth:</span>
+    <a href="wireframe-SCR-001-login.html">Login</a>
+    <a href="wireframe-SCR-010-patient-portal.html" class="current">Patient Portal Home</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Staff:</span>
+    <a href="wireframe-SCR-002-dashboard-home.html">Dashboard</a>
+    <a href="wireframe-SCR-003-patient-list.html">Patient List</a>
+    <a href="wireframe-SCR-004-patient-detail.html">Patient Detail</a>
+    <a href="wireframe-SCR-005-medication-review.html">Medication Review</a>
+    <a href="wireframe-SCR-006-document-review.html">Document Review</a>
+    <a href="wireframe-SCR-007-bed-board.html">Bed Board</a>
+    <a href="wireframe-SCR-008-agent-monitor.html">Agent Monitor</a>
+    <a href="wireframe-SCR-009-analytics-dashboard.html">Analytics</a>
+    <a href="wireframe-SCR-011-admin-settings.html">Admin Settings</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Portal:</span>
+    <a href="wireframe-SCR-010-patient-portal.html" class="current">Home</a>
+    <a href="wireframe-SCR-010a-patient-portal-medications.html">Medications</a>
+    <a href="wireframe-SCR-010b-patient-portal-instructions.html">Instructions</a>
+    <a href="wireframe-SCR-010c-patient-portal-follow-up.html">Follow-up</a>
   </div>
 </div>
 

@@ -249,7 +249,7 @@
     <h2>Staff Sign In</h2>
     <p class="subtitle">Use your hospital single sign-on credentials</p>
 
-    <button class="btn-sso" onclick="document.getElementById('err-banner').style.display='flex'">
+    <button class="btn-sso" onclick="document.getElementById('err-banner').style.display='flex'; setTimeout(()=>location.href='wireframe-SCR-002-dashboard-home.html',600)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Sign in with Hospital SSO
     </button>
@@ -309,8 +309,46 @@
     </p>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="document.getElementById('otp-modal').style.display='none'">Cancel</button>
-      <button class="btn-primary">Send Code</button>
+      <button class="btn-primary" onclick="location.href='wireframe-SCR-010-patient-portal.html'">Send Code</button>
     </div>
+  </div>
+</div>
+
+<!-- Wireframe Navigation Panel -->
+<style>
+  .wf-nav-panel { background:#1E3A8A; color:#fff; padding:16px 24px; font-family:var(--font-family-base); font-size:12px; }
+  .wf-nav-panel strong { display:block; margin-bottom:10px; font-size:13px; }
+  .wf-nav-group { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; align-items:center; }
+  .wf-nav-group-label { color:#93C5FD; font-weight:600; min-width:80px; }
+  .wf-nav-panel a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:4px; background:rgba(255,255,255,.15); white-space:nowrap; }
+  .wf-nav-panel a:hover { background:rgba(255,255,255,.3); }
+  .wf-nav-panel a.current { background:#2563EB; font-weight:700; }
+</style>
+<div class="wf-nav-panel">
+  <strong>🧭 Wireframe Navigation</strong>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Auth:</span>
+    <a href="wireframe-SCR-001-login.html" class="current">Login</a>
+    <a href="wireframe-SCR-010-patient-portal.html">Patient Portal Home</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Staff:</span>
+    <a href="wireframe-SCR-002-dashboard-home.html">Dashboard</a>
+    <a href="wireframe-SCR-003-patient-list.html">Patient List</a>
+    <a href="wireframe-SCR-004-patient-detail.html">Patient Detail</a>
+    <a href="wireframe-SCR-005-medication-review.html">Medication Review</a>
+    <a href="wireframe-SCR-006-document-review.html">Document Review</a>
+    <a href="wireframe-SCR-007-bed-board.html">Bed Board</a>
+    <a href="wireframe-SCR-008-agent-monitor.html">Agent Monitor</a>
+    <a href="wireframe-SCR-009-analytics-dashboard.html">Analytics</a>
+    <a href="wireframe-SCR-011-admin-settings.html">Admin Settings</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Portal:</span>
+    <a href="wireframe-SCR-010-patient-portal.html">Home</a>
+    <a href="wireframe-SCR-010a-patient-portal-medications.html">Medications</a>
+    <a href="wireframe-SCR-010b-patient-portal-instructions.html">Instructions</a>
+    <a href="wireframe-SCR-010c-patient-portal-follow-up.html">Follow-up</a>
   </div>
 </div>
 
