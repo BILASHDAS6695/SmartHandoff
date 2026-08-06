@@ -131,12 +131,12 @@
 
 <div class="shell">
   <div class="topbar">
-    <div class="logo"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
+    <div class="logo" style="cursor:pointer" onclick="location.href='wireframe-SCR-002-dashboard-home.html'" title="Back to Dashboard"><div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>SmartHandoff</div>
     <div class="avatar">CC</div>
   </div>
   <div class="sidebar">
-    <div class="nav-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
-    <div class="nav-item active"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M8 7V5a2 2 0 00-4 0v2"/></svg>Bed Board</div>
+    <div class="nav-item" onclick="location.href='wireframe-SCR-002-dashboard-home.html'"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+    <div class="nav-item active" onclick="location.href='wireframe-SCR-007-bed-board.html'"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M8 7V5a2 2 0 00-4 0v2"/></svg>Bed Board</div>
   </div>
 
   <div class="main">
@@ -185,7 +185,7 @@
     <div class="unit-section">
       <h2>Unit 4-West (8 beds shown)</h2>
       <div class="bed-grid">
-        <div class="bed-tile occupied">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
           <div class="bed-id">4W-01</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Smith, J.</div>
@@ -202,14 +202,14 @@
           <div class="bed-status">Clean</div>
           <div class="bed-patient" style="color:var(--bed-clean-text)">AVAILABLE ✓</div>
         </div>
-        <div class="bed-tile occupied">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
           <div class="bed-id">4W-04</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Patel, R.</div>
           <div class="bed-risk med">0.45 MED</div>
           <div class="bed-dc">DC est: 32h</div>
         </div>
-        <div class="bed-tile occupied">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
           <div class="bed-id">4W-05</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Jones, M.</div>
@@ -221,7 +221,7 @@
           <div class="bed-status">Blocked</div>
           <div class="bed-patient" style="color:var(--bed-blocked-text)">Maintenance</div>
         </div>
-        <div class="bed-tile occupied">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
           <div class="bed-id">4W-07</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Nguyen, L.</div>
@@ -269,6 +269,44 @@
       <span class="uxr-tag">UXR-011 Last-Updated Timestamp</span>
       <span class="uxr-tag">UXR-025 Confirm Bed Assignment</span>
     </div>
+  </div>
+</div>
+
+<!-- Wireframe Navigation Panel -->
+<style>
+  .wf-nav-panel { background:#1E3A8A; color:#fff; padding:16px 24px; font-family:var(--font-family-base); font-size:12px; }
+  .wf-nav-panel strong { display:block; margin-bottom:10px; font-size:13px; }
+  .wf-nav-group { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; align-items:center; }
+  .wf-nav-group-label { color:#93C5FD; font-weight:600; min-width:80px; }
+  .wf-nav-panel a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:4px; background:rgba(255,255,255,.15); white-space:nowrap; }
+  .wf-nav-panel a:hover { background:rgba(255,255,255,.3); }
+  .wf-nav-panel a.current { background:#2563EB; font-weight:700; }
+</style>
+<div class="wf-nav-panel">
+  <strong>🧭 Wireframe Navigation</strong>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Auth:</span>
+    <a href="wireframe-SCR-001-login.html">Login</a>
+    <a href="wireframe-SCR-010-patient-portal.html">Patient Portal Home</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Staff:</span>
+    <a href="wireframe-SCR-002-dashboard-home.html">Dashboard</a>
+    <a href="wireframe-SCR-003-patient-list.html">Patient List</a>
+    <a href="wireframe-SCR-004-patient-detail.html">Patient Detail</a>
+    <a href="wireframe-SCR-005-medication-review.html">Medication Review</a>
+    <a href="wireframe-SCR-006-document-review.html">Document Review</a>
+    <a href="wireframe-SCR-007-bed-board.html" class="current">Bed Board</a>
+    <a href="wireframe-SCR-008-agent-monitor.html">Agent Monitor</a>
+    <a href="wireframe-SCR-009-analytics-dashboard.html">Analytics</a>
+    <a href="wireframe-SCR-011-admin-settings.html">Admin Settings</a>
+  </div>
+  <div class="wf-nav-group">
+    <span class="wf-nav-group-label">Portal:</span>
+    <a href="wireframe-SCR-010-patient-portal.html">Home</a>
+    <a href="wireframe-SCR-010a-patient-portal-medications.html">Medications</a>
+    <a href="wireframe-SCR-010b-patient-portal-instructions.html">Instructions</a>
+    <a href="wireframe-SCR-010c-patient-portal-follow-up.html">Follow-up</a>
   </div>
 </div>
 
