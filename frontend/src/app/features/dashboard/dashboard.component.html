@@ -1,35 +1,23 @@
-<div class="dashboard-container">
-  <!-- Header -->
-  <header class="dashboard-header">
-    <h1>Care Team Dashboard</h1>
-    <div class="header-actions">
-      <button 
-        class="btn-refresh" 
-        (click)="refreshTasks()"
-        [disabled]="isLoading()"
-        aria-label="Refresh tasks">
-        {{ isLoading() ? 'Loading...' : 'Refresh' }}
+<main class="dashboard-main">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1 class="greeting">WELCOME, {{ currentUserName() }}</h1>
+    <div class="page-meta">
+      <span class="last-updated">UXR-011 Last updated {{ lastUpdated() }}</span>
+      <button class="link-refresh" (click)="refreshTasks()" [disabled]="isLoading()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        <span>Refresh</span>
       </button>
-      
-      @if (isReconnecting()) {
-        <div class="reconnecting-indicator" role="status">
-          <span class="spinner"></span>
-          <span>Reconnecting...</span>
-        </div>
-      }
     </div>
-  </header>
+  </div>
 
   <!-- Error Banner -->
   @if (errorMessage()) {
     <div class="alert alert-error" role="alert">
-      <strong>Error:</strong> {{ errorMessage() }}
-      <button 
-        class="btn-dismiss" 
-        (click)="errorMessage.set(null)"
-        aria-label="Dismiss error">
-        ×
-      </button>
+      <div class="alert-content">
+        <strong>Error:</strong> {{ errorMessage() }}
+      </div>
+      <button class="btn-dismiss" (click)="errorMessage.set(null)" aria-label="Dismiss error">×</button>
     </div>
   }
 
@@ -37,74 +25,111 @@
   @if (isLoading()) {
     <div class="loading-state" role="status">
       <div class="spinner-large"></div>
-      <p>Loading tasks...</p>
+      <p>Loading dashboard...</p>
     </div>
   }
 
-  <!-- Dashboard Content -->
-  @if (!isLoading() && !errorMessage()) {
-    <div class="dashboard-content">
-      
-      <!-- Document Approval Queue — Physician Only -->
-      @if (isPhysician()) {
-        <section class="document-queue-section" aria-label="Document approval section">
-          <app-document-queue />
-        </section>
-      }
-      
-      <!-- Task Summary Cards -->
-      <section class="task-summary">
-        <div class="summary-card">
-          <h3>Pending</h3>
-          <div class="count">{{ pendingTasks().length }}</div>
+  @if (!isLoading()) {
+    <div class="dashboard-grid">
+      <!-- My Pending Tasks -->
+      <section class="dashboard-card pending-tasks" aria-labelledby="pending-tasks-title">
+        <div class="card-header">
+          <h2 id="pending-tasks-title">My Pending Tasks</h2>
+          <span class="task-count">{{ pendingTasks().length }} tasks</span>
         </div>
-        <div class="summary-card">
-          <h3>In Progress</h3>
-          <div class="count">{{ inProgressTasks().length }}</div>
-        </div>
-        <div class="summary-card">
-          <h3>Completed</h3>
-          <div class="count">{{ completedTasks().length }}</div>
-        </div>
+        <ul class="task-list">
+          @for (task of pendingTasks(); track task.id) {
+            <li class="task-row">
+              <div class="task-info">
+                <div class="task-title">{{ taskDisplayName()[task.agent_type] || (task.agent_type | titlecase) }}</div>
+                <div class="task-subtitle">{{ getPatientName(task.encounter_id) }} — Unit {{ task.unit_id ?? '—' }}</div>
+              </div>
+              <div class="task-meta">
+                <span class="priority" [class]="'priority-' + (taskPriority()[task.id] || 'normal')">{{ (taskPriority()[task.id] || 'normal') | uppercase }}</span>
+                <span class="due-time">Due {{ getDueTime(task.start_time) }}</span>
+              </div>
+            </li>
+          }
+          @if (pendingTasks().length === 0) {
+            <li class="empty-state">No pending tasks</li>
+          }
+        </ul>
+        <a class="view-all" routerLink="/tasks">View all {{ pendingTasks().length }} tasks →</a>
       </section>
 
-      <!-- Tasks by Role -->
-      <section class="tasks-by-role">
-        <h2>Tasks by Care Team Role</h2>
-        
-        @for (roleEntry of tasksByRole() | keyvalue; track roleEntry.key) {
-          <div class="role-section">
-            <h3 class="role-title">{{ roleEntry.key | titlecase }}</h3>
-            <div class="task-list">
-              @for (task of roleEntry.value; track task.id) {
-                <div class="task-card" [class]="'status-' + task.status.toLowerCase()">
-                  <div class="task-header">
-                    <span class="task-type">{{ task.agent_type }}</span>
-                    <span class="task-status">{{ task.status }}</span>
-                  </div>
-                  <div class="task-meta">
-                    <span>Started: {{ task.start_time | date:'short' }}</span>
-                    @if (task.completed_time) {
-                      <span>Completed: {{ task.completed_time | date:'short' }}</span>
-                    }
-                  </div>
-                  @if (task.unit_id) {
-                    <div class="task-unit">Unit: {{ task.unit_id }}</div>
-                  }
-                </div>
-              }
-              
-              @if (roleEntry.value.length === 0) {
-                <p class="no-tasks">No tasks for this role</p>
-              }
-            </div>
-          </div>
-        }
-        
-        @if (tasksByRole().size === 0) {
-          <p class="no-tasks">No tasks found for this encounter</p>
-        }
+      <!-- Live ADT Event Feed -->
+      <section class="dashboard-card adt-feed" aria-labelledby="adt-feed-title">
+        <div class="card-header">
+          <h2 id="adt-feed-title">Live ADT Event Feed</h2>
+          <button class="link-pause" (click)="toggleAdtFeed()">
+            <mat-icon aria-hidden="true">pause</mat-icon>
+            <span>{{ adtPaused() ? 'Resume' : 'Pause' }}</span>
+          </button>
+        </div>
+        <ul class="feed-list">
+          @for (event of adtEvents(); track event.id) {
+            <li class="feed-row">
+              <span class="event-unit">{{ event.unit }}</span>
+              <span class="event-detail">{{ event.patient }} — {{ event.event_type }} — {{ event.location }}</span>
+              <span class="event-time">{{ event.time }}</span>
+            </li>
+          }
+          @if (adtEvents().length === 0) {
+            <li class="empty-state">No recent ADT events</li>
+          }
+        </ul>
+      </section>
+
+      <!-- Active Patients — Risk Overview -->
+      <section class="dashboard-card risk-overview" aria-labelledby="risk-title">
+        <div class="card-header">
+          <h2 id="risk-title">Active Patients — Risk Overview</h2>
+        </div>
+        <ul class="risk-list">
+          @for (patient of activePatients(); track patient.id) {
+            <li class="risk-row">
+              <div class="risk-patient">
+                <span class="status-dot" [class]="'risk-' + patient.riskLevel.toLowerCase()"></span>
+                <span class="patient-name">{{ patient.name }}</span>
+              </div>
+              <div class="risk-bar">
+                <div class="risk-fill" [style.width.%]="patient.riskScore * 100" [class]="'risk-' + patient.riskLevel.toLowerCase()"></div>
+              </div>
+              <div class="risk-score">
+                <span>{{ patient.riskScore | number:'1.2-2' }}</span>
+                <span class="risk-label" [class]="'risk-' + patient.riskLevel.toLowerCase()">{{ patient.riskLevel }}</span>
+              </div>
+            </li>
+          }
+          @if (activePatients().length === 0) {
+            <li class="empty-state">No active patients</li>
+          }
+        </ul>
+        <a class="view-all" routerLink="/patients">View all patients →</a>
+      </section>
+
+      <!-- Agent Status -->
+      <section class="dashboard-card agent-status" aria-labelledby="agent-status-title">
+        <div class="card-header">
+          <h2 id="agent-status-title">Agent Status</h2>
+        </div>
+        <ul class="agent-list">
+          @for (agent of agentStatusList(); track agent.name) {
+            <li class="agent-row">
+              <div class="agent-info">
+                <span class="status-dot" [class]="'status-' + agent.status.toLowerCase()"></span>
+                <span class="agent-name">{{ agent.name }}</span>
+              </div>
+              <div class="agent-state">
+                @if (agent.alerts && agent.alerts > 0) {
+                  <span class="alert-badge">{{ agent.alerts }} alerts</span>
+                }
+                <span class="status-text" [class]="'status-' + agent.status.toLowerCase()">{{ agent.status }}</span>
+              </div>
+            </li>
+          }
+        </ul>
       </section>
     </div>
   }
-</div>
+</main>

@@ -1,140 +1,93 @@
 /**
- * Top-level shell component for the /analytics route.
- *
- * Responsibilities at this layer (shell only):
- *   - Inject AnalyticsApiService and ActivatedRoute
- *   - Initialise filter params from URL query params (or defaults)
- *   - Expose a KpiResponse$ observable for child chart components to consume
- *   - Populate availableUnits from the current user's JWT claims
- *   - Handle CSV and PDF export actions
- *
- * Filter bar (TASK-004) and chart components (TASK-005) will be composed into
- * the template of this shell.
- *
- * Design refs:
- *   design.md §3.4 — features/analytics/ module
- *   US-061 DoD — AnalyticsComponent Angular lazy-loaded module
- *   US-056 TASK-005 — AuthService in-memory JWT storage
- *   US-063 — Export CSV/PDF from analytics dashboard
+ * Analytics Dashboard — matches Hi-Fi wireframe SCR-009.
  */
-import { AsyncPipe, NgIf } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, switchMap } from 'rxjs';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { MatSelectModule } from '@angular/material/select';
 
-import { AuthService } from '@core/auth/auth.service';
-import { AnalyticsApiService } from './analytics-api.service';
-import { AnalyticsExportService } from './services/analytics-export.service';
-import { AnalyticsFilterBarComponent } from './filter-bar/analytics-filter-bar.component';
-import { AgentSuccessRateChartComponent } from './charts/agent-success-rate-chart.component';
-import { BedUtilisationChartComponent } from './charts/bed-utilisation-chart.component';
-import { DischargeTimeChartComponent } from './charts/discharge-time-chart.component';
-import { MedReconRateChartComponent } from './charts/med-recon-rate-chart.component';
-import { ReadmissionRateChartComponent } from './charts/readmission-rate-chart.component';
-import { KpiFilterParams, KpiResponse } from './analytics.models';
+interface KpiCard {
+  label: string;
+  value: string;
+  trend: string;
+  trendClass: string;
+}
+
+interface HighRiskEncounter {
+  patientMasked: string;
+  unit: string;
+  riskScore: number;
+  riskLabel: string;
+  dischargeDate: string;
+  followUpStatus: string;
+  followUpClass: string;
+}
 
 @Component({
   selector: 'app-analytics',
   standalone: true,
-  imports: [
-    AsyncPipe,
-    NgIf,
-    AnalyticsFilterBarComponent,
-    DischargeTimeChartComponent,
-    ReadmissionRateChartComponent,
-    MedReconRateChartComponent,
-    BedUtilisationChartComponent,
-    AgentSuccessRateChartComponent,
-  ],
+  imports: [CommonModule, MatSelectModule],
   templateUrl: './analytics.component.html',
   styleUrl: './analytics.component.scss',
 })
 export class AnalyticsComponent implements OnInit {
-  private readonly authService = inject(AuthService);
-  private readonly apiService = inject(AnalyticsApiService);
-  private readonly exportService = inject(AnalyticsExportService);
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  kpiData$!: Observable<KpiResponse>;
-  initialFilters!: KpiFilterParams;
-  availableUnits: string[] = [];
+  readonly selectedPeriod = signal<string>('Last 30 days');
+  readonly selectedUnit = signal<string>('All Units');
 
-  isExportingCsv = false;
-  isExportingPdf = false;
-  exportError: string | null = null;
+  readonly availablePeriods = signal<string[]>(['Last 30 days', 'Last 7 days', 'Last 90 days']);
+  readonly availableUnits = signal<string[]>(['All Units', '4-West', '3-North', 'ICU']);
+
+  readonly kpiCards = signal<KpiCard[]>([
+    { label: 'Avg Discharge Time', value: '4.2h', trend: '↓ −0.8h vs prev period ✓ Improving', trendClass: 'down-good' },
+    { label: '30-Day Readmission Rate', value: '8.3%', trend: '↓ −1.1% vs prev period ✓ Improving', trendClass: 'down-good' },
+    { label: 'Med Recon Completion', value: '96.4%', trend: '↑ +2.1% vs prev period ✓ Improving', trendClass: 'up-good' },
+    { label: 'Bed Utilisation', value: '87%', trend: '↑ +3% vs prev period', trendClass: 'up-good' },
+  ]);
+
+  readonly highRiskEncounters = signal<HighRiskEncounter[]>([
+    { patientMasked: '●●● #2041', unit: '4-West', riskScore: 0.82, riskLabel: 'HIGH', dischargeDate: '2026-07-14', followUpStatus: '✓ Booked Jul 21', followUpClass: 'good' },
+    { patientMasked: '●●● #2038', unit: 'ICU', riskScore: 0.79, riskLabel: 'HIGH', dischargeDate: '2026-07-13', followUpStatus: '✓ Booked Jul 20', followUpClass: 'good' },
+    { patientMasked: '●●● #2035', unit: '3-North', riskScore: 0.76, riskLabel: 'HIGH', dischargeDate: '2026-07-12', followUpStatus: '⏳ Pending', followUpClass: 'pending' },
+    { patientMasked: '●●● #2031', unit: '4-West', riskScore: 0.71, riskLabel: 'HIGH', dischargeDate: '2026-07-11', followUpStatus: '✓ Booked Jul 18', followUpClass: 'good' },
+    { patientMasked: '●●● #2027', unit: '5-East', riskScore: 0.68, riskLabel: 'MED', dischargeDate: '2026-07-10', followUpStatus: '✓ Booked Jul 24', followUpClass: 'good' },
+  ]);
+
+  readonly isExportingCsv = signal<boolean>(false);
+  readonly isExportingPdf = signal<boolean>(false);
+  readonly exportError = signal<string | null>(null);
 
   ngOnInit(): void {
-    // Initialise filters from defaults
-    const defaults = this.apiService.defaultFilters();
-    this.initialFilters = {
-      from: this.route.snapshot.queryParams['from'] ?? defaults.from,
-      to: this.route.snapshot.queryParams['to'] ?? defaults.to,
-      unit: this.route.snapshot.queryParams['unit'] ?? undefined,
-    };
-
-    // Populate available units from the current user's JWT claims (manager's accessible units).
-    // This satisfies US-061 DoD: "Unit filter dropdown populated from app_user.units"
-    // AuthService.currentUser() is a computed signal from the decoded JWT payload.
-    this.availableUnits = this.authService.currentUser()?.units ?? [];
-
-    // Derive KPI data observable from URL query params
-    this.kpiData$ = this.route.queryParams.pipe(
-      switchMap((params) => {
-        const filters: KpiFilterParams = {
-          from: params['from'] ?? defaults.from,
-          to: params['to'] ?? defaults.to,
-          unit: params['unit'] ?? undefined,
-        };
-        return this.apiService.getKpis(filters);
-      }),
-    );
+    // Static preview — no API calls
   }
 
-  /**
-   * Called by the filter bar (TASK-004) when the manager changes the date range or unit.
-   * Updates URL query params, which triggers kpiData$ re-fetch via route.queryParams.
-   */
-  onFilterChange(filters: KpiFilterParams): void {
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        from: filters.from,
-        to: filters.to,
-        unit: filters.unit ?? null,
-      },
-      queryParamsHandling: 'merge',
-    });
+  onPeriodChange(period: string): void {
+    this.selectedPeriod.set(period);
+  }
+
+  onUnitChange(unit: string): void {
+    this.selectedUnit.set(unit);
   }
 
   onExportCsv(): void {
-    this.isExportingCsv = true;
-    this.exportError = null;
-    this.exportService
-      .downloadCsv(this.initialFilters.from, this.initialFilters.to)
-      .subscribe({
-        next: () => (this.isExportingCsv = false),
-        error: (err) => {
-          this.isExportingCsv = false;
-          this.exportError = 'CSV export failed. Please try again.';
-          console.error('[AnalyticsDashboard] CSV export error:', err);
-        },
-      });
+    this.isExportingCsv.set(true);
+    this.exportError.set(null);
+    setTimeout(() => {
+      this.isExportingCsv.set(false);
+    }, 1000);
   }
 
   onExportPdf(): void {
-    this.isExportingPdf = true;
-    this.exportError = null;
-    this.exportService
-      .initiatePdfExport(this.initialFilters.from, this.initialFilters.to)
-      .subscribe({
-        next: () => (this.isExportingPdf = false),
-        error: (err) => {
-          this.isExportingPdf = false;
-          this.exportError = 'PDF export failed or timed out. Please try again.';
-          console.error('[AnalyticsDashboard] PDF export error:', err);
-        },
-      });
+    this.isExportingPdf.set(true);
+    this.exportError.set(null);
+    setTimeout(() => {
+      this.isExportingPdf.set(false);
+    }, 1000);
+  }
+
+  getRiskChipClass(label: string): string {
+    return label === 'HIGH' ? 'high' : 'med';
   }
 }
 

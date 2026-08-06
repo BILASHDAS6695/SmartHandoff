@@ -327,9 +327,6 @@ IMPL      CHANGES     GUIDE
 
 ---
 
-## 🎯 File Structure
-
-All files located in: `/Users/keerthanarajendran/SMARTHANDOFF/SmartHandoff/`
 
 ```
 US-051-AT-A-GLANCE.md .......................... 📌 Start Here

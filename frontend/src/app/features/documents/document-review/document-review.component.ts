@@ -1,122 +1,81 @@
-/**
- * DocumentReviewComponent
- *
- * Dual-pane document review UI (US-028 Scenario 1).
- * Left pane: read-only AI draft.  Right pane: editable copy with auto-save.
- * Both panes scroll in sync via ElementRef scroll event listeners.
- */
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  ViewChild,
-  inject,
-} from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import {
-  Subject,
-  debounceTime,
-  distinctUntilChanged,
-  fromEvent,
-  switchMap,
-  takeUntil,
-} from 'rxjs';
+import { MatIconModule } from '@angular/material/icon';
 
-import { DocumentService } from '../services/document.service';
-import { DocumentEditorComponent, SaveDraftPayload as EditorSaveDraftPayload } from '../document-editor/document-editor.component';
-import { ChangeLogTimelineComponent } from '../change-log-timeline/change-log-timeline.component';
-import { DocumentReviewVm } from '../models/document-review.vm';
-import { AiAssistedLabelBannerComponent } from '../components/ai-assisted-label-banner/ai-assisted-label-banner.component';
+interface DocumentField {
+  label: string;
+  aiText: string;
+  editedText: string;
+}
 
+/**
+ * DocumentReviewComponent — matches Hi-Fi wireframe SCR-006.
+ */
 @Component({
   selector: 'sh-document-review',
   standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    DocumentEditorComponent,
-    ChangeLogTimelineComponent,
-    AiAssistedLabelBannerComponent,
-  ],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   templateUrl: './document-review.component.html',
   styleUrl: './document-review.component.scss',
 })
-export class DocumentReviewComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('leftPane') leftPane!: ElementRef<HTMLDivElement>;
-  @ViewChild('rightPane') rightPane!: ElementRef<HTMLDivElement>;
-
+export class DocumentReviewComponent {
+  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly documentService = inject(DocumentService);
-  private readonly destroy$ = new Subject<void>();
 
-  documentId!: string;
-  vm: DocumentReviewVm | null = null;
-  isSaving = false;
+  readonly patientName = signal<string>('Smith, John');
+  readonly documentTitle = signal<string>('Discharge Summary');
+  readonly aiGeneratedAt = signal<string>('14:32');
+  readonly fallbackVisible = signal<boolean>(false);
 
-  /** Prevents scroll-sync feedback loop between the two panes. */
-  private isScrollSyncing = false;
+  readonly fields = signal<DocumentField[]>([
+    {
+      label: 'Primary Diagnosis',
+      aiText: 'Acute exacerbation of chronic heart failure (ICD-10: I50.23)',
+      editedText: 'Acute on chronic systolic heart failure (ICD-10: I50.23)',
+    },
+    {
+      label: 'Hospital Course',
+      aiText: 'Patient admitted with dyspnea. Started on IV diuretics. Symptoms improved.',
+      editedText: 'Patient admitted with dyspnea and weight gain. Started on IV diuretics with 2L net negative fluid balance. Symptoms improved. Weight target <85 kg discussed.',
+    },
+    {
+      label: 'Discharge Medications',
+      aiText: 'Furosemide 40 mg daily, Lisinopril 10 mg daily',
+      editedText: 'Furosemide 40 mg daily, Lisinopril 10 mg daily, Metoprolol 25 mg BID',
+    },
+    {
+      label: 'Follow-up Plan',
+      aiText: 'Follow up with cardiology in 1 week.',
+      editedText: 'Follow up with cardiology in 1 week. Primary care visit within 3-5 days.',
+    },
+  ]);
 
-  ngOnInit(): void {
-    this.documentId = this.route.snapshot.paramMap.get('id')!;
-    this.documentService
-      .getDocument(this.documentId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((doc) => (this.vm = doc));
+  readonly changeLog = signal<string>('Change log: 2 edits by Dr. David Chen — 14:37 | Field: Primary Diagnosis (ICD code updated) | Field: Hospital Course (weight target added)');
+
+  constructor() {
+    const documentId = this.route.snapshot.paramMap.get('id');
+    // Static preview — no API call
   }
 
-  ngAfterViewInit(): void {
-    this.initScrollSync(this.leftPane, this.rightPane);
-    this.initScrollSync(this.rightPane, this.leftPane);
+  goBack(): void {
+    this.router.navigate(['/patients', 'enc-001']);
   }
 
-  /**
-   * Mirror scroll position from `source` to `target`.
-   * Debounced at 16 ms (≈ 60 fps) to avoid jank.
-   * Guard flag prevents the mirrored scroll from triggering a second sync.
-   */
-  private initScrollSync(
-    source: ElementRef<HTMLDivElement>,
-    target: ElementRef<HTMLDivElement>,
-  ): void {
-    fromEvent(source.nativeElement, 'scroll')
-      .pipe(debounceTime(16), takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (this.isScrollSyncing) return;
-        this.isScrollSyncing = true;
-        target.nativeElement.scrollTop = source.nativeElement.scrollTop;
-        // Reset flag after browser repaints
-        requestAnimationFrame(() => (this.isScrollSyncing = false));
-      });
+  rejectDocument(): void {
+    this.goBack();
   }
 
-  onSaveDraft(payload: EditorSaveDraftPayload): void {
-    if (!this.documentId || !this.vm) return;
-
-    const content: Record<string, unknown> = { ...this.vm.content };
-    for (const [field, change] of Object.entries(payload.diff)) {
-      content[field] = change.new_value;
-    }
-
-    this.isSaving = true;
-    this.documentService
-      .saveDraft(this.documentId, { content, diff: payload.diff })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => (this.isSaving = false),
-        error: () => (this.isSaving = false),
-      });
+  saveDraft(): void {
+    // Placeholder
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+  approveDocument(): void {
+    this.goBack();
+  }
+
+  showFallback(): void {
+    this.fallbackVisible.set(true);
   }
 }

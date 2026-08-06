@@ -1,59 +1,146 @@
-<!-- Skeleton loaders: shown while loading (UI-007) -->
-@if (loading()) {
-  <div class="bed-board__grid" aria-busy="true" aria-label="Loading bed board">
-    @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
-      <div class="bed-cell bed-cell--skeleton"></div>
-    }
+<div class="bed-board-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Bed Board — Live View</h1>
+    <div class="header-right">
+      <span class="live-dot" title="Live SignalR connection"></span>
+      <span class="last-updated">
+        <span class="uxr-badge">UXR-011 Last updated {{ lastUpdated() }}</span>
+      </span>
+      <button class="refresh-btn" (click)="refresh()">
+        <mat-icon>refresh</mat-icon> Refresh
+      </button>
+    </div>
   </div>
-}
 
-<!-- Error state -->
-@if (error()) {
-  <p class="bed-board__error" role="alert">{{ error() }}</p>
-}
-
-<!-- Unit filter toolbar (US-050 TASK-004) -->
-@if (!loading() && !error()) {
-  <div class="bed-board__toolbar" role="toolbar" aria-label="Filter beds by unit">
-    <mat-button-toggle-group
-      [value]="selectedUnit()"
-      (change)="onUnitFilterChange($event.value)"
-      aria-label="Unit filter">
-      @for (unit of availableUnits(); track unit) {
-        <mat-button-toggle [value]="unit" [attr.aria-pressed]="selectedUnit() === unit">
-          {{ unit }}
-        </mat-button-toggle>
-      }
-    </mat-button-toggle-group>
-  </div>
-}
-
-<!-- Bed grid (responsive CSS Grid layout) -->
-@if (!loading() && !error()) {
-  <div class="bed-board__grid" role="grid" aria-label="Bed board floor plan">
-    @for (bed of filteredBeds(); track bed.bedId) {
-      <app-bed-cell
-        [bed]="bed"
-        (click)="onBedClick(bed)"
-        (keydown.enter)="onBedClick(bed)">
-      </app-bed-cell>
-    }
-    @if (filteredBeds().length === 0) {
-      <p class="bed-board__empty" role="status" aria-live="polite">
-        @if (selectedUnit() === 'ALL') {
-          No beds available across all units. Please refresh or contact support.
-        } @else {
-          No available beds in unit <strong>{{ selectedUnit() }}</strong>. Try another unit.
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <div class="filter-select">
+      <mat-select [value]="selectedUnit()" (selectionChange)="onUnitFilterChange($event.value)" aria-label="Filter by unit">
+        @for (unit of availableUnits(); track unit) {
+          <mat-option [value]="unit">{{ unit }}</mat-option>
         }
-      </p>
-    }
+      </mat-select>
+    </div>
+    <div class="filter-select">
+      <mat-select [value]="selectedStatus()" (selectionChange)="onStatusFilterChange($event.value)" aria-label="Filter by status">
+        @for (status of availableStatuses(); track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot clean"></span>Clean</div>
+      <div class="legend-item"><span class="legend-dot dirty"></span>Dirty</div>
+      <div class="legend-item"><span class="legend-dot occupied"></span>Occupied</div>
+      <div class="legend-item"><span class="legend-dot blocked"></span>Blocked</div>
+    </div>
   </div>
-}
 
-<!-- Detail panel (US-050 TASK-003) -->
-@if (selectedBed()) {
-  <app-bed-detail-panel
-    [bed]="selectedBed()"
-    (closed)="onPanelClosed()">
-  </app-bed-detail-panel>
-}
+  <!-- ED Boarding Alert -->
+  @if (edAlert()) {
+    <div class="ed-alert" role="alert">
+      <div class="ed-alert-icon">🚨</div>
+      <div class="ed-alert-body">
+        <div class="ed-alert-title">
+          ED BOARDING ALERT
+          <span class="uxr-badge">UXR-006 Interrupt on 2-hour threshold</span>
+        </div>
+        <div class="ed-alert-meta">
+          Patient: {{ edAlert()?.patientName }} &nbsp;|&nbsp;
+          Pending inpatient bed since {{ edAlert()?.waitingSince }} &nbsp;|&nbsp;
+          <strong class="waiting-time">Waiting: {{ edAlert()?.waitingTime }}</strong> &nbsp;|&nbsp;
+          Acuity: {{ edAlert()?.acuity }}
+        </div>
+        <div class="ed-alert-recs">
+          <strong>Recommended beds (ranked by acuity match):</strong>
+          @for (bed of edAlert()?.recommendedBeds; track bed.bedId) {
+            <span class="rec-bed" [class.secondary]="!bed.bestMatch">
+              @if (bed.bestMatch) { ✓ } {{ bed.bedId }} @if (bed.bestMatch) { — Best match }
+            </span>
+          }
+        </div>
+        <div class="ed-alert-actions">
+          <button class="btn-assign" (click)="assignBed('4W-03')">Assign 4W-03 →</button>
+          <button class="btn-ghost-small">View All Available</button>
+          <button class="btn-ghost-small" (click)="dismissAlert()">Dismiss ✗</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Loading state -->
+  @if (loading()) {
+    <div class="bed-board__grid" aria-busy="true" aria-label="Loading bed board">
+      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+        <div class="bed-cell bed-cell--skeleton"></div>
+      }
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (error()) {
+    <p class="bed-board__error" role="alert">{{ error() }}</p>
+  }
+
+  <!-- Bed grid -->
+  @if (!loading() && !error()) {
+    <div class="unit-section">
+      <h2>Unit 4-West ({{ filteredBeds().length }} beds shown)</h2>
+      <div class="bed-grid" role="grid" aria-label="Bed board floor plan">
+        @for (bed of filteredBeds(); track bed.bedId) {
+          <div
+            class="bed-tile"
+            [class]="getBedClass(bed.status)"
+            [class.clickable]="bed.status === 'OCCUPIED'"
+            (click)="onBedClick(bed)"
+            (keydown.enter)="onBedClick(bed)"
+            tabindex="0"
+            [attr.aria-label]="'Bed ' + bed.bedId + ' ' + mapStatusLabel(bed.status)">
+            <div class="bed-id">{{ bed.bedId }}</div>
+            <div class="bed-status">{{ mapStatusLabel(bed.status) }}</div>
+            @if (bed.patientName) {
+              <div class="bed-patient">{{ bed.patientName }}</div>
+            }
+            @if (bed.riskTier) {
+              <div class="bed-risk" [class]="getRiskClass(bed.riskTier)">{{ getRiskLabel(bed.riskTier) }}</div>
+            }
+            @if (bed.predictedDischargeTime) {
+              <div class="bed-dc">DC est: {{ bed.predictedDischargeTime }}</div>
+            }
+            @if (bed.status === 'DIRTY') {
+              <div class="hk-label">HK notified 14:29</div>
+            }
+            @if (bed.status === 'VACANT') {
+              <div class="available-label">AVAILABLE ✓</div>
+            }
+            @if (bed.status === 'MAINTENANCE') {
+              <div class="blocked-label">Maintenance</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Discharge Predictions -->
+  <div class="predictions">
+    <h2>Predicted Discharges (next 4 hours) — ML Model ±2h</h2>
+    <div class="pred-list">
+      @for (pred of dischargePredictions(); track pred.bedId) {
+        <div class="pred-item">
+          <strong>{{ pred.patientName }} ({{ pred.bedId }})</strong> —
+          <span class="pred-time">{{ pred.time }}</span> (±2h)
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  @if (selectedBed()) {
+    <app-bed-detail-panel
+      [bed]="selectedBed()"
+      (closed)="onPanelClosed()">
+    </app-bed-detail-panel>
+  }
+</div>
