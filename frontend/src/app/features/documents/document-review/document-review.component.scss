@@ -89,6 +89,25 @@
   font-weight: 600;
 }
 
+.loading-state,
+.error-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.error-state {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
 .dual-pane {
   display: grid;
   grid-template-columns: 1fr 1fr;

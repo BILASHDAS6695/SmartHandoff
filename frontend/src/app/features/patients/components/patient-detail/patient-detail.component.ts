@@ -171,7 +171,7 @@ export class PatientDetailComponent implements OnInit {
           admissionDate: detail.admission_date,
           attending: '—', // not yet stored in encounter schema
           riskScore: detail.risk_score ?? this.riskScoreFromTier(detail.risk_tier),
-          riskLevel: detail.risk_tier,
+          riskLevel: detail.risk_tier || 'LOW',
         });
         this.loading.set(false);
       },
@@ -194,7 +194,7 @@ export class PatientDetailComponent implements OnInit {
     return age;
   }
 
-  private riskScoreFromTier(tier: string): number {
+  private riskScoreFromTier(tier: string | undefined | null): number {
     switch (tier) {
       case 'HIGH': return 0.82;
       case 'MEDIUM': return 0.45;
@@ -220,8 +220,8 @@ export class PatientDetailComponent implements OnInit {
     this.mrnRevealed.update(v => !v);
   }
 
-  getRiskClass(level: string): string {
-    return level.toLowerCase();
+  getRiskClass(level: string | undefined | null): string {
+    return (level ?? 'low').toLowerCase();
   }
 
   getRiskBarWidth(score: number): string {

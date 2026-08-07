@@ -1,8 +1,10 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DocumentApiService, BackendDocument, DocumentContent } from '../services/document-api.service';
 
 interface DocumentField {
   label: string;
@@ -12,55 +14,150 @@ interface DocumentField {
 
 /**
  * DocumentReviewComponent — matches Hi-Fi wireframe SCR-006.
+ *
+ * Loads the first discharge summary (or any document) for the encounter
+ * passed in the route parameter `patientId`.
  */
 @Component({
   selector: 'sh-document-review',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './document-review.component.html',
   styleUrl: './document-review.component.scss',
 })
-export class DocumentReviewComponent {
+export class DocumentReviewComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly documentApi = inject(DocumentApiService);
 
-  readonly patientName = signal<string>('Smith, John');
+  readonly patientName = signal<string>('');
   readonly documentTitle = signal<string>('Discharge Summary');
-  readonly aiGeneratedAt = signal<string>('14:32');
+  readonly aiGeneratedAt = signal<string>('');
   readonly fallbackVisible = signal<boolean>(false);
+  readonly isLoading = signal<boolean>(true);
+  readonly hasError = signal<boolean>(false);
+  readonly errorMessage = signal<string>('');
+  readonly documentId = signal<string | null>(null);
 
-  readonly fields = signal<DocumentField[]>([
-    {
-      label: 'Primary Diagnosis',
-      aiText: 'Acute exacerbation of chronic heart failure (ICD-10: I50.23)',
-      editedText: 'Acute on chronic systolic heart failure (ICD-10: I50.23)',
-    },
-    {
-      label: 'Hospital Course',
-      aiText: 'Patient admitted with dyspnea. Started on IV diuretics. Symptoms improved.',
-      editedText: 'Patient admitted with dyspnea and weight gain. Started on IV diuretics with 2L net negative fluid balance. Symptoms improved. Weight target <85 kg discussed.',
-    },
-    {
-      label: 'Discharge Medications',
-      aiText: 'Furosemide 40 mg daily, Lisinopril 10 mg daily',
-      editedText: 'Furosemide 40 mg daily, Lisinopril 10 mg daily, Metoprolol 25 mg BID',
-    },
-    {
-      label: 'Follow-up Plan',
-      aiText: 'Follow up with cardiology in 1 week.',
-      editedText: 'Follow up with cardiology in 1 week. Primary care visit within 3-5 days.',
-    },
-  ]);
+  readonly fields = signal<DocumentField[]>([]);
+  readonly changeLog = signal<string>('No edits recorded.');
 
-  readonly changeLog = signal<string>('Change log: 2 edits by Dr. David Chen — 14:37 | Field: Primary Diagnosis (ICD code updated) | Field: Hospital Course (weight target added)');
+  ngOnInit(): void {
+    const encounterId = this.route.snapshot.paramMap.get('patientId');
+    if (!encounterId) {
+      this.hasError.set(true);
+      this.errorMessage.set('Encounter ID is missing from the route.');
+      this.isLoading.set(false);
+      return;
+    }
 
-  constructor() {
-    const documentId = this.route.snapshot.paramMap.get('id');
-    // Static preview — no API call
+    this.loadDocument(encounterId);
+  }
+
+  private loadDocument(encounterId: string): void {
+    this.isLoading.set(true);
+    this.hasError.set(false);
+
+    this.documentApi.getDocumentsByEncounter(encounterId).subscribe({
+      next: (documents) => {
+        const doc =
+          documents.find((d) => d.document_type === 'discharge_summary') ??
+          documents[0];
+
+        if (!doc) {
+          this.hasError.set(true);
+          this.errorMessage.set('No documents found for this encounter.');
+          this.isLoading.set(false);
+          return;
+        }
+
+        this.bindDocument(doc);
+        this.isLoading.set(false);
+      },
+      error: (err: unknown) => {
+        this.hasError.set(true);
+        this.errorMessage.set(
+          typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: string }).message)
+            : 'Failed to load document.'
+        );
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private bindDocument(doc: BackendDocument): void {
+    this.documentId.set(doc.id);
+    this.documentTitle.set(
+      doc.document_type === 'discharge_summary'
+        ? 'Discharge Summary'
+        : doc.document_type.replace(/_/g, ' ')
+    );
+    this.aiGeneratedAt.set(this.formatDate(doc.created_at));
+    this.fallbackVisible.set(doc.generation_type === 'TEMPLATE');
+
+    const content: DocumentContent = doc.content ?? {};
+    this.fields.set(this.toFields(content));
+
+    if (doc.reviewed_by_display_name && doc.approved_at) {
+      this.changeLog.set(
+        `Approved by ${doc.reviewed_by_display_name} on ${this.formatDate(doc.approved_at)}.`
+      );
+    } else {
+      this.changeLog.set('Change log: no edits recorded.');
+    }
+  }
+
+  private toFields(content: DocumentContent): DocumentField[] {
+    const primary =
+      content.diagnosis_summary?.find((d) => d.is_primary) ??
+      content.diagnosis_summary?.[0];
+
+    const meds = (content.medications_at_discharge ?? [])
+      .map((m) => `${m.drug_name} ${m.dose} ${m.frequency}`)
+      .join(', ');
+
+    const followUp = (content.follow_up_instructions ?? [])
+      .map((f) => f.instruction)
+      .join(' ');
+
+    return [
+      {
+        label: 'Primary Diagnosis',
+        aiText: primary
+          ? `${primary.description} (ICD-10: ${primary.icd10_code})`
+          : 'No diagnosis recorded.',
+        editedText: primary
+          ? `${primary.description} (ICD-10: ${primary.icd10_code})`
+          : 'No diagnosis recorded.',
+      },
+      {
+        label: 'Hospital Course',
+        aiText: content.hospital_course ?? 'No hospital course recorded.',
+        editedText: content.hospital_course ?? 'No hospital course recorded.',
+      },
+      {
+        label: 'Discharge Medications',
+        aiText: meds || 'No discharge medications recorded.',
+        editedText: meds || 'No discharge medications recorded.',
+      },
+      {
+        label: 'Follow-up Plan',
+        aiText: followUp || 'No follow-up plan recorded.',
+        editedText: followUp || 'No follow-up plan recorded.',
+      },
+    ];
+  }
+
+  private formatDate(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleString();
   }
 
   goBack(): void {
-    this.router.navigate(['/patients', 'enc-001']);
+    const encounterId = this.route.snapshot.paramMap.get('patientId');
+    this.router.navigate(['/patients', encounterId ?? '']);
   }
 
   rejectDocument(): void {
@@ -68,10 +165,11 @@ export class DocumentReviewComponent {
   }
 
   saveDraft(): void {
-    // Placeholder
+    // Placeholder — wire PATCH /api/v1/documents/{id} when save-draft schema is ready
   }
 
   approveDocument(): void {
+    // Placeholder — wire PATCH /api/v1/documents/{id}/approve when approval flow is ready
     this.goBack();
   }
 

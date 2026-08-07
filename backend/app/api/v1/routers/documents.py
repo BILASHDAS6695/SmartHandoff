@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import require_role
-from app.core.auth.jwt import TokenClaims
+from app.core.auth.jwt import TokenClaims, sub_to_uuid
 from app.core.auth.rbac import require_permission
-from app.db.deps import get_write_db
+from app.db.deps import get_read_db, get_write_db
 from app.models.document import Document, DocumentStatus
 from app.models.encounter import Encounter
 from app.models.patient import Patient
@@ -21,6 +21,12 @@ from app.services.audit_service import write_audit_log
 from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+# US-028/US-029: Encounter-scoped document endpoints
+encounters_documents_router = APIRouter(
+    prefix="/encounters",
+    tags=["documents"],
+)
 
 
 async def _notify_patient_on_document_approved(
@@ -60,13 +66,80 @@ async def list_documents(
     return {"documents": [], "user": current_user.sub}
 
 
-@router.get("/{document_id}")
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    summary="Get a single document",
+    description="Returns a decrypted document including structured content and approval metadata.",
+)
 async def get_document(
     document_id: uuid.UUID,
     current_user: Annotated[TokenClaims, Depends(require_permission("document", "read"))],
-) -> dict:
+    db: AsyncSession = Depends(get_read_db),
+) -> DocumentResponse:
     """Get a single document — requires document:read permission."""
-    return {"document_id": str(document_id), "user": current_user.sub}
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc: Document | None = result.scalar_one_or_none()
+
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    # Resolve all ORM attributes (including decrypted content) while the
+    # read session is still open.
+    if doc.reviewed_by_user:
+        _ = doc.reviewed_by_user.full_name
+
+    response = DocumentResponse.model_validate(doc)
+    if doc.reviewed_by_user:
+        response.reviewed_by_display_name = doc.reviewed_by_user.full_name
+    return response
+
+
+@encounters_documents_router.get(
+    "/{encounter_id}/documents",
+    response_model=list[DocumentResponse],
+    summary="List documents for an encounter",
+    description="Returns decrypted documents scoped to the encounter, ordered by creation time descending.",
+)
+async def list_encounter_documents(
+    encounter_id: uuid.UUID,
+    current_user: Annotated[
+        TokenClaims, Depends(require_permission("document", "list"))
+    ],
+    db: AsyncSession = Depends(get_read_db),
+) -> list[DocumentResponse]:
+    """List all documents for a specific encounter."""
+    encounter = await db.get(Encounter, encounter_id)
+    if encounter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Encounter not found",
+        )
+
+    result = await db.execute(
+        select(Document)
+        .where(Document.encounter_id == encounter_id)
+        .order_by(Document.created_at.desc())
+    )
+    docs = result.scalars().all()
+
+    # Eagerly touch relationships so decryption/loading happens inside the
+    # open read session before the objects are serialized.
+    for doc in docs:
+        if doc.reviewed_by_user:
+            _ = doc.reviewed_by_user.full_name
+
+    responses: list[DocumentResponse] = []
+    for doc in docs:
+        response = DocumentResponse.model_validate(doc)
+        if doc.reviewed_by_user:
+            response.reviewed_by_display_name = doc.reviewed_by_user.full_name
+        responses.append(response)
+
+    return responses
 
 
 @router.post("")
@@ -128,7 +201,7 @@ async def approve_document(
     # ── Apply approval fields (US-029 Scenario 4) ─────────────────────────────
     doc.status = DocumentStatus.APPROVED.value
     doc.approved_at = datetime.now(tz=timezone.utc)
-    doc.reviewed_by_user_id = uuid.UUID(current_user.user_id)
+    doc.reviewed_by_user_id = sub_to_uuid(current_user.sub)
     # NOTE: doc.ai_assisted_label is deliberately NOT modified here.
     #       The permanent provenance flag must remain True after approval (BR-011).
 
@@ -138,7 +211,7 @@ async def approve_document(
         action="DOCUMENT_APPROVED",
         resource_type="Document",
         resource_id=document_id,
-        performed_by=uuid.UUID(current_user.user_id),
+        performed_by=sub_to_uuid(current_user.sub),
         metadata={
             "document_type": doc.document_type,
             "encounter_id": str(doc.encounter_id),

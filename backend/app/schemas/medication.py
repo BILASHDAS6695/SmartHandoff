@@ -79,6 +79,11 @@ class MedicationReconciliationResult(BaseModel):
         default=None,
         description="Dosing frequency e.g. twice daily, BID",
     )
+    
+    interaction_severity: Optional[str] = Field(
+        default=None,
+        description="RxNav interaction severity: HIGH | MEDIUM | LOW (AIR-051)",
+    )
 
     model_config = {"from_attributes": True}
 

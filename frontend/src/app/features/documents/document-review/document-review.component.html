@@ -11,15 +11,30 @@
     </div>
   </div>
 
-  <!-- Fallback banner -->
-  @if (fallbackVisible()) {
-    <div class="fallback-banner" role="alert">
-      ⚠ AI generation timed out — template-based summary used. Review carefully before approving.
+  @if (isLoading()) {
+    <div class="loading-state" role="status">
+      <mat-spinner diameter="40"></mat-spinner>
+      <span>Loading document…</span>
     </div>
   }
 
-  <!-- Dual-pane editor -->
-  <div class="dual-pane">
+  @if (!isLoading() && hasError()) {
+    <div class="error-state" role="alert">
+      ⚠ {{ errorMessage() }}
+      <button mat-button (click)="goBack()">Back to Patient</button>
+    </div>
+  }
+
+  @if (!isLoading() && !hasError()) {
+    <!-- Fallback banner -->
+    @if (fallbackVisible()) {
+      <div class="fallback-banner" role="alert">
+        ⚠ AI generation timed out — template-based summary used. Review carefully before approving.
+      </div>
+    }
+
+    <!-- Dual-pane editor -->
+    <div class="dual-pane">
     <!-- AI Draft pane -->
     <div class="pane ai-pane-col">
       <div class="pane-header">
@@ -60,12 +75,13 @@
     {{ changeLog() }}
   </div>
 
-  <!-- Bottom actions -->
-  <div class="bottom-actions">
-    <button class="btn-reject" (click)="rejectDocument()" title="UXR-025: Rejection reason required">← Reject & Return</button>
-    <div class="action-group">
-      <button class="btn-save" (click)="saveDraft()">Save Draft</button>
-      <button class="btn-approve" (click)="approveDocument()" title="UXR-025: Confirm modal before signing">Approve & Sign ✓</button>
+    <!-- Bottom actions -->
+    <div class="bottom-actions">
+      <button class="btn-reject" (click)="rejectDocument()" title="UXR-025: Rejection reason required">← Reject & Return</button>
+      <div class="action-group">
+        <button class="btn-save" (click)="saveDraft()">Save Draft</button>
+        <button class="btn-approve" (click)="approveDocument()" title="UXR-025: Confirm modal before signing">Approve & Sign ✓</button>
+      </div>
     </div>
-  </div>
+  }
 </main>

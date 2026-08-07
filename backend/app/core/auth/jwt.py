@@ -79,6 +79,19 @@ def _jwt_signing_key() -> str:
     return key
 
 
+def sub_to_uuid(sub: str) -> _uuid.UUID:
+    """Convert a JWT ``sub`` claim to a deterministic UUID.
+
+    OIDC subjects are often opaque strings (e.g. ``dev-abc12345``), but audit
+    log columns require a UUID. This helper parses the sub if it is already a
+    UUID, otherwise derives a stable UUID5 from it.
+    """
+    try:
+        return _uuid.UUID(sub)
+    except ValueError:
+        return _uuid.uuid5(_uuid.NAMESPACE_OID, sub)
+
+
 # ── Claims mapping helpers ─────────────────────────────────────────────────────
 
 _ROLE_MAP: dict[str, str] = {
