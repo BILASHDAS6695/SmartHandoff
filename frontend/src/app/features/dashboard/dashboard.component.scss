@@ -252,15 +252,19 @@ $radius: 0.75rem;
         padding: 2px 8px;
         border-radius: 9999px;
 
-        &.priority-urgent,
+        &.priority-urgent {
+          background: #fffbeb;
+          color: #d97706;
+        }
+
         &.priority-critical {
           background: #fef2f2;
           color: #dc2626;
         }
 
         &.priority-normal {
-          background: #fffbeb;
-          color: #d97706;
+          background: #f3f4f6;
+          color: #374151;
         }
       }
 
@@ -290,7 +294,7 @@ $radius: 0.75rem;
       border-bottom: none;
     }
 
-    .event-unit {
+    .event-tag {
       padding: 3px 8px;
       border-radius: 9999px;
       font-size: 10px;
@@ -421,15 +425,28 @@ $radius: 0.75rem;
       align-items: center;
       gap: 5px;
 
-      .alert-badge {
-        font-size: 11px;
-        font-weight: 700;
-        color: #d97706;
-      }
-
       .status-text {
         font-size: 11px;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        &.status-active {
+          color: #16a34a;
+        }
+
+        &.status-degraded {
+          color: #d97706;
+        }
+
+        &.status-inactive {
+          color: #6b7280;
+        }
+      }
+
+      .alert-indicator {
+        font-size: 12px;
       }
     }
   }

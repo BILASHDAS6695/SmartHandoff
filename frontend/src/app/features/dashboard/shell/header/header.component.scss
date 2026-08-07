@@ -95,6 +95,10 @@
       margin-left: auto;
       flex-shrink: 0;
 
+      .notification-wrapper {
+        position: relative;
+      }
+
       .notification-btn {
         color: #374151;
         width: 36px;
@@ -116,14 +120,21 @@
           height: 20px;
         }
 
-        .notification-dot {
+        .notification-badge {
           position: absolute;
           top: 4px;
           right: 4px;
-          width: 8px;
-          height: 8px;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
           background-color: #dc2626;
-          border-radius: 50%;
+          color: #ffffff;
+          border-radius: 9999px;
+          font-size: 9px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           border: 2px solid #ffffff;
         }
       }

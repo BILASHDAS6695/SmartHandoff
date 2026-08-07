@@ -1,0 +1,83 @@
+<div
+  class="notification-panel"
+  role="dialog"
+  aria-modal="false"
+  aria-label="Notifications"
+  (click)="$event.stopPropagation()"
+>
+  <div class="panel-header">
+    <div class="panel-title-row">
+      <h2 class="panel-title">Notifications</h2>
+      @if (unreadCount > 0) {
+        <span class="unread-badge" aria-live="polite">
+          {{ unreadCount }} new
+        </span>
+      }
+    </div>
+    @if (notifications.length > 0) {
+      <button
+        mat-button
+        class="btn-mark-all"
+        (click)="onMarkAll()"
+        [disabled]="unreadCount === 0"
+      >
+        Mark all as read
+      </button>
+    }
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <ul class="notification-list" role="list">
+    @for (notification of notifications; track trackById($index, notification)) {
+      <li
+        class="notification-item"
+        [class.unread]="!notification.read"
+        [class]="getToneClass(notification.tone)"
+        role="listitem"
+      >
+        <button
+          class="notification-row"
+          type="button"
+          [attr.aria-label]="
+            (notification.read ? '' : 'Unread notification: ') + notification.title
+          "
+          (click)="onNotificationClick(notification)"
+        >
+          <span class="tone-icon" aria-hidden="true">
+            <mat-icon>{{ getToneIcon(notification.tone) }}</mat-icon>
+          </span>
+
+          <span class="notification-body">
+            <span class="notification-title">{{ notification.title }}</span>
+            @if (notification.message) {
+              <span class="notification-message">{{ notification.message }}</span>
+            }
+            <span class="notification-time">{{ notification.timestamp | date:'shortTime' }}</span>
+          </span>
+
+          <span class="notification-actions">
+            @if (!notification.read) {
+              <span class="unread-dot" aria-hidden="true"></span>
+            }
+            <button
+              mat-icon-button
+              class="btn-dismiss"
+              type="button"
+              aria-label="Dismiss notification"
+              (click)="onDismiss($event, notification.id)"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </span>
+        </button>
+      </li>
+    }
+    @empty {
+      <li class="empty-state" role="status">
+        <mat-icon class="empty-icon">notifications_off</mat-icon>
+        <span>No notifications</span>
+      </li>
+    }
+  </ul>
+</div>

@@ -1,0 +1,251 @@
+@use '@angular/material' as mat;
+
+$panel-width: 320px;
+$max-panel-height: 360px;
+
+:host {
+  display: block;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+
+  &.open {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notification-panel {
+  width: $panel-width;
+  max-height: $max-panel-height;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  gap: 12px;
+
+  .panel-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+
+  .unread-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #dc2626;
+    background: #fef2f2;
+    border-radius: 9999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  .btn-mark-all {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    line-height: 1;
+    padding: 0 8px;
+    min-width: auto;
+
+    &:disabled {
+      color: #9ca3af;
+    }
+  }
+}
+
+.notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notification-item {
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.unread {
+    background: #fafafa;
+  }
+}
+
+.notification-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: #f3f4f6;
+    outline: none;
+  }
+}
+
+.tone-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.notification-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.notification-message {
+  font-size: 11px;
+  color: #4b5563;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-time {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.notification-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #2563eb;
+  border-radius: 50%;
+}
+
+.btn-dismiss {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  color: #9ca3af;
+
+  &:hover {
+    color: #374151;
+  }
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+
+  .empty-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #d1d5db;
+  }
+}
+
+// Tone colour variants
+.tone-info .tone-icon {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.tone-warning .tone-icon {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.tone-error .tone-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.tone-success .tone-icon {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+@media (max-width: 480px) {
+  :host {
+    position: fixed;
+    top: 56px;
+    right: 8px;
+    left: 8px;
+  }
+
+  .notification-panel {
+    width: 100%;
+    max-height: calc(100vh - 72px);
+  }
+}

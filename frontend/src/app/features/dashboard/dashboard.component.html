@@ -45,7 +45,7 @@
                 <div class="task-subtitle">{{ getPatientName(task.encounter_id) }} — Unit {{ task.unit_id ?? '—' }}</div>
               </div>
               <div class="task-meta">
-                <span class="priority" [class]="'priority-' + (taskPriority()[task.id] || 'normal')">{{ (taskPriority()[task.id] || 'normal') | uppercase }}</span>
+                <span class="priority" [class]="'priority-' + (taskPriority()[task.id] || 'normal')">{{ getPriorityLabel(taskPriority()[task.id]) }}</span>
                 <span class="due-time">Due {{ getDueTime(task.start_time) }}</span>
               </div>
             </li>
@@ -69,7 +69,7 @@
         <ul class="feed-list">
           @for (event of adtEvents(); track event.id) {
             <li class="feed-row">
-              <span class="event-unit">{{ event.unit }}</span>
+              <span class="event-tag" [class]="getAdtTagClass(event.unit)">{{ event.unit }}</span>
               <span class="event-detail">{{ event.patient }} — {{ event.event_type }} — {{ event.location }}</span>
               <span class="event-time">{{ event.time }}</span>
             </li>
@@ -97,7 +97,7 @@
               </div>
               <div class="risk-score">
                 <span>{{ patient.riskScore | number:'1.2-2' }}</span>
-                <span class="risk-label" [class]="'risk-' + patient.riskLevel.toLowerCase()">{{ patient.riskLevel }}</span>
+                <span class="risk-label" [class]="'risk-' + patient.riskLevel.toLowerCase()">{{ getRiskLabel(patient.riskLevel) }}</span>
               </div>
             </li>
           }
@@ -121,10 +121,14 @@
                 <span class="agent-name">{{ agent.name }}</span>
               </div>
               <div class="agent-state">
-                @if (agent.alerts && agent.alerts > 0) {
-                  <span class="alert-badge">{{ agent.alerts }} alerts</span>
-                }
-                <span class="status-text" [class]="'status-' + agent.status.toLowerCase()">{{ agent.status }}</span>
+                <span class="status-text" [class]="'status-' + agent.status.toLowerCase()">
+                  @if (agent.alerts && agent.alerts > 0) {
+                    <span class="alert-indicator" aria-hidden="true">⚠</span>
+                    {{ agent.alerts }} alerts
+                  } @else {
+                    {{ agent.status }}
+                  }
+                </span>
               </div>
             </li>
           }
