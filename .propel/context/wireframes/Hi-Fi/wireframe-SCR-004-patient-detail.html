@@ -62,6 +62,39 @@
     .tab{padding:10px 20px;font-size:13px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
     .tab:hover{color:var(--color-brand-primary);}
     .tab.active{color:var(--color-brand-primary);border-bottom-color:var(--color-brand-primary);font-weight:600;}
+    .tab-panel{display:none;animation:fadeIn .2s ease;}
+    .tab-panel.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+    /* Task list */
+    .task-list{list-style:none;padding:0;margin:0;}
+    .task-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-border-default);}
+    .task-item:last-child{border-bottom:none;padding-bottom:0;}
+    .task-item.done{opacity:.6;}
+    .task-item.done .task-title{text-decoration:line-through;}
+    .task-checkbox{width:18px;height:18px;margin-top:2px;cursor:pointer;}
+    .task-content{flex:1;}
+    .task-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+    .task-meta{font-size:11px;color:var(--color-text-secondary);}
+    .task-owner{background:var(--color-grey-100);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;}
+    .task-priority{font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;}
+    .task-priority.high{background:var(--color-alert-critical-bg);color:var(--color-alert-critical);}
+    .task-priority.medium{background:var(--color-alert-warning-bg);color:var(--color-alert-warning);}
+    .task-priority.low{background:var(--color-alert-success-bg);color:var(--color-alert-success);}
+
+    /* Timeline */
+    .timeline{position:relative;padding-left:24px;}
+    .timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--color-border-default);}
+    .timeline-item{position:relative;padding-bottom:18px;}
+    .timeline-item:last-child{padding-bottom:0;}
+    .timeline-dot{position:absolute;left:-21px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--color-brand-primary);border:2px solid #fff;box-shadow:0 0 0 2px var(--color-border-default);}
+    .timeline-dot.alert{background:var(--color-alert-critical);}
+    .timeline-dot.warning{background:var(--color-alert-warning);}
+    .timeline-dot.success{background:var(--color-alert-success);}
+    .timeline-dot.system{background:var(--color-grey-700);}
+    .timeline-time{font-size:11px;color:var(--color-text-secondary);margin-bottom:2px;}
+    .timeline-title{font-size:13px;font-weight:600;}
+    .timeline-desc{font-size:12px;color:var(--color-text-secondary);margin-top:2px;}
 
     /* Grid */
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -168,14 +201,15 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active">Overview</div>
+      <div class="tab active" data-tab="overview">Overview</div>
       <div class="tab" onclick="location.href='wireframe-SCR-005-medication-review.html'">Medications</div>
-      <div class="tab" onclick="location.href='wireframe-SCR-006-document-review.html'">Documents</div>
-      <div class="tab">Tasks</div>
-      <div class="tab">Timeline</div>
+      <div class="tab" id="tab-documents">Documents</div>
+      <div class="tab" data-tab="tasks">Tasks</div>
+      <div class="tab" data-tab="timeline">Timeline</div>
     </div>
 
     <!-- Overview content -->
+    <div id="tab-panel-overview" class="tab-panel active">
     <div class="grid-2">
 
       <!-- Agent Task Status -->
@@ -184,7 +218,7 @@
         <div class="card-body">
           <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Transition Coordinator</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Complete</span></div>
           <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Documentation Agent</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Draft ready</span></div>
-          <div class="agent-row"><div class="dot warn"></div><span class="agent-name">Medication Reconciliation</span><span class="agent-status-badge" style="color:var(--color-alert-warning)">⚠ 2 alerts</span></div>
+          <div class="agent-row" id="med-rec-row"><div class="dot warn" id="med-rec-dot"></div><span class="agent-name">Medication Reconciliation</span><span class="agent-status-badge" id="med-rec-status" style="color:var(--color-alert-warning)">⚠ 2 alerts</span></div>
           <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Bed Management</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Assigned</span></div>
           <div class="agent-row"><div class="dot pending"></div><span class="agent-name">Follow-up Care</span><span class="agent-status-badge" style="color:var(--color-grey-700)">● Pending</span></div>
           <div class="agent-row"><div class="dot ok"></div><span class="agent-name">Patient Communications</span><span class="agent-status-badge" style="color:var(--color-alert-success)">Active</span></div>
@@ -198,14 +232,14 @@
           <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">1</span>
         </div>
         <div class="card-body">
-          <div class="approval-card">
-            <div class="ai-badge">
+          <div class="approval-card" id="doc-approval-card">
+            <div class="ai-badge" id="doc-approval-badge">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l3.057-3 11.943 12-11.943 12-3.057-3 9-9z"/></svg>
-              <span class="ann" data-id="UXR-007">AI-Assisted — Review Required</span>
+              <span class="ann" data-id="UXR-007" id="doc-approval-state">AI-Assisted — Review Required</span>
             </div>
-            <div class="approval-title">Discharge Summary — Draft</div>
-            <div class="approval-meta">Generated 14:32 · Documentation Agent · 30 seconds</div>
-            <button class="btn-review" onclick="location.href='wireframe-SCR-006-document-review.html'">Review &amp; Approve →</button>
+            <div class="approval-title" id="doc-approval-title">Discharge Summary — Draft</div>
+            <div class="approval-meta" id="doc-approval-meta">Generated 14:32 · Documentation Agent · 30 seconds</div>
+            <button class="btn-review" id="doc-review-btn">Review &amp; Approve →</button>
           </div>
         </div>
       </div>
@@ -219,21 +253,21 @@
           <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">2</span>
         </div>
         <div class="card-body">
-          <div class="alert-item critical">
+          <div class="alert-item critical" id="alert-interaction">
             <div class="alert-header">
               <span style="font-size:16px">🔴</span>
               Drug Interaction: Warfarin + Aspirin
             </div>
             <div class="alert-text">Severity: Major | Risk: Increased bleeding — pharmacodynamic synergy</div>
-            <span class="alert-link" title="UXR-006: Opens modal interrupt" onclick="location.href='wireframe-SCR-005-medication-review.html'">Resolve →</span>
+            <span class="alert-link" title="UXR-006: Opens modal interrupt" data-modal-target="wf-modal-resolve">Resolve →</span>
           </div>
-          <div class="alert-item warning">
+          <div class="alert-item warning" id="alert-missing">
             <div class="alert-header">
               <span style="font-size:16px">🟡</span>
               Chronic Medication Missing: Metformin
             </div>
             <div class="alert-text">Metformin 500mg BD not found on Discharge Rx. Patient has Type 2 Diabetes.</div>
-            <span class="alert-link" onclick="location.href='wireframe-SCR-005-medication-review.html'">Review →</span>
+            <span class="alert-link" data-modal-target="wf-modal-review">Review →</span>
           </div>
         </div>
       </div>
@@ -251,10 +285,189 @@
             <li><div class="rf-dot"></div>Primary diagnosis: Congestive Heart Failure</li>
             <li><div class="rf-dot"></div>Age ≥75</li>
           </ul>
-          <a class="view-plan" href="#">View Care Plan →</a>
+          <a class="view-plan" href="#" data-modal-target="wf-modal-care-plan">View Care Plan →</a>
         </div>
       </div>
     </div>
+    </div>
+    <!-- Tasks content -->
+    <div id="tab-panel-tasks" class="tab-panel">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><h3>Open Tasks</h3></div>
+          <div class="card-body">
+            <ul class="task-list" id="open-tasks">
+              <li class="task-item" data-task-id="1">
+                <input type="checkbox" class="task-checkbox">
+                <div class="task-content">
+                  <div class="task-title">Approve discharge summary</div>
+                  <div class="task-meta">Due today · <span class="task-owner">Dr. Chen</span></div>
+                </div>
+                <span class="task-priority high">High</span>
+              </li>
+              <li class="task-item" data-task-id="2">
+                <input type="checkbox" class="task-checkbox">
+                <div class="task-content">
+                  <div class="task-title">Complete medication reconciliation</div>
+                  <div class="task-meta">Due today · <span class="task-owner">Pharmacist Phil</span></div>
+                </div>
+                <span class="task-priority high">High</span>
+              </li>
+              <li class="task-item" data-task-id="3">
+                <input type="checkbox" class="task-checkbox">
+                <div class="task-content">
+                  <div class="task-title">Schedule cardiology follow-up</div>
+                  <div class="task-meta">Due in 2 days · <span class="task-owner">Transition Coordinator</span></div>
+                </div>
+                <span class="task-priority medium">Medium</span>
+              </li>
+              <li class="task-item" data-task-id="4">
+                <input type="checkbox" class="task-checkbox">
+                <div class="task-content">
+                  <div class="task-title">Confirm post-discharge bed</div>
+                  <div class="task-meta">Due in 1 day · <span class="task-owner">Bed Management</span></div>
+                </div>
+                <span class="task-priority medium">Medium</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Completed Tasks</h3></div>
+          <div class="card-body">
+            <ul class="task-list" id="completed-tasks">
+              <li class="task-item done">
+                <input type="checkbox" class="task-checkbox" checked disabled>
+                <div class="task-content">
+                  <div class="task-title">Admission assessment completed</div>
+                  <div class="task-meta">Completed 2026-07-10 · <span class="task-owner">Nurse</span></div>
+                </div>
+              </li>
+              <li class="task-item done">
+                <input type="checkbox" class="task-checkbox" checked disabled>
+                <div class="task-content">
+                  <div class="task-title">Initial risk score generated</div>
+                  <div class="task-meta">Completed 2026-07-10 · <span class="task-owner">AI Risk Engine</span></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Timeline content -->
+    <div id="tab-panel-timeline" class="tab-panel">
+      <div class="card">
+        <div class="card-header"><h3>Encounter Timeline</h3></div>
+        <div class="card-body">
+          <div class="timeline" id="patient-timeline">
+            <div class="timeline-item">
+              <div class="timeline-dot system"></div>
+              <div class="timeline-time">Today, 14:38</div>
+              <div class="timeline-title">Discharge summary edited</div>
+              <div class="timeline-desc">Dr. Chen updated Primary Diagnosis and Hospital Course.</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot system"></div>
+              <div class="timeline-time">Today, 14:32</div>
+              <div class="timeline-title">AI draft generated</div>
+              <div class="timeline-desc">Documentation Agent generated discharge summary draft.</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot alert"></div>
+              <div class="timeline-time">Today, 11:15</div>
+              <div class="timeline-title">Drug interaction alert triggered</div>
+              <div class="timeline-desc">Warfarin + Aspirin major interaction detected.</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot warning"></div>
+              <div class="timeline-time">Today, 11:15</div>
+              <div class="timeline-title">Missing chronic medication alert</div>
+              <div class="timeline-desc">Metformin not found on Discharge Rx.</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot success"></div>
+              <div class="timeline-time">Today, 09:00</div>
+              <div class="timeline-title">Cardiology consult completed</div>
+              <div class="timeline-desc">EF 35% confirmed; oral diuretics started.</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot system"></div>
+              <div class="timeline-time">2026-07-10, 08:24</div>
+              <div class="timeline-title">Patient admitted</div>
+              <div class="timeline-desc">John Smith admitted to 4-West, Bed 4W-12 with CHF exacerbation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inline modals for Patient Detail -->
+<style>
+  .wf-modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:24px; }
+  .wf-modal.active { display:flex; }
+  .wf-modal-box { background:#fff; border-radius:12px; width:100%; max-width:520px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 25px -5px rgba(0,0,0,.2); }
+  .wf-modal-header { padding:16px 20px; border-bottom:1px solid var(--color-border-default); display:flex; align-items:center; justify-content:space-between; }
+  .wf-modal-header h3 { font-size:14px; font-weight:700; margin:0; }
+  .wf-modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--color-text-secondary); }
+  .wf-modal-body { padding:20px; font-size:13px; line-height:1.5; }
+  .wf-modal-footer { padding:14px 20px; border-top:1px solid var(--color-border-default); display:flex; justify-content:flex-end; gap:8px; }
+  .wf-modal-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--color-border-default); background:#fff; }
+  .wf-modal-btn.primary { background:var(--color-brand-primary); color:#fff; border-color:var(--color-brand-primary); }
+  .wf-plan-section { margin-bottom:16px; }
+  .wf-plan-section h4 { font-size:12px; font-weight:700; text-transform:uppercase; color:var(--color-text-secondary); margin-bottom:8px; }
+  .wf-plan-section ul { padding-left:18px; }
+  .wf-plan-section li { margin-bottom:6px; }
+  .wf-checklist { list-style:none; padding:0; }
+  .wf-checklist li { display:flex; align-items:flex-start; gap:8px; margin-bottom:10px; }
+  .wf-checklist input { margin-top:3px; }
+</style>
+<div id="wf-modal-resolve" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Resolve Drug Interaction: Warfarin + Aspirin</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p><strong>Severity:</strong> Major | <strong>Risk:</strong> Increased bleeding — pharmacodynamic synergy</p>
+      <ul class="wf-checklist">
+        <li><input type="checkbox" checked> Monitor INR within 48 hours of discharge</li>
+        <li><input type="checkbox"> Consider dose adjustment per prescriber</li>
+        <li><input type="checkbox"> Patient education on bleeding precautions</li>
+      </ul>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-modal-btn" data-modal-close>Cancel</button>
+      <button class="wf-modal-btn primary" data-modal-close data-action="resolve">Mark Resolved</button>
+    </div>
+  </div>
+</div>
+<div id="wf-modal-review" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Review Chronic Medication Missing: Metformin</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p>Metformin 500mg BD is not on the Discharge Rx. Patient has Type 2 Diabetes (ICD-10: E11.9).</p>
+      <ul class="wf-checklist">
+        <li><input type="checkbox"> Confirm intentional omission with prescriber</li>
+        <li><input type="checkbox"> Add Metformin to Discharge Rx if continuing</li>
+        <li><input type="checkbox"> Document reason in reconciliation notes</li>
+      </ul>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-modal-btn" data-modal-close>Cancel</button>
+      <button class="wf-modal-btn primary" data-modal-close data-action="review">Flag for Review</button>
+    </div>
+  </div>
+</div>
+<div id="wf-modal-care-plan" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Care Plan — Smith, John</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <div class="wf-plan-section"><h4>Follow-up</h4><ul><li>Primary care visit within 7 days</li><li>Cardiology follow-up within 14 days</li><li>INR recheck within 48 hours</li></ul></div>
+      <div class="wf-plan-section"><h4>Medications</h4><ul><li>Continue Warfarin 5mg QD with monitoring</li><li>Continue Aspirin 81mg QD unless instructed otherwise</li><li>Resume Metformin 500mg BD with meals</li></ul></div>
+      <div class="wf-plan-section"><h4>Warning Signs</h4><ul><li>Bleeding, bruising, or black stools</li><li>Shortness of breath or chest pain</li><li>Rapid weight gain or swelling</li></ul></div>
+      <div class="wf-plan-section"><h4>Patient Education</h4><ul><li>Low sodium diet for CHF management</li><li>Daily weight logging</li><li>When to call the care team</li></ul></div>
+    </div>
+    <div class="wf-modal-footer"><button class="wf-modal-btn primary" data-modal-close>Close</button></div>
   </div>
 </div>
 
@@ -262,11 +475,11 @@
   <div class="panel">
     <div class="panel-label">Screen States</div>
     <div class="chips">
-      <span class="chip on">Overview tab (shown)</span>
-      <span class="chip">Documents tab</span>
-      <span class="chip">Medications tab</span>
-      <span class="chip">Tasks tab</span>
-      <span class="chip">Timeline tab</span>
+      <span class="chip on" data-chip-tab="overview">Overview tab (shown)</span>
+      <span class="chip" data-chip-tab="documents">Documents tab</span>
+      <span class="chip" data-chip-tab="medications">Medications tab</span>
+      <span class="chip" data-chip-tab="tasks">Tasks tab</span>
+      <span class="chip" data-chip-tab="timeline">Timeline tab</span>
       <span class="chip">Alert modal — critical interrupt</span>
       <span class="chip">Approval pending — pulse border</span>
     </div>
@@ -324,5 +537,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>
