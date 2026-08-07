@@ -1,0 +1,110 @@
+- generic [ref=f21e3]:
+  - generic [ref=f21e6]:
+    - generic [ref=f21e7] [cursor=pointer]: SmartHandoff
+    - generic [ref=f21e12]:
+      - img [ref=f21e13]: search
+      - textbox "Search" [ref=f21e14]:
+        - /placeholder: Search patients by name or MRN...
+    - generic [ref=f21e15]:
+      - button [ref=f21e16] [cursor=pointer]:
+        - img [ref=f21e17]: notifications
+      - button "D" [ref=f21e21] [cursor=pointer]:
+        - img [ref=f21e23]: arrow_drop_down
+  - generic [ref=f21e26]:
+    - generic [ref=f21e31]:
+      - generic [ref=f21e32]:
+        - generic [ref=f21e33]: Navigation
+        - navigation [ref=f21e34]:
+          - link "Dashboard" [ref=f21e35] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f21e36]: dashboard
+          - link "Patients 142" [ref=f21e38] [cursor=pointer]:
+            - /url: /patients
+            - img [ref=f21e39]: people
+            - generic [ref=f21e40]: Patients
+            - generic [ref=f21e41]: "142"
+      - generic [ref=f21e42]:
+        - generic [ref=f21e43]: Role-Gated
+        - navigation [ref=f21e44]:
+          - link "Bed Board BedMgr only" [ref=f21e45] [cursor=pointer]:
+            - /url: /beds
+            - img [ref=f21e46]: hotel
+            - generic [ref=f21e47]: Bed Board
+            - generic [ref=f21e48]: BedMgr only
+          - link "Analytics Manager only" [ref=f21e49] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=f21e50]: analytics
+            - generic [ref=f21e51]: Analytics
+            - generic [ref=f21e52]: Manager only
+          - link "Admin Admin only" [ref=f21e53] [cursor=pointer]:
+            - /url: /admin
+            - img [ref=f21e54]: admin_panel_settings
+            - generic [ref=f21e55]: Admin
+            - generic [ref=f21e56]: Admin only
+    - main [ref=f21e59]:
+      - region "KPI Analytics Dashboard" [ref=f21e61]:
+        - generic [ref=f21e62]:
+          - heading "Analytics" [level=1] [ref=f21e63]
+          - generic [ref=f21e64]:
+            - combobox "Select time period" [ref=f21e66]:
+              - generic [ref=f21e67] [cursor=pointer]: Last 30 days
+            - combobox "Select unit" [ref=f21e75]:
+              - generic [ref=f21e76] [cursor=pointer]: All Units
+        - alert [ref=f21e83]: Http failure during parsing for http://localhost:60217/api/v1/analytics/kpis?from=2026-07-08&to=2026-08-07
+        - generic [ref=f21e84]:
+          - generic [ref=f21e85]:
+            - generic [ref=f21e86]: Avg Discharge Time
+            - generic [ref=f21e87]: —
+            - generic [ref=f21e88]: No data
+          - generic [ref=f21e89]:
+            - generic [ref=f21e90]: 30-Day Readmission Rate
+            - generic [ref=f21e91]: —
+            - generic [ref=f21e92]: No data
+          - generic [ref=f21e93]:
+            - generic [ref=f21e94]: Med Recon Completion
+            - generic [ref=f21e95]: —
+            - generic [ref=f21e96]: No data
+          - generic [ref=f21e97]:
+            - generic [ref=f21e98]: Bed Utilisation
+            - generic [ref=f21e99]: —
+            - generic [ref=f21e100]: No data
+        - generic [ref=f21e101]:
+          - generic [ref=f21e102]:
+            - heading "Discharge Volume — Last 30 Days" [level=3] [ref=f21e103]
+            - generic [ref=f21e110]:
+              - generic [ref=f21e111]: Jun 14
+              - generic [ref=f21e112]: Jun 21
+              - generic [ref=f21e113]: Jun 28
+              - generic [ref=f21e114]: Jul 7
+              - generic [ref=f21e115]: Jul 14
+          - generic [ref=f21e116]:
+            - heading "Readmission Risk Distribution" [level=3] [ref=f21e117]
+            - generic [ref=f21e118]:
+              - img [ref=f21e119]:
+                - generic [ref=f21e124]: Risk
+              - generic [ref=f21e125]:
+                - generic [ref=f21e128]:
+                  - text: "Low risk (<0.3):"
+                  - strong [ref=f21e129]: 64%
+                - generic [ref=f21e132]:
+                  - text: "Medium (0.3–0.7):"
+                  - strong [ref=f21e133]: 28%
+                - generic [ref=f21e136]:
+                  - text: "High risk (>0.7):"
+                  - strong [ref=f21e137]: 8%
+        - generic [ref=f21e138]:
+          - generic [ref=f21e139]:
+            - heading "Top 10 High-Risk Encounters (Last 7 Days)" [level=2] [ref=f21e140]
+            - generic [ref=f21e141]: UXR-024 Sortable table
+          - table [ref=f21e142]:
+            - rowgroup [ref=f21e143]:
+              - row [ref=f21e144]:
+                - columnheader "Patient (masked)" [ref=f21e145]
+                - columnheader "Unit" [ref=f21e146]
+                - columnheader "Risk Score" [ref=f21e147]
+                - columnheader "Discharge Date" [ref=f21e148]
+                - columnheader "Follow-up Status" [ref=f21e149]
+            - rowgroup
+        - generic [ref=f21e150]:
+          - button "Export CSV" [ref=f21e151] [cursor=pointer]
+          - button "Export PDF" [ref=f21e152] [cursor=pointer]

@@ -1,0 +1,139 @@
+- generic [ref=f3e367]:
+  - generic [ref=f3e370]:
+    - generic [ref=f3e371] [cursor=pointer]: SmartHandoff
+    - generic [ref=f3e376]:
+      - img [ref=f3e377]: search
+      - textbox "Search" [ref=f3e378]:
+        - /placeholder: Search patients by name or MRN...
+    - generic [ref=f3e379]:
+      - button [ref=f3e380] [cursor=pointer]:
+        - img [ref=f3e381]: notifications
+      - button "D" [ref=f3e385] [cursor=pointer]:
+        - img [ref=f3e387]: arrow_drop_down
+  - generic [ref=f3e390]:
+    - generic [ref=f3e395]:
+      - generic [ref=f3e396]:
+        - generic [ref=f3e397]: Navigation
+        - navigation [ref=f3e398]:
+          - link "Dashboard" [ref=f3e399] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f3e400]: dashboard
+          - link "Patients 142" [ref=f3e402] [cursor=pointer]:
+            - /url: /patients
+            - img [ref=f3e403]: people
+            - generic [ref=f3e404]: Patients
+            - generic [ref=f3e405]: "142"
+      - generic [ref=f3e406]:
+        - generic [ref=f3e407]: Role-Gated
+        - navigation [ref=f3e408]:
+          - link "Bed Board BedMgr only" [ref=f3e409] [cursor=pointer]:
+            - /url: /beds
+            - img [ref=f3e410]: hotel
+            - generic [ref=f3e411]: Bed Board
+            - generic [ref=f3e412]: BedMgr only
+          - link "Analytics Manager only" [ref=f3e413] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=f3e414]: analytics
+            - generic [ref=f3e415]: Analytics
+            - generic [ref=f3e416]: Manager only
+          - link "Admin Admin only" [ref=f3e417] [cursor=pointer]:
+            - /url: /admin
+            - img [ref=f3e418]: admin_panel_settings
+            - generic [ref=f3e419]: Admin
+            - generic [ref=f3e420]: Admin only
+    - main [ref=f3e423]:
+      - region "KPI Analytics Dashboard" [ref=f3e425]:
+        - generic [ref=f3e426]:
+          - heading "Analytics" [level=1] [ref=f3e427]
+          - generic [ref=f3e428]:
+            - combobox "Select time period" [ref=f3e430]:
+              - generic [ref=f3e431] [cursor=pointer]: Last 30 days
+            - combobox "Select unit" [ref=f3e439]:
+              - generic [ref=f3e440] [cursor=pointer]: All Units
+        - generic [ref=f3e447]:
+          - generic [ref=f3e448]:
+            - generic [ref=f3e449]: Avg Discharge Time
+            - generic [ref=f3e450]: 4.2h
+            - generic [ref=f3e451]: ↓ −0.8h vs prev period ✓ Improving
+          - generic [ref=f3e452]:
+            - generic [ref=f3e453]: 30-Day Readmission Rate
+            - generic [ref=f3e454]: 8.3%
+            - generic [ref=f3e455]: ↓ −1.1% vs prev period ✓ Improving
+          - generic [ref=f3e456]:
+            - generic [ref=f3e457]: Med Recon Completion
+            - generic [ref=f3e458]: 96.4%
+            - generic [ref=f3e459]: ↑ +2.1% vs prev period ✓ Improving
+          - generic [ref=f3e460]:
+            - generic [ref=f3e461]: Bed Utilisation
+            - generic [ref=f3e462]: 87%
+            - generic [ref=f3e463]: ↑ +3% vs prev period
+        - generic [ref=f3e464]:
+          - generic [ref=f3e465]:
+            - heading "Discharge Volume — Last 30 Days" [level=3] [ref=f3e466]
+            - generic [ref=f3e473]:
+              - generic [ref=f3e474]: Jun 14
+              - generic [ref=f3e475]: Jun 21
+              - generic [ref=f3e476]: Jun 28
+              - generic [ref=f3e477]: Jul 7
+              - generic [ref=f3e478]: Jul 14
+          - generic [ref=f3e479]:
+            - heading "Readmission Risk Distribution" [level=3] [ref=f3e480]
+            - generic [ref=f3e481]:
+              - img [ref=f3e482]:
+                - generic [ref=f3e487]: Risk
+              - generic [ref=f3e488]:
+                - generic [ref=f3e491]:
+                  - text: "Low risk (<0.3):"
+                  - strong [ref=f3e492]: 64%
+                - generic [ref=f3e495]:
+                  - text: "Medium (0.3–0.7):"
+                  - strong [ref=f3e496]: 28%
+                - generic [ref=f3e499]:
+                  - text: "High risk (>0.7):"
+                  - strong [ref=f3e500]: 8%
+        - generic [ref=f3e501]:
+          - generic [ref=f3e502]:
+            - heading "Top 10 High-Risk Encounters (Last 7 Days)" [level=2] [ref=f3e503]
+            - generic [ref=f3e504]: UXR-024 Sortable table
+          - table [ref=f3e505]:
+            - rowgroup [ref=f3e506]:
+              - row [ref=f3e507]:
+                - columnheader "Patient (masked)" [ref=f3e508]
+                - columnheader "Unit" [ref=f3e509]
+                - columnheader "Risk Score" [ref=f3e510]
+                - columnheader "Discharge Date" [ref=f3e511]
+                - columnheader "Follow-up Status" [ref=f3e512]
+            - rowgroup [ref=f3e513]:
+              - row [ref=f3e514]:
+                - 'cell "●●● #2041" [ref=f3e515]'
+                - cell "4-West" [ref=f3e516]
+                - cell "0.82 HIGH" [ref=f3e517]
+                - cell "2026-07-14" [ref=f3e518]
+                - cell "✓ Booked Jul 21" [ref=f3e519]
+              - row [ref=f3e520]:
+                - 'cell "●●● #2038" [ref=f3e521]'
+                - cell "ICU" [ref=f3e522]
+                - cell "0.79 HIGH" [ref=f3e523]
+                - cell "2026-07-13" [ref=f3e524]
+                - cell "✓ Booked Jul 20" [ref=f3e525]
+              - row [ref=f3e526]:
+                - 'cell "●●● #2035" [ref=f3e527]'
+                - cell "3-North" [ref=f3e528]
+                - cell "0.76 HIGH" [ref=f3e529]
+                - cell "2026-07-12" [ref=f3e530]
+                - cell "⏳ Pending" [ref=f3e531]
+              - row [ref=f3e532]:
+                - 'cell "●●● #2031" [ref=f3e533]'
+                - cell "4-West" [ref=f3e534]
+                - cell "0.71 HIGH" [ref=f3e535]
+                - cell "2026-07-11" [ref=f3e536]
+                - cell "✓ Booked Jul 18" [ref=f3e537]
+              - row [ref=f3e538]:
+                - 'cell "●●● #2027" [ref=f3e539]'
+                - cell "5-East" [ref=f3e540]
+                - cell "0.68 MED" [ref=f3e541]
+                - cell "2026-07-10" [ref=f3e542]
+                - cell "✓ Booked Jul 24" [ref=f3e543]
+        - generic [ref=f3e544]:
+          - button "Export CSV" [ref=f3e545] [cursor=pointer]
+          - button "Export PDF" [ref=f3e546] [cursor=pointer]

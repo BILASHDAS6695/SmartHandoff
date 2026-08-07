@@ -1,0 +1,147 @@
+- generic [ref=f1e19]:
+  - generic [ref=f1e22]:
+    - generic [ref=f1e23] [cursor=pointer]: SmartHandoff
+    - generic [ref=f1e28]:
+      - img [ref=f1e29]: search
+      - textbox "Search" [ref=f1e30]:
+        - /placeholder: Search patients by name or MRN...
+    - generic [ref=f1e31]:
+      - button [ref=f1e32] [cursor=pointer]:
+        - img [ref=f1e33]: notifications
+      - button "D" [ref=f1e37] [cursor=pointer]:
+        - img [ref=f1e39]: arrow_drop_down
+  - generic [ref=f1e42]:
+    - generic [ref=f1e47]:
+      - generic [ref=f1e48]:
+        - generic [ref=f1e49]: Navigation
+        - navigation [ref=f1e50]:
+          - link "Dashboard" [ref=f1e51] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f1e52]: dashboard
+          - link "Patients 142" [ref=f1e54] [cursor=pointer]:
+            - /url: /patients
+            - img [ref=f1e55]: people
+            - generic [ref=f1e56]: Patients
+            - generic [ref=f1e57]: "142"
+      - generic [ref=f1e58]:
+        - generic [ref=f1e59]: Role-Gated
+        - navigation [ref=f1e60]:
+          - link "Bed Board BedMgr only" [ref=f1e61] [cursor=pointer]:
+            - /url: /beds
+            - img [ref=f1e62]: hotel
+            - generic [ref=f1e63]: Bed Board
+            - generic [ref=f1e64]: BedMgr only
+          - link "Analytics Manager only" [ref=f1e65] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=f1e66]: analytics
+            - generic [ref=f1e67]: Analytics
+            - generic [ref=f1e68]: Manager only
+          - link "Admin Admin only" [ref=f1e69] [cursor=pointer]:
+            - /url: /admin
+            - img [ref=f1e70]: admin_panel_settings
+            - generic [ref=f1e71]: Admin
+            - generic [ref=f1e72]: Admin only
+    - main [ref=f1e75]:
+      - main [ref=f1e77]:
+        - generic [ref=f1e78]:
+          - heading "WELCOME, dev" [level=1] [ref=f1e79]
+          - generic [ref=f1e80]:
+            - generic [ref=f1e81]: UXR-011 Last updated 4:13:01 PM
+            - button "Refresh" [ref=f1e82] [cursor=pointer]:
+              - img [ref=f1e83]: refresh
+        - generic [ref=f1e85]:
+          - region [ref=f1e86]:
+            - generic [ref=f1e87]:
+              - heading "My Pending Tasks" [level=2] [ref=f1e88]
+              - generic [ref=f1e89]: 2 tasks
+            - list [ref=f1e90]:
+              - listitem [ref=f1e91]:
+                - generic [ref=f1e92]:
+                  - generic [ref=f1e93]: Medication Reconciliation
+                  - generic [ref=f1e94]: Smith, John — Unit 4-West
+                - generic [ref=f1e95]:
+                  - generic [ref=f1e96]: URGENT
+                  - generic [ref=f1e97]: Due 0m ago
+              - listitem [ref=f1e98]:
+                - generic [ref=f1e99]:
+                  - generic [ref=f1e100]: Discharge Summary Review
+                  - generic [ref=f1e101]: Garcia, Maria — Unit 3-North
+                - generic [ref=f1e102]:
+                  - generic [ref=f1e103]: CRITICAL
+                  - generic [ref=f1e104]: Due 0m ago
+            - link "View all 2 tasks →" [ref=f1e105] [cursor=pointer]:
+              - /url: /tasks
+          - region [ref=f1e106]:
+            - generic [ref=f1e107]:
+              - heading "Live ADT Event Feed" [level=2] [ref=f1e108]
+              - button "Pause" [ref=f1e109] [cursor=pointer]:
+                - img [ref=f1e110]: pause
+            - list [ref=f1e112]:
+              - listitem [ref=f1e113]:
+                - generic [ref=f1e114]: A03
+                - generic [ref=f1e115]: Smith, J — Discharge — Unit 4W
+                - generic [ref=f1e116]: 14:32
+              - listitem [ref=f1e117]:
+                - generic [ref=f1e118]: A01
+                - generic [ref=f1e119]: Patel, R — Admit — Unit 3N
+                - generic [ref=f1e120]: 14:29
+              - listitem [ref=f1e121]:
+                - generic [ref=f1e122]: A02
+                - generic [ref=f1e123]: Nguyen, L — Transfer — 4W → ICU
+                - generic [ref=f1e124]: 14:25
+              - listitem [ref=f1e125]:
+                - generic [ref=f1e126]: A01
+                - generic [ref=f1e127]: Garcia, M — Admit — Unit 3N
+                - generic [ref=f1e128]: 14:18
+              - listitem [ref=f1e129]:
+                - generic [ref=f1e130]: A03
+                - generic [ref=f1e131]: Lee, K — Discharge — Unit 5E
+                - generic [ref=f1e132]: 14:12
+          - region [ref=f1e133]:
+            - heading "Active Patients — Risk Overview" [level=2] [ref=f1e135]
+            - list [ref=f1e136]:
+              - listitem [ref=f1e137]:
+                - generic [ref=f1e138]: Smith, John
+                - generic [ref=f1e143]:
+                  - generic [ref=f1e144]: "0.82"
+                  - generic [ref=f1e145]: HIGH
+              - listitem [ref=f1e146]:
+                - generic [ref=f1e147]: Garcia, Maria
+                - generic [ref=f1e152]:
+                  - generic [ref=f1e153]: "0.75"
+                  - generic [ref=f1e154]: HIGH
+              - listitem [ref=f1e155]:
+                - generic [ref=f1e156]: Patel, Rita
+                - generic [ref=f1e161]:
+                  - generic [ref=f1e162]: "0.45"
+                  - generic [ref=f1e163]: MED
+              - listitem [ref=f1e164]:
+                - generic [ref=f1e165]: Nguyen, Lee
+                - generic [ref=f1e170]:
+                  - generic [ref=f1e171]: "0.18"
+                  - generic [ref=f1e172]: LOW
+            - link "View all patients →" [ref=f1e173] [cursor=pointer]:
+              - /url: /patients
+          - region [ref=f1e174]:
+            - heading "Agent Status" [level=2] [ref=f1e176]
+            - list [ref=f1e177]:
+              - listitem [ref=f1e178]:
+                - generic [ref=f1e179]: Transition Coordinator
+                - generic [ref=f1e182]: Active
+              - listitem [ref=f1e184]:
+                - generic [ref=f1e185]: Documentation
+                - generic [ref=f1e188]: Active
+              - listitem [ref=f1e190]:
+                - generic [ref=f1e191]: Medication Reconciliation
+                - generic [ref=f1e194]:
+                  - generic [ref=f1e195]: 2 alerts
+                  - generic [ref=f1e196]: Degraded
+              - listitem [ref=f1e197]:
+                - generic [ref=f1e198]: Bed Management
+                - generic [ref=f1e201]: Active
+              - listitem [ref=f1e203]:
+                - generic [ref=f1e204]: Follow-up Care
+                - generic [ref=f1e207]: Active
+              - listitem [ref=f1e209]:
+                - generic [ref=f1e210]: Patient Communications
+                - generic [ref=f1e213]: Active

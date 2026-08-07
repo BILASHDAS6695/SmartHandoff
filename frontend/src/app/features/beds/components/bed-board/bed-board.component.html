@@ -86,7 +86,7 @@
   <!-- Bed grid -->
   @if (!loading() && !error()) {
     <div class="unit-section">
-      <h2>Unit 4-West ({{ filteredBeds().length }} beds shown)</h2>
+      <h2>Beds ({{ filteredBeds().length }} shown)</h2>
       <div class="bed-grid" role="grid" aria-label="Bed board floor plan">
         @for (bed of filteredBeds(); track bed.bedId) {
           <div

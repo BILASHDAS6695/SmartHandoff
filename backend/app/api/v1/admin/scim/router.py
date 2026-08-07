@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -460,6 +461,7 @@ async def scim_put_user(
 @router.delete(
     "/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
     summary="SCIM: Deprovision user",
     description=(
         "Immediately deprovisions the user: sets deprovisioned_at, "
@@ -469,7 +471,7 @@ async def scim_put_user(
 async def scim_delete_user(
     user_id: str,
     db: Annotated[AsyncSession, Depends(get_write_db)],
-) -> None:
+) -> Response:
     """Deprovision a user via SCIM DELETE (RFC 7644 §3.6).
 
     Delegates entirely to ``deprovision_service.deprovision_user()`` so that
@@ -498,3 +500,5 @@ async def scim_delete_user(
         "SCIM user deprovisioned",
         extra={"event": "scim_user_deleted", "user_id": user_id},
     )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

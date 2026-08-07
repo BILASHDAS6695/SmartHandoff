@@ -16,11 +16,11 @@ import {
   trigger
 } from "./chunk-RV5BBJ3M.js";
 import "./chunk-5RNWZXBJ.js";
-import "./chunk-5TNTD6S4.js";
 import {
   MatButton,
   MatButtonModule
 } from "./chunk-NFRK3J2W.js";
+import "./chunk-5TNTD6S4.js";
 import {
   BreakpointObserver,
   Breakpoints,

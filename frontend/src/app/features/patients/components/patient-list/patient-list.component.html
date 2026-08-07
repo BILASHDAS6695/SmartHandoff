@@ -157,7 +157,13 @@
           <!-- No data row -->
           <tr class="mat-row" *matNoDataRow>
             <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
-              No patients found for the selected filters.
+              @if (loading()) {
+                Loading patients…
+              } @else if (error()) {
+                {{ error() }}
+              } @else {
+                No patients found for the selected filters.
+              }
             </td>
           </tr>
         </table>

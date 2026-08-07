@@ -2,6 +2,10 @@
 .vs/
 *.vsidx
 
+# Angular cache
+.angular/
+frontend/.angular/
+
 # Windows
 Thumbs.db
 ehthumbs.db

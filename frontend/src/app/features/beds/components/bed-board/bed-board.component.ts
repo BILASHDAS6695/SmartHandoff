@@ -4,8 +4,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { Subject, takeUntil } from 'rxjs';
 import { BedDetailPanelComponent } from '../bed-detail-panel/bed-detail-panel.component';
 import { BedDto, BedStatus } from '../../models/bed.model';
+import { BedBoardService } from '../../services/bed-board.service';
 
 interface EdAlert {
   patientName: string;
@@ -40,6 +42,9 @@ interface DischargePrediction {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BedBoardComponent implements OnInit, OnDestroy {
+  private readonly bedService = inject(BedBoardService);
+  private readonly destroy$ = new Subject<void>();
+
   // State signals
   readonly beds = signal<BedDto[]>([]);
   readonly loading = signal(true);
@@ -50,7 +55,7 @@ export class BedBoardComponent implements OnInit, OnDestroy {
   readonly selectedUnit = signal<string>('All Units');
   readonly selectedStatus = signal<string>('All Status');
 
-  readonly availableUnits = signal<string[]>(['All Units', '4-West', '3-North', 'ICU']);
+  readonly availableUnits = signal<string[]>(['All Units', '4-West', '3-North', 'ICU', 'CCU', 'MED', 'PEDS', 'SURG', 'General']);
   readonly availableStatuses = signal<string[]>(['All Status', 'Clean', 'Dirty', 'Occupied', 'Blocked']);
 
   readonly edAlert = signal<EdAlert | null>({
@@ -101,15 +106,31 @@ export class BedBoardComponent implements OnInit, OnDestroy {
   ];
 
   ngOnInit(): void {
-    // Simulate loading static data
-    setTimeout(() => {
-      this.beds.set(this.mockBeds);
-      this.loading.set(false);
-    }, 500);
+    this.loadBeds();
   }
 
   ngOnDestroy(): void {
-    // No SignalR in static preview
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadBeds(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.bedService.getBeds(true)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: beds => {
+          this.beds.set(beds);
+          this.lastUpdated.set(new Date().toLocaleTimeString('en-US', { hour12: false }));
+          this.loading.set(false);
+        },
+        error: err => {
+          this.error.set(err.message || 'Failed to load bed board.');
+          this.loading.set(false);
+        },
+      });
   }
 
   onUnitFilterChange(unit: string): void {
@@ -129,11 +150,7 @@ export class BedBoardComponent implements OnInit, OnDestroy {
   }
 
   refresh(): void {
-    this.loading.set(true);
-    setTimeout(() => {
-      this.lastUpdated.set(new Date().toLocaleTimeString('en-US', { hour12: false }));
-      this.loading.set(false);
-    }, 500);
+    this.loadBeds();
   }
 
   mapStatusLabel(status: BedStatus): string {
