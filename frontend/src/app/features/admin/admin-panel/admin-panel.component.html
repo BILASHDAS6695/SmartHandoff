@@ -2,16 +2,9 @@
   <!-- Admin sub-nav -->
   <aside class="admin-sidebar">
     <h2>Admin Sections</h2>
-    @for (tab of adminTabs(); track tab) {
-      <div
-        class="admin-nav-item"
-        [class.active]="activeTab() === tab"
-        (click)="setTab(tab)"
-        tabindex="0"
-        (keydown.enter)="setTab(tab)">
-        {{ tab }}
-      </div>
-    }
+    <a class="admin-nav-item active" routerLink="/admin">User Management</a>
+    <a class="admin-nav-item" routerLink="/admin/audit-log">Audit Log</a>
+    <a class="admin-nav-item" routerLink="/admin/system-configuration">System Configuration</a>
   </aside>
 
   <!-- Content area -->
