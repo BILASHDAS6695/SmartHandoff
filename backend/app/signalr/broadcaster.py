@@ -83,6 +83,33 @@ class SignalRBroadcaster:
         """Close underlying HTTP client. Call in application shutdown lifespan."""
         await self._client.aclose()
 
+    async def _send_to_group(self, group: str, target: str, arguments: list[dict]) -> None:
+        """Low-level send to a SignalR group via Azure SignalR REST API."""
+        body = BroadcastRequest(target=target, arguments=arguments)
+        token = _generate_access_token(self._endpoint, self._access_key)
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        url = f"{self._endpoint}/api/v1/hubs/{_HUB_NAME}/groups/{quote(group, safe='')}"
+        try:
+            response = await self._client.post(url, json=body.model_dump(), headers=headers)
+            response.raise_for_status()
+            logger.info(
+                "SignalR broadcast sent",
+                extra={"group": group, "target": target},
+            )
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "SignalR broadcast HTTP error",
+                extra={"group": group, "target": target, "status_code": exc.response.status_code},
+            )
+        except httpx.RequestError as exc:
+            logger.warning(
+                "SignalR broadcast request error",
+                extra={"group": group, "target": target, "error": str(exc)},
+            )
+
     async def broadcast_task_updated(self, payload: TaskUpdatedPayload) -> None:
         """Broadcast task_updated event to all three groups for the given task.
 
@@ -99,40 +126,41 @@ class SignalRBroadcaster:
             f"unit-{payload.unit_id}",
             f"role-{payload.role_name}",
         ]
-        body = BroadcastRequest(
-            target="task_updated",
-            arguments=[payload.model_dump(mode="json")],
-        )
+        arguments = [payload.model_dump(mode="json")]
+        for group in groups:
+            await self._send_to_group(group, "task_updated", arguments)
+
+    async def broadcast_adt_event(self, payload: dict) -> None:
+        """Broadcast adt_event_received to a unit group.
+
+        Used by dev/test endpoints and ADT ingestion pipeline.
+        """
+        unit_id = payload.get("patientUnit", "unknown")
+        await self._send_to_group(f"unit-{unit_id}", "adt_event_received", [payload])
+
+    async def broadcast_adt_event_to_all(self, payload: dict) -> None:
+        """Broadcast adt_event_received to all connected clients.
+
+        Used for dev smoke tests where group membership may not be configured.
+        """
+        body = BroadcastRequest(target="adt_event_received", arguments=[payload])
         token = _generate_access_token(self._endpoint, self._access_key)
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-
-        for group in groups:
-            url = f"{self._endpoint}/api/v1/hubs/{_HUB_NAME}/groups/{quote(group, safe='')}"
-            try:
-                response = await self._client.post(url, json=body.model_dump(), headers=headers)
-                response.raise_for_status()
-                logger.info(
-                    "SignalR broadcast sent",
-                    extra={
-                        "task_id": str(payload.task_id),
-                        "group": group,
-                        "new_status": payload.new_status,
-                    },
-                )
-            except httpx.HTTPStatusError as exc:
-                logger.warning(
-                    "SignalR broadcast HTTP error",
-                    extra={
-                        "task_id": str(payload.task_id),
-                        "group": group,
-                        "status_code": exc.response.status_code,
-                    },
-                )
-            except httpx.RequestError as exc:
-                logger.warning(
-                    "SignalR broadcast request error",
-                    extra={"task_id": str(payload.task_id), "group": group, "error": str(exc)},
-                )
+        url = f"{self._endpoint}/api/v1/hubs/{_HUB_NAME}"
+        try:
+            response = await self._client.post(url, json=body.model_dump(), headers=headers)
+            response.raise_for_status()
+            logger.info("SignalR broadcast to all sent", extra={"target": "adt_event_received"})
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "SignalR broadcast to all HTTP error",
+                extra={"target": "adt_event_received", "status_code": exc.response.status_code},
+            )
+        except httpx.RequestError as exc:
+            logger.warning(
+                "SignalR broadcast to all request error",
+                extra={"target": "adt_event_received", "error": str(exc)},
+            )
