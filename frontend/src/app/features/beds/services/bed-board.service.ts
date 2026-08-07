@@ -2,8 +2,25 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { BedDto, BedItem } from '../models/bed.model';
+import { BedDto, BedItem, BedStatus } from '../models/bed.model';
 import { environment } from '@environments/environment';
+
+/** Raw mv_bed_board row shape returned by GET /api/v1/beds (snake_case). */
+interface RawBedItem {
+  bed_id: string;
+  unit: string;
+  room: string;
+  bed_number: string;
+  bed_type: string;
+  status: BedStatus;
+  isolation_required: boolean;
+  gender_designation: string;
+  encounter_id: string | null;
+  last_updated?: string;
+  predicted_discharge_time: string | null;
+  discharge_prediction_confidence: 'high' | 'medium' | 'low' | null;
+  discharge_prediction_interval_hours: number | null;
+}
 
 /**
  * BedBoardService — HTTP service for fetching bed board data.
@@ -24,7 +41,7 @@ export class BedBoardService {
    */
   getBeds(includePredictions = true): Observable<BedDto[]> {
     const params = new HttpParams().set('include_predictions', String(includePredictions));
-    return this.http.get<BedItem[]>(this.apiBase, { params }).pipe(
+    return this.http.get<RawBedItem[]>(this.apiBase, { params }).pipe(
       map(items => items.map(item => this.mapBedItemToDto(item)))
     );
   }
@@ -35,13 +52,13 @@ export class BedBoardService {
    * @param item BedItem from API response
    * @returns BedDto suitable for bed board UI rendering
    */
-  private mapBedItemToDto(item: BedItem): BedDto {
+  private mapBedItemToDto(item: RawBedItem): BedDto {
     return {
-      bedId: item.bedId,
+      bedId: item.bed_number || item.bed_id,
       unit: item.unit,
-      status: item.bedStatus,
+      status: item.status,
       patientName: null, // Patient name sourced from separate Patient API (privacy boundary)
-      predictedDischargeTime: item.predictedDischargeTime,
+      predictedDischargeTime: item.predicted_discharge_time,
       assignedNurse: null, // Assigned nurse sourced from Nurse assignment API
       riskTier: this.calculateRiskTier(item), // Derive from confidence level (US-036)
     };
@@ -51,16 +68,16 @@ export class BedBoardService {
    * Calculates patient risk tier based on discharge prediction confidence.
    * Confidence mapping: high→LOW risk, medium→MEDIUM risk, low→HIGH risk
    * (higher confidence in discharge means lower occupancy risk)
-   * @param item BedItem with dischargePredictionConfidence
+   * @param item RawBedItem with discharge_prediction_confidence
    * @returns Risk tier or null if no prediction available
    */
-  private calculateRiskTier(item: BedItem): 'HIGH' | 'MEDIUM' | 'LOW' | null {
-    if (!item.dischargePredictionConfidence) return null;
+  private calculateRiskTier(item: RawBedItem): 'HIGH' | 'MEDIUM' | 'LOW' | null {
+    if (!item.discharge_prediction_confidence) return null;
     const confidenceMap: Record<string, 'HIGH' | 'MEDIUM' | 'LOW'> = {
       high: 'LOW',
       medium: 'MEDIUM',
       low: 'HIGH',
     };
-    return confidenceMap[item.dischargePredictionConfidence] ?? null;
+    return confidenceMap[item.discharge_prediction_confidence] ?? null;
   }
 }

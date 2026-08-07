@@ -18,8 +18,18 @@ async def clear_and_repopulate():
     )
     
     print("[*] Clearing existing patient and related data...")
+    # Clear child tables referencing encounter first
+    await conn.execute('DELETE FROM adt_event')
+    await conn.execute('DELETE FROM medication')
+    await conn.execute('DELETE FROM agent_task')
+    await conn.execute('DELETE FROM document')
+    await conn.execute('DELETE FROM chatbot_transcript')
+    await conn.execute('DELETE FROM readmission')
+    # Clear encounters, but first remove FK references from bed
+    await conn.execute('UPDATE bed SET current_encounter_id = NULL')
     await conn.execute('DELETE FROM encounter')
     print("[OK] Cleared encounter table")
+    await conn.execute('DELETE FROM notification')
     await conn.execute('DELETE FROM patient')
     print("[OK] Cleared patient table")
     

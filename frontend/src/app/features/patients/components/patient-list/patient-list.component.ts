@@ -96,75 +96,6 @@ export class PatientListComponent implements OnInit, OnDestroy {
   /** True when >50 rows — enables CDK Virtual Scroll */
   readonly useVirtualScroll = computed(() => this.totalCount() > 50);
 
-  // --- Static mock data for wireframe preview (backend not running) ---
-  private readonly mockPatients: PatientSummary[] = [
-    {
-      encounter_id: 'enc-001',
-      patient_id: 'p-001',
-      mrn_masked: '●●●●●●',
-      first_name: 'John',
-      last_name: 'Smith',
-      date_of_birth: '1975-03-15',
-      current_unit: '4-West',
-      room_number: '412A',
-      risk_tier: 'HIGH' as any,
-      risk_score: 0.82,
-      admission_date: '2026-07-10',
-    },
-    {
-      encounter_id: 'enc-002',
-      patient_id: 'p-002',
-      mrn_masked: '●●●●●●',
-      first_name: 'Rita',
-      last_name: 'Patel',
-      date_of_birth: '1982-11-22',
-      current_unit: '3-North',
-      room_number: '318B',
-      risk_tier: 'MEDIUM' as any,
-      risk_score: 0.45,
-      admission_date: '2026-07-12',
-    },
-    {
-      encounter_id: 'enc-003',
-      patient_id: 'p-003',
-      mrn_masked: '●●●●●●',
-      first_name: 'Lee',
-      last_name: 'Nguyen',
-      date_of_birth: '1990-06-08',
-      current_unit: 'ICU',
-      room_number: 'ICU-7',
-      risk_tier: 'LOW' as any,
-      risk_score: 0.18,
-      admission_date: '2026-07-13',
-    },
-    {
-      encounter_id: 'enc-004',
-      patient_id: 'p-004',
-      mrn_masked: '●●●●●●',
-      first_name: 'Maria',
-      last_name: 'Garcia',
-      date_of_birth: '1968-09-30',
-      current_unit: '3-North',
-      room_number: '305C',
-      risk_tier: 'HIGH' as any,
-      risk_score: 0.75,
-      admission_date: '2026-07-14',
-    },
-    {
-      encounter_id: 'enc-005',
-      patient_id: 'p-005',
-      mrn_masked: '●●●●●●',
-      first_name: 'Kim',
-      last_name: 'Lee',
-      date_of_birth: '1979-01-12',
-      current_unit: '5-East',
-      room_number: '521D',
-      risk_tier: 'LOW' as any,
-      risk_score: 0.30,
-      admission_date: '2026-07-11',
-    },
-  ];
-
   // --- Revealed MRN state ---
   readonly revealedMrns = signal<Set<string>>(new Set());
 
@@ -189,13 +120,15 @@ export class PatientListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.availableUnits.set(['All Units', '4-West', '3-North', 'ICU', '5-East']);
+    const user = this.authService.currentUser();
+    const units = user?.units?.length ? user.units : ['All Units'];
+    this.availableUnits.set(['All Units', ...units.filter(u => u !== 'All Units')]);
     this.availableStatuses.set(['All Status', 'Admitted', 'Discharging', 'Transferred']);
     this.unitControl.setValue('All Units');
     this.statusControl.setValue('All Status');
 
-    // Static data load — no backend required
-    this.loadStaticData();
+    // Load live data from backend on init and when filters change
+    this.loadPatients();
 
     // Filter on search/unit/status changes
     combineLatest([
@@ -205,11 +138,11 @@ export class PatientListComponent implements OnInit, OnDestroy {
     ])
       .pipe(takeUntil(this.destroy$))
       .subscribe(([search, unit, status]) => {
-        this.loadStaticData(search, unit, status, true);
+        this.loadPatients(search, unit, status, true);
       });
   }
 
-  private loadStaticData(search = '', unit = 'All Units', status = 'All Status', resetPage = false): void {
+  private loadPatients(search = '', unit = 'All Units', status = 'All Status', resetPage = false): void {
     this.loading.set(true);
     this.error.set(null);
 
@@ -217,42 +150,42 @@ export class PatientListComponent implements OnInit, OnDestroy {
       this.currentPage = 0;
     }
 
-    let filtered = [...this.mockPatients];
+    const queryUnit = unit === 'All Units' ? 'ICU' : unit; // Backend requires a concrete unit
+    const query: import('../../models').PatientListQuery = {
+      unit: queryUnit,
+      search: search.trim() || undefined,
+      page: this.currentPage + 1,
+      page_size: this.pageSize,
+    };
 
-    if (unit !== 'All Units') {
-      filtered = filtered.filter(p => p.current_unit === unit);
-    }
-
-    if (status !== 'All Status') {
-      filtered = filtered.filter(p => this.getStatus(p) === status);
-    }
-
-    if (search.trim()) {
-      const term = search.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.first_name.toLowerCase().includes(term) ||
-        p.last_name.toLowerCase().includes(term) ||
-        p.mrn_masked.toLowerCase().includes(term)
-      );
-    }
-
-    // Simulate small delay
-    setTimeout(() => {
-      this.patients.set(filtered);
-      this.totalCount.set(filtered.length);
-      this.loading.set(false);
-    }, 300);
+    this.patientApi.getPatients(query)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          let items = response.items ?? [];
+          // Apply client-side status filter since backend does not support it
+          if (status !== 'All Status') {
+            items = items.filter(p => this.getStatus(p) === status);
+          }
+          this.patients.set(items);
+          this.totalCount.set(response.total ?? items.length);
+          this.loading.set(false);
+        },
+        error: err => {
+          this.error.set(err.message || 'Failed to load patients.');
+          this.loading.set(false);
+        },
+      });
   }
 
   onPageChange(event: PageEvent): void {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
-    // Static data is small; just update pagination state
-    this.loadStaticData(this.searchControl.value, this.unitControl.value, this.statusControl.value);
+    this.loadPatients(this.searchControl.value, this.unitControl.value, this.statusControl.value);
   }
 
   retry(): void {
-    this.loadStaticData(this.searchControl.value, this.unitControl.value, this.statusControl.value, false);
+    this.loadPatients(this.searchControl.value, this.unitControl.value, this.statusControl.value, false);
   }
 
   navigateToDetail(encounterId: string): void {

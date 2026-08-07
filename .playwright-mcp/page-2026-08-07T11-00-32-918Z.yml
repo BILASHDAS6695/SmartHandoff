@@ -1,0 +1,98 @@
+- generic [ref=f18e3]:
+  - generic [ref=f18e6]:
+    - generic [ref=f18e7] [cursor=pointer]: SmartHandoff
+    - generic [ref=f18e12]:
+      - img [ref=f18e13]: search
+      - textbox "Search" [ref=f18e14]:
+        - /placeholder: Search patients by name or MRN...
+    - generic [ref=f18e15]:
+      - button [ref=f18e16] [cursor=pointer]:
+        - img [ref=f18e17]: notifications
+      - button "D" [ref=f18e21] [cursor=pointer]:
+        - img [ref=f18e23]: arrow_drop_down
+  - generic [ref=f18e26]:
+    - generic [ref=f18e31]:
+      - generic [ref=f18e32]:
+        - generic [ref=f18e33]: Navigation
+        - navigation [ref=f18e34]:
+          - link "Dashboard" [ref=f18e35] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f18e36]: dashboard
+          - link "Patients 142" [ref=f18e38] [cursor=pointer]:
+            - /url: /patients
+            - img [ref=f18e39]: people
+            - generic [ref=f18e40]: Patients
+            - generic [ref=f18e41]: "142"
+      - generic [ref=f18e42]:
+        - generic [ref=f18e43]: Role-Gated
+        - navigation [ref=f18e44]:
+          - link "Bed Board BedMgr only" [ref=f18e45] [cursor=pointer]:
+            - /url: /beds
+            - img [ref=f18e46]: hotel
+            - generic [ref=f18e47]: Bed Board
+            - generic [ref=f18e48]: BedMgr only
+          - link "Analytics Manager only" [ref=f18e49] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=f18e50]: analytics
+            - generic [ref=f18e51]: Analytics
+            - generic [ref=f18e52]: Manager only
+          - link "Admin Admin only" [ref=f18e53] [cursor=pointer]:
+            - /url: /admin
+            - img [ref=f18e54]: admin_panel_settings
+            - generic [ref=f18e55]: Admin
+            - generic [ref=f18e56]: Admin only
+    - main [ref=f18e59]:
+      - generic [ref=f18e61]:
+        - generic [ref=f18e62]:
+          - heading "Bed Board — Live View" [level=1] [ref=f18e63]
+          - generic [ref=f18e64]:
+            - generic "Live SignalR connection" [ref=f18e65]
+            - generic [ref=f18e66]: UXR-011 Last updated 14:39:01
+            - button "Refresh" [ref=f18e67] [cursor=pointer]:
+              - img [ref=f18e68]: refresh
+              - text: Refresh
+        - generic [ref=f18e69]:
+          - combobox "Filter by unit" [ref=f18e71]:
+            - generic [ref=f18e72] [cursor=pointer]: All Units
+          - combobox "Filter by status" [ref=f18e80]:
+            - generic [ref=f18e81] [cursor=pointer]: All Status
+          - generic [ref=f18e88]:
+            - generic [ref=f18e89]: Clean
+            - generic [ref=f18e91]: Dirty
+            - generic [ref=f18e93]: Occupied
+            - generic [ref=f18e95]: Blocked
+        - alert [ref=f18e97]:
+          - generic [ref=f18e98]: 🚨
+          - generic [ref=f18e99]:
+            - generic [ref=f18e100]:
+              - text: ED BOARDING ALERT
+              - generic [ref=f18e101]: UXR-006 Interrupt on 2-hour threshold
+            - generic [ref=f18e102]:
+              - text: "Patient: Garcia, Maria | Pending inpatient bed since 12:24 |"
+              - strong [ref=f18e103]: "Waiting: 2h 15m"
+              - text: "| Acuity: High"
+            - generic [ref=f18e104]:
+              - strong [ref=f18e105]: "Recommended beds (ranked by acuity match):"
+              - generic [ref=f18e106] [cursor=pointer]: ✓ 4W-03 — Best match
+              - generic [ref=f18e107] [cursor=pointer]: 3N-07
+              - generic [ref=f18e108] [cursor=pointer]: 3N-12
+            - generic [ref=f18e109]:
+              - button "Assign 4W-03 →" [ref=f18e110] [cursor=pointer]
+              - button "View All Available" [ref=f18e111] [cursor=pointer]
+              - button "Dismiss ✗" [ref=f18e112] [cursor=pointer]
+        - generic "Loading bed board" [ref=f18e113]
+        - generic [ref=f18e122]:
+          - heading "Predicted Discharges (next 4 hours) — ML Model ±2h" [level=2] [ref=f18e123]
+          - generic [ref=f18e124]:
+            - generic [ref=f18e125]:
+              - strong [ref=f18e126]: Jones, M. (4W-05)
+              - text: — ~16:00 (±2h)
+            - generic [ref=f18e127]:
+              - strong [ref=f18e128]: Patel, R. (4W-04)
+              - text: — ~18:30 (±2h)
+            - generic [ref=f18e129]:
+              - strong [ref=f18e130]: Lee, K. (3N-04)
+              - text: — ~17:15 (±2h)
+            - generic [ref=f18e131]:
+              - strong [ref=f18e132]: Nguyen, L. (4W-07)
+              - text: — ~14:00 tomorrow (±2h)
