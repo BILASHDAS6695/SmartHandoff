@@ -45,6 +45,35 @@
   font-weight: 700;
   margin-bottom: 6px;
   color: #111827;
+
+  .ann {
+    background: #fefce8;
+    border: 1px solid #fde047;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 11px;
+    color: #713f12;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    font-weight: 500;
+
+    &::before {
+      content: attr(data-id);
+      font-weight: 700;
+    }
+  }
+
+  .reveal-link {
+    color: #2563eb;
+    cursor: pointer;
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 .patient-meta {
@@ -401,4 +430,187 @@
       color: #16a34a;
     }
   }
+}
+
+.count-badge {
+  border-radius: 9999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &.critical {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+}
+
+.risk-big {
+  font-size: 32px;
+  font-weight: 700;
+
+  &.high { color: #dc2626; }
+  &.med { color: #d97706; }
+  &.low { color: #16a34a; }
+}
+
+.risk-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+
+  &.high { color: #dc2626; }
+  &.med { color: #d97706; }
+  &.low { color: #16a34a; }
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  &.done {
+    opacity: 0.6;
+
+    .task-title {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.task-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.task-content {
+  flex: 1;
+}
+
+.task-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #111827;
+}
+
+.task-meta {
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.task-owner {
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.task-priority {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+
+  &.high {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  &.medium {
+    background: #fffbeb;
+    color: #d97706;
+  }
+
+  &.low {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+}
+
+.timeline {
+  position: relative;
+  padding-left: 24px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: #e5e7eb;
+  }
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 18px;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -21px;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #e5e7eb;
+
+  &.alert {
+    background: #dc2626;
+  }
+
+  &.warning {
+    background: #d97706;
+  }
+
+  &.success {
+    background: #16a34a;
+  }
+
+  &.system {
+    background: #374151;
+  }
+}
+
+.timeline-time {
+  font-size: 11px;
+  color: #4b5563;
+  margin-bottom: 2px;
+}
+
+.timeline-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.timeline-desc {
+  font-size: 12px;
+  color: #4b5563;
+  margin-top: 2px;
 }

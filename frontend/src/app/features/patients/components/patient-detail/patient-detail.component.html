@@ -7,21 +7,36 @@
 
   <!-- Patient header -->
   <div class="patient-header">
-    <div class="patient-name">{{ patient().name }}</div>
+    <div class="patient-name">
+      {{ patient().name }}
+      <span class="ann" data-id="UXR-014">
+        MRN: {{ getMrnDisplay() }}
+        <span
+          class="reveal-link"
+          (click)="toggleMrn(); $event.stopPropagation()"
+          tabindex="0"
+          (keydown.enter)="toggleMrn(); $event.stopPropagation()"
+          role="button">
+          {{ mrnRevealed() ? '🙈 Hide' : '👁 Reveal' }}
+        </span>
+      </span>
+    </div>
     <div class="patient-meta">
-      <span><strong>MRN:</strong> {{ patient().mrn }}</span>
-      <span><strong>DOB:</strong> {{ patient().dob }} ({{ patient().age }}y)</span>
-      <span><strong>Unit:</strong> {{ patient().unit }}</span>
-      <span><strong>Room:</strong> {{ patient().room }}</span>
-      <span><strong>Admitted:</strong> {{ patient().admissionDate }}</span>
-      <span><strong>Attending:</strong> {{ patient().attending }}</span>
+      <span>DOB: <strong>{{ patient().dob }}</strong></span>
+      <span>Unit: <strong>{{ patient().unit }}</strong></span>
+      <span>Bed: <strong>{{ patient().bed }}</strong></span>
+      <span>Attending: <strong>{{ patient().attending }}</strong></span>
+      <span>Admitted: <strong>{{ patient().admissionDate }}</strong></span>
     </div>
     <div class="risk-score-display">
-      <span class="risk-label">Readmission Risk</span>
+      <span class="risk-label">Readmission Risk:</span>
       <div class="risk-bar-large">
         <div class="risk-bar-fill" [class]="getRiskClass(patient().riskLevel)" [style.width.%]="getRiskBarWidth(patient().riskScore)"></div>
       </div>
-      <span class="risk-chip-large" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskScore | number:'1.2-2' }} {{ patient().riskLevel }}</span>
+      <strong [style.color]="patient().riskLevel === 'HIGH' ? '#dc2626' : patient().riskLevel === 'MED' ? '#d97706' : '#16a34a'">
+        {{ patient().riskScore | number:'1.2-2' }}
+      </strong>
+      <span class="risk-chip-large" [class]="getRiskClass(patient().riskLevel)">⚠ {{ patient().riskLevel }} RISK</span>
     </div>
   </div>
 
@@ -33,7 +48,9 @@
         [class.active]="activeTab() === tab"
         (click)="setTab(tab)"
         tabindex="0"
-        (keydown.enter)="setTab(tab)">
+        (keydown.enter)="setTab(tab)"
+        role="tab"
+        [attr.aria-selected]="activeTab() === tab">
         {{ tab }}
       </div>
     }
@@ -42,28 +59,50 @@
   <!-- Overview content -->
   @if (activeTab() === 'Overview') {
     <div class="grid-2">
+      <!-- Agent Task Status -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Agent Task Status</h3>
+        </div>
+        <div class="card-body">
+          @for (task of agentTasks(); track task.name) {
+            <div class="agent-row">
+              <span class="status-dot" [class]="getStatusDotClass(task.status)"></span>
+              <span class="agent-name">{{ task.name }}</span>
+              <span class="agent-status-badge" [style.color]="getAgentStatusColor(task.status)">{{ task.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
       <!-- Pending Approvals -->
       <div class="card">
         <div class="card-header">
           <h3>Pending Approvals</h3>
+          <span class="count-badge critical">1</span>
         </div>
         <div class="card-body">
-          <div class="approval-card">
-            <div class="ai-badge">
-              <mat-icon>auto_awesome</mat-icon>
-              AI-Assisted
+          @for (approval of pendingApprovals(); track approval.title) {
+            <div class="approval-card">
+              <div class="ai-badge">
+                <mat-icon>auto_awesome</mat-icon>
+                AI-Assisted
+              </div>
+              <div class="approval-title">{{ approval.title }}</div>
+              <div class="approval-meta">{{ approval.meta }}</div>
+              <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">Review & Approve →</button>
             </div>
-            <div class="approval-title">Discharge Summary Review</div>
-            <div class="approval-meta">Generated 14:32 · 2 edits by Dr. David Chen</div>
-            <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">Review & Sign</button>
-          </div>
+          }
         </div>
       </div>
+    </div>
 
+    <div class="grid-2">
       <!-- Active Alerts -->
       <div class="card">
         <div class="card-header">
           <h3>Active Alerts</h3>
+          <span class="count-badge critical">2</span>
         </div>
         <div class="card-body">
           @for (alert of alerts(); track alert.title) {
@@ -80,33 +119,18 @@
           }
         </div>
       </div>
-    </div>
 
-    <div class="grid-2">
-      <!-- Agent Tasks -->
+      <!-- Readmission Risk Detail -->
       <div class="card">
         <div class="card-header">
-          <h3>Agent Tasks</h3>
+          <h3>Readmission Risk Detail</h3>
         </div>
         <div class="card-body">
-          @for (task of agentTasks(); track task.name) {
-            <div class="agent-row">
-              <span class="status-dot" [class]="getStatusDotClass(task.status)"></span>
-              <span class="agent-name">{{ task.name }}</span>
-              <span class="agent-status-badge">
-                {{ task.status === 'ok' ? 'Complete' : task.status === 'warn' ? 'Action Needed' : 'Pending' }}
-              </span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <!-- Risk Factors -->
-      <div class="card">
-        <div class="card-header">
-          <h3>Risk Factors</h3>
-        </div>
-        <div class="card-body">
+          <div class="risk-big" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskScore | number:'1.2-2' }}</div>
+          <div class="risk-bar-large" style="width: 100%; margin: 8px 0;">
+            <div class="risk-bar-fill" [class]="getRiskClass(patient().riskLevel)" [style.width.%]="getRiskBarWidth(patient().riskScore)"></div>
+          </div>
+          <div class="risk-subtitle" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskLevel }} RISK — Follow-up mandatory within 7 days</div>
           <ul class="risk-factors">
             @for (factor of riskFactors(); track factor.text) {
               <li>
@@ -115,12 +139,13 @@
               </li>
             }
           </ul>
-          <a class="view-plan">View full care plan →</a>
+          <a class="view-plan">View Care Plan →</a>
         </div>
       </div>
     </div>
   }
 
+  <!-- Documents content -->
   @if (activeTab() === 'Documents') {
     <div class="card">
       <div class="card-header">
@@ -141,6 +166,73 @@
             </button>
           </div>
         }
+      </div>
+    </div>
+  }
+
+  <!-- Tasks content -->
+  @if (activeTab() === 'Tasks') {
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <h3>Open Tasks</h3>
+        </div>
+        <div class="card-body">
+          <ul class="task-list">
+            @for (task of openTasks(); track task.id) {
+              <li class="task-item">
+                <input type="checkbox" class="task-checkbox" [checked]="task.done" />
+                <div class="task-content">
+                  <div class="task-title">{{ task.title }}</div>
+                  <div class="task-meta">{{ task.meta }}</div>
+                </div>
+                <span class="task-owner">{{ task.owner }}</span>
+                <span class="task-priority" [class]="getTaskPriorityClass(task.priority)">{{ task.priority }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Completed Tasks</h3>
+        </div>
+        <div class="card-body">
+          <ul class="task-list">
+            @for (task of completedTasks(); track task.id) {
+              <li class="task-item done">
+                <input type="checkbox" class="task-checkbox" [checked]="task.done" />
+                <div class="task-content">
+                  <div class="task-title">{{ task.title }}</div>
+                  <div class="task-meta">{{ task.meta }}</div>
+                </div>
+                <span class="task-owner">{{ task.owner }}</span>
+                <span class="task-priority" [class]="getTaskPriorityClass(task.priority)">{{ task.priority }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Timeline content -->
+  @if (activeTab() === 'Timeline') {
+    <div class="card">
+      <div class="card-header">
+        <h3>Encounter Timeline</h3>
+      </div>
+      <div class="card-body">
+        <div class="timeline">
+          @for (event of timelineEvents(); track event.title + event.time) {
+            <div class="timeline-item">
+              <span class="timeline-dot" [class]="getTimelineDotClass(event.type)"></span>
+              <div class="timeline-time">{{ event.time }}</div>
+              <div class="timeline-title">{{ event.title }}</div>
+              <div class="timeline-desc">{{ event.desc }}</div>
+            </div>
+          }
+        </div>
       </div>
     </div>
   }
