@@ -107,7 +107,7 @@ export class HeaderComponent {
   }
 
   switchRole(): void {
-    // Wireframe only — in production this would open the role-switcher modal
+    void this.router.navigate(['/switch-role']);
   }
 
   getUserInitials(): string {

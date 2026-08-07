@@ -47,6 +47,12 @@ export class SidebarComponent {
       ],
     },
     {
+      title: 'Account',
+      items: [
+        { icon: 'switch_account', label: 'Switch Role', route: '/switch-role' },
+      ],
+    },
+    {
       title: 'Role-Gated',
       items: [
         { icon: 'hotel', label: 'Bed Board', route: '/beds', tag: 'BedMgr only' },
