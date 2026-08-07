@@ -159,8 +159,8 @@
         </div>
         <div class="med-col-body">
           <div class="med-row"><span class="med-name">Warfarin 5mg QD</span> <span class="med-flag ok">✓ OK</span></div>
-          <div class="med-row"><span class="med-name">Aspirin 81mg QD</span> <span class="med-flag interaction">⚠ INTERACT</span></div>
-          <div class="med-missing">⚠ MISSING — Chronic Med</div>
+          <div class="med-row"><span class="med-name">Aspirin 81mg QD</span> <span class="med-flag interaction" id="aspirin-flag">⚠ INTERACT</span></div>
+          <div class="med-missing" id="metformin-missing">⚠ MISSING — Chronic Med</div>
           <div class="med-row"><span class="med-name">Lisinopril 10mg QD</span> <span class="med-flag ok">✓ OK</span></div>
           <div class="med-row"><span class="med-name">Atorvastatin 40mg QD</span> <span class="med-flag ok">✓ OK</span></div>
         </div>
@@ -171,39 +171,104 @@
     <div class="alerts-section">
       <h2>Active Alerts (2)</h2>
 
-      <div class="alert-card critical">
-        <div class="alert-title">
+      <div class="alert-card critical" id="med-alert-interaction">
+        <div class="alert-title" id="med-alert-interaction-title">
           🔴 MAJOR INTERACTION: Warfarin + Aspirin
           <span class="ann" data-id="UXR-006">Modal interrupt on first load</span>
         </div>
-        <div class="alert-body">
+        <div class="alert-body" id="med-alert-interaction-body">
           Severity: Major &nbsp;|&nbsp; Risk: Increased bleeding risk — pharmacodynamic synergy; INR may rise significantly.<br/>
           Drug interaction database confidence: 99.2%
         </div>
-        <div class="alert-actions">
-          <button class="btn-action primary">Contact Prescriber</button>
-          <button class="btn-action info">Accept with Monitoring Plan</button>
-          <button class="btn-action secondary">View Evidence</button>
+        <div class="alert-actions" id="med-alert-interaction-actions">
+          <button id="btn-contact-prescriber" class="btn-action primary">Contact Prescriber</button>
+          <button id="btn-accept-monitoring" class="btn-action info">Accept with Monitoring Plan</button>
+          <button id="btn-view-evidence" class="btn-action secondary">View Evidence</button>
         </div>
       </div>
 
-      <div class="alert-card warning">
-        <div class="alert-title">🟡 CHRONIC MED MISSING: Metformin 500mg BD</div>
-        <div class="alert-body">
+      <div class="alert-card warning" id="med-alert-missing">
+        <div class="alert-title" id="med-alert-missing-title">🟡 CHRONIC MED MISSING: Metformin 500mg BD</div>
+        <div class="alert-body" id="med-alert-missing-body">
           Not found on Discharge Rx. Patient has Type 2 Diabetes (ICD-10: E11.9).<br/>
           This medication was continued throughout the inpatient stay.
         </div>
-        <div class="alert-actions">
-          <button class="btn-action info">Flag for Physician Review</button>
-          <button class="btn-action secondary">Mark as Intentional Omission</button>
+        <div class="alert-actions" id="med-alert-missing-actions">
+          <button id="btn-flag-physician" class="btn-action info">Flag for Physician Review</button>
+          <button id="btn-intentional-omission" class="btn-action secondary">Mark as Intentional Omission</button>
         </div>
       </div>
     </div>
 
     <div class="bottom-actions">
-      <button class="btn-generate">Generate Patient Medication Summary</button>
-      <button class="btn-complete" title="UXR-025: Confirm before completing" onclick="location.href='wireframe-SCR-004-patient-detail.html'">Complete Reconciliation ✓</button>
+      <button id="btn-generate-summary" class="btn-generate">Generate Patient Medication Summary</button>
+      <button id="btn-complete-reconciliation" class="btn-complete" title="UXR-025: Confirm before completing">Complete Reconciliation ✓</button>
     </div>
+  </div>
+</div>
+
+<!-- Medication Review Modals -->
+<style>
+  .wf-modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:24px; }
+  .wf-modal.active { display:flex; }
+  .wf-modal-box { background:#fff; border-radius:12px; width:100%; max-width:520px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 25px -5px rgba(0,0,0,.2); }
+  .wf-modal-header { padding:16px 20px; border-bottom:1px solid var(--color-border-default); display:flex; align-items:center; justify-content:space-between; }
+  .wf-modal-header h3 { font-size:14px; font-weight:700; margin:0; }
+  .wf-modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--color-text-secondary); }
+  .wf-modal-body { padding:20px; font-size:13px; line-height:1.5; }
+  .wf-modal-footer { padding:14px 20px; border-top:1px solid var(--color-border-default); display:flex; justify-content:flex-end; gap:8px; }
+  .wf-modal-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--color-border-default); background:#fff; }
+  .wf-modal-btn.primary { background:var(--color-brand-primary); color:#fff; border-color:var(--color-brand-primary); }
+  .wf-modal-btn.danger { background:var(--color-alert-critical); color:#fff; border-color:var(--color-alert-critical); }
+  .wf-contact-option { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--color-border-default); border-radius:8px; margin-bottom:10px; cursor:pointer; }
+  .wf-contact-option:hover { background:var(--color-grey-100); }
+  .wf-evidence-list { list-style:none; padding:0; }
+  .wf-evidence-list li { padding:8px 0; border-bottom:1px solid var(--color-border-default); }
+  .wf-evidence-list li:last-child { border-bottom:none; }
+</style>
+<div id="wf-modal-contact" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Contact Prescriber</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p><strong>Dr. Chen</strong> — Attending Physician</p>
+      <div class="wf-contact-option" onclick="toast('Opening secure message...')">💬 Send secure message</div>
+      <div class="wf-contact-option" onclick="toast('Initiating call...')">📞 Call pager #44521</div>
+      <div class="wf-contact-option" onclick="toast('On-call physician notified')">🚨 Page on-call pharmacist</div>
+    </div>
+    <div class="wf-modal-footer"><button class="wf-modal-btn" data-modal-close>Close</button></div>
+  </div>
+</div>
+<div id="wf-modal-evidence" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Interaction Evidence</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p><strong>Warfarin + Aspirin</strong></p>
+      <ul class="wf-evidence-list">
+        <li><strong>Mechanism:</strong> Pharmacodynamic synergy — both affect hemostasis</li>
+        <li><strong>Onset:</strong> Rapid</li>
+        <li><strong>Severity:</strong> Major</li>
+        <li><strong>Documentation:</strong> 12 cases of major bleeding in similar patient population (Lexicomp, 2026)</li>
+        <li><strong>Recommendation:</strong> Monitor INR within 48h; consider dose adjustment</li>
+      </ul>
+    </div>
+    <div class="wf-modal-footer"><button class="wf-modal-btn" data-modal-close>Close</button></div>
+  </div>
+</div>
+<div id="wf-modal-summary" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Patient Medication Summary</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p><strong>Smith, John</strong> — Discharge Medication List</p>
+      <ul class="wf-evidence-list">
+        <li>Warfarin 5mg QD — Continue, monitor INR</li>
+        <li>Aspirin 81mg QD — Continue with bleeding precautions</li>
+        <li>Metformin 500mg BD — To be reviewed</li>
+        <li>Lisinopril 10mg QD — Continue</li>
+        <li>Atorvastatin 40mg QD — Continue</li>
+      </ul>
+      <p style="margin-top:12px;color:var(--color-text-secondary)">A printable PDF has been generated. Download will start on close.</p>
+    </div>
+    <div class="wf-modal-footer"><button class="wf-modal-btn primary" data-modal-close data-action="download-summary">Download PDF</button><button class="wf-modal-btn" data-modal-close>Close</button></div>
   </div>
 </div>
 
@@ -269,5 +334,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>

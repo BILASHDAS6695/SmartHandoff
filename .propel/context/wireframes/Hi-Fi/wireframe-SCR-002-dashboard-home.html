@@ -231,7 +231,7 @@
         <svg viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 00-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
         <span class="badge">3</span>
       </button>
-      <div class="avatar" title="Nurse Nancy (P-01)">NN</div>
+      <div class="avatar" id="wf-dashboard-avatar" title="Nurse Nancy (P-01)">NN</div>
     </div>
   </div>
 
@@ -249,15 +249,15 @@
     </div>
     <!-- Role-gated items (Nurse role — Bed Board hidden) -->
     <div class="nav-section-label" style="margin-top:8px">Role-Gated</div>
-    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-007-bed-board.html'">
+    <div class="nav-item wf-role-gated" data-roles="bedmgr,admin" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-007-bed-board.html'">
       <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2M8 7V5a2 2 0 00-4 0v2"/></svg>
       Bed Board <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">BedMgr only</span>
     </div>
-    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-009-analytics-dashboard.html'">
+    <div class="nav-item wf-role-gated" data-roles="admin" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-009-analytics-dashboard.html'">
       <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
       Analytics <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">Manager only</span>
     </div>
-    <div class="nav-item" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-011-admin-settings.html'">
+    <div class="nav-item wf-role-gated" data-roles="admin" style="opacity:.4; cursor:pointer;" title="UXR-020: Not visible to Nurse role (clickable in wireframe prototype)" onclick="location.href='wireframe-SCR-011-admin-settings.html'">
       <svg viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
       Admin <span style="font-size:9px;margin-left:4px;background:#E5E7EB;padding:1px 5px;border-radius:4px">Admin only</span>
     </div>
@@ -266,8 +266,8 @@
   <!-- Main -->
   <div class="main">
     <div class="page-header">
-      <h1>Good afternoon, Nancy</h1>
-      <span class="last-updated"><span class="ann" data-id="UXR-011">Last updated 14:39:05</span> &nbsp;<a href="#" style="font-size:11px;color:#2563EB">↻ Refresh</a></span>
+      <h1 id="wf-dashboard-greeting">Good afternoon, Nancy</h1>
+      <span class="last-updated"><span class="ann" data-id="UXR-011" id="wf-last-updated">Last updated 14:39:05</span> &nbsp;<a href="#" id="wf-dashboard-refresh" style="font-size:11px;color:#2563EB">↻ Refresh</a></span>
     </div>
 
     <div class="dashboard-grid-top">
@@ -285,7 +285,7 @@
               <span class="priority-chip urgent">URGENT</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Smith, John</a> — Unit 4W</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html?patient=smith" style="color:inherit;text-decoration:underline">Smith, John</a> — Unit 4W</span>
               <span class="task-due">Due 15:00</span>
             </div>
           </div>
@@ -294,7 +294,7 @@
               <span class="task-name">Review handoff checklist</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Patel, Rita</a> — Unit 3N</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html?patient=patel" style="color:inherit;text-decoration:underline">Patel, Rita</a> — Unit 3N</span>
               <span class="task-due">Due 16:30</span>
             </div>
           </div>
@@ -304,7 +304,7 @@
               <span class="priority-chip critical">CRITICAL</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Nguyen, Lee</a> — ICU</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html?patient=nguyen" style="color:inherit;text-decoration:underline">Nguyen, Lee</a> — ICU</span>
               <span class="task-due">Due ASAP</span>
             </div>
           </div>
@@ -313,11 +313,11 @@
               <span class="task-name">Complete transfer note</span>
             </div>
             <div class="task-row">
-              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:underline">Garcia, Maria</a> — 3N</span>
+              <span class="task-patient">Patient: <a href="wireframe-SCR-004-patient-detail.html?patient=garcia" style="color:inherit;text-decoration:underline">Garcia, Maria</a> — 3N</span>
               <span class="task-due">Due 17:00</span>
             </div>
           </div>
-          <a class="view-all" href="wireframe-SCR-004-patient-detail.html">View all 7 tasks →</a>
+          <a class="view-all" href="wireframe-SCR-003-patient-list.html">View all 7 tasks →</a>
         </div>
       </div>
 
@@ -517,5 +517,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>

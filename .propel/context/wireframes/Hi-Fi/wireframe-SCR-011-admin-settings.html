@@ -37,7 +37,7 @@
     .main{padding:24px;display:flex;gap:20px;overflow-y:auto;}
     .admin-sidebar{width:200px;flex-shrink:0;}
     .admin-sidebar h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-secondary);margin-bottom:10px;}
-    .admin-nav-item{padding:10px 14px;border-radius:var(--radius-md);font-size:13px;font-weight:500;color:var(--color-grey-700);cursor:pointer;margin-bottom:2px;}
+    .admin-nav-item{display:block;padding:10px 14px;border-radius:var(--radius-md);font-size:13px;font-weight:500;color:var(--color-grey-700);text-decoration:none;margin-bottom:2px;white-space:nowrap;}
     .admin-nav-item:hover{background:var(--color-grey-100);}
     .admin-nav-item.active{background:var(--color-alert-info-bg);color:var(--color-brand-primary);font-weight:600;}
     .content{flex:1;display:flex;flex-direction:column;gap:20px;}
@@ -72,6 +72,22 @@
     .btn-sm{padding:5px 12px;border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid;}
     .btn-sm.edit{background:transparent;color:var(--color-brand-primary);border-color:var(--color-brand-primary);}
     .btn-sm.disable{background:transparent;color:var(--color-alert-critical);border-color:var(--color-alert-critical);}
+    .btn-sm.reenable{background:transparent;color:#16A34A;border-color:#16A34A;}
+
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(17,24,39,.5);display:none;align-items:center;justify-content:center;z-index:99999;}
+    .modal-overlay.active{display:flex;}
+    .modal{background:#fff;border-radius:var(--radius-lg);width:min(480px,92vw);max-height:90vh;overflow:auto;box-shadow:0 24px 48px rgba(0,0,0,.2);}
+    .modal-header{padding:16px 20px;border-bottom:1px solid var(--color-border-default);display:flex;align-items:center;justify-content:space-between;}
+    .modal-header h3{font-size:16px;font-weight:700;}
+    .modal-close{background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--color-text-secondary);}
+    .modal-body{padding:20px;display:grid;gap:14px;}
+    .form-group{display:grid;gap:6px;}
+    .form-group label{font-size:12px;font-weight:600;color:var(--color-text-secondary);}
+    .form-group input,.form-group select{padding:9px 12px;border:1.5px solid var(--color-border-default);border-radius:var(--radius-md);font-size:13px;}
+    .modal-footer{padding:14px 20px;border-top:1px solid var(--color-border-default);display:flex;justify-content:flex-end;gap:10px;}
+    .btn-secondary{padding:9px 14px;background:transparent;border:1.5px solid var(--color-border-default);border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;}
+    .btn-primary{padding:9px 16px;background:var(--color-brand-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;}
 
     /* Audit log */
     .filter-row{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--color-border-default);flex-wrap:wrap;}
@@ -123,9 +139,9 @@
     <!-- Admin sub-nav -->
     <div class="admin-sidebar">
       <h2>Admin Sections</h2>
-      <div class="admin-nav-item active">User Management</div>
-      <div class="admin-nav-item">Audit Log</div>
-      <div class="admin-nav-item">System Configuration</div>
+      <a class="admin-nav-item active" href="wireframe-SCR-011-admin-settings.html">User Management</a>
+      <a class="admin-nav-item" href="wireframe-SCR-011a-admin-audit-log.html">Audit Log</a>
+      <a class="admin-nav-item" href="wireframe-SCR-011b-admin-system-configuration.html">System Configuration</a>
     </div>
 
     <!-- Content area -->
@@ -191,57 +207,12 @@
               <td><span class="role-chip admin">Admin</span></td>
               <td><span class="status-chip inactive">Inactive</span></td>
               <td>2026-06-30 14:20</td>
-              <td><div class="action-row"><button class="btn-sm edit">Edit</button><button class="btn-sm" style="color:#16A34A;border-color:#16A34A">Re-enable</button></div></td>
+              <td><div class="action-row"><button class="btn-sm edit">Edit</button><button class="btn-sm reenable">Re-enable</button></div></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Audit log section -->
-      <div class="page-header" style="margin-top:8px;">
-        <h1>Audit Log</h1>
-        <button class="btn-export">Export CSV</button>
-      </div>
-
-      <div class="card">
-        <div class="filter-row">
-          <select class="filter-select"><option>Date: Last 7 days</option><option>Last 30 days</option></select>
-          <select class="filter-select"><option>All Users</option><option>d.chen</option><option>n.smith</option></select>
-          <select class="filter-select"><option>All Event Types</option><option>READ</option><option>WRITE</option><option>SIGN</option><option>LOGIN</option></select>
-          <button class="btn-filter">Apply Filters</button>
-          <span class="ann" data-id="UXR-014" style="margin-left:auto">PHI masked in all log entries</span>
-        </div>
-        <div class="audit-row">
-          <span class="audit-time">2026-07-14 14:32</span>
-          <span class="audit-user">n.smith</span>
-          <span class="audit-action">READ</span>
-          <span class="audit-target">Patient encounter #2041 (MRN: ●●●●●●)</span>
-        </div>
-        <div class="audit-row">
-          <span class="audit-time">2026-07-14 14:30</span>
-          <span class="audit-user">d.chen</span>
-          <span class="audit-action">SIGN</span>
-          <span class="audit-target">Document #8812 — Discharge Summary</span>
-        </div>
-        <div class="audit-row">
-          <span class="audit-time">2026-07-14 14:28</span>
-          <span class="audit-user">m.phil</span>
-          <span class="audit-action">WRITE</span>
-          <span class="audit-target">Medication reconciliation #5501 — Alert resolved</span>
-        </div>
-        <div class="audit-row">
-          <span class="audit-time">2026-07-14 14:15</span>
-          <span class="audit-user">c.johnson</span>
-          <span class="audit-action">WRITE</span>
-          <span class="audit-target">Bed assignment — Bed 4W-03 assigned to encounter #2045</span>
-        </div>
-        <div class="audit-row">
-          <span class="audit-time">2026-07-14 09:10</span>
-          <span class="audit-user">d.chen</span>
-          <span class="audit-action">LOGIN</span>
-          <span class="audit-target">SSO authentication — MFA verified — IP: ●●●.●.●.●</span>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -253,8 +224,7 @@
       <span class="chip on">Default — User Mgmt (shown)</span>
       <span class="chip">Add user modal — role picker</span>
       <span class="chip">Disable user confirm — "revokes all sessions"</span>
-      <span class="chip">Audit log — filter applied</span>
-      <span class="chip">Export in progress — spinner</span>
+      <span class="chip">System config — toggle changed</span>
     </div>
   </div>
   <div class="panel">
@@ -306,5 +276,57 @@
   </div>
 </div>
 
+<!-- Add/Edit User Modal -->
+<div id="wf-user-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="wf-user-modal-title">Add User</h3>
+      <button class="modal-close" data-modal-close>&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="wf-user-name" placeholder="e.g. Smith, Nancy"/>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="wf-user-email" placeholder="n.smith@hospital.org"/>
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="wf-user-role">
+          <option>Nurse</option>
+          <option>Physician</option>
+          <option>Pharmacist</option>
+          <option>BedManager</option>
+          <option>Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unit Assignment</label>
+        <select id="wf-user-unit">
+          <option>4-West</option>
+          <option>3-North</option>
+          <option>ICU</option>
+          <option>Emergency</option>
+          <option>Surgery</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="wf-user-status">
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" data-modal-close>Cancel</button>
+      <button class="btn-primary" id="wf-user-save">Save User</button>
+    </div>
+  </div>
+</div>
+
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>

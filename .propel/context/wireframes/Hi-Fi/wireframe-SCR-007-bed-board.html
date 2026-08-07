@@ -174,9 +174,9 @@
           <span class="rec-bed secondary">3N-12</span>
         </div>
         <div class="ed-alert-actions">
-          <button class="btn-assign">Assign 4W-03 →</button>
-          <button class="btn-ghost-small">View All Available</button>
-          <button class="btn-ghost-small">Dismiss ✗</button>
+          <button id="ed-assign" class="btn-assign">Assign 4W-03 →</button>
+          <button id="ed-view-available" class="btn-ghost-small">View All Available</button>
+          <button id="ed-dismiss" class="btn-ghost-small">Dismiss ✗</button>
         </div>
       </div>
     </div>
@@ -185,7 +185,7 @@
     <div class="unit-section">
       <h2>Unit 4-West (8 beds shown)</h2>
       <div class="bed-grid">
-        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=smith'" title="Open patient detail" data-patient="smith">
           <div class="bed-id">4W-01</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Smith, J.</div>
@@ -202,14 +202,14 @@
           <div class="bed-status">Clean</div>
           <div class="bed-patient" style="color:var(--bed-clean-text)">AVAILABLE ✓</div>
         </div>
-        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=patel'" title="Open patient detail" data-patient="patel">
           <div class="bed-id">4W-04</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Patel, R.</div>
           <div class="bed-risk med">0.45 MED</div>
           <div class="bed-dc">DC est: 32h</div>
         </div>
-        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=jones'" title="Open patient detail" data-patient="jones">
           <div class="bed-id">4W-05</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Jones, M.</div>
@@ -221,7 +221,7 @@
           <div class="bed-status">Blocked</div>
           <div class="bed-patient" style="color:var(--bed-blocked-text)">Maintenance</div>
         </div>
-        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html'" title="Open patient detail">
+        <div class="bed-tile occupied" style="cursor:pointer" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=nguyen'" title="Open patient detail" data-patient="nguyen">
           <div class="bed-id">4W-07</div>
           <div class="bed-status">Occupied</div>
           <div class="bed-patient">Nguyen, L.</div>
@@ -310,5 +310,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>

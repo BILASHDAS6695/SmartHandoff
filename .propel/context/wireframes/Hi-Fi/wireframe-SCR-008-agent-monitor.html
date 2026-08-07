@@ -89,6 +89,24 @@
     .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1.5px solid var(--color-border-default);color:var(--color-text-secondary);}
     .chip.on{background:var(--color-alert-info-bg);border-color:var(--color-brand-primary);color:var(--color-brand-primary);}
     .uxr-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+
+    /* Modals */
+    .wf-modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:24px; }
+    .wf-modal.active { display:flex; }
+    .wf-modal-box { background:#fff; border-radius:12px; width:100%; max-width:520px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 25px -5px rgba(0,0,0,.2); }
+    .wf-modal-header { padding:16px 20px; border-bottom:1px solid var(--color-border-default); display:flex; align-items:center; justify-content:space-between; }
+    .wf-modal-header h3 { font-size:14px; font-weight:700; margin:0; }
+    .wf-modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--color-text-secondary); }
+    .wf-modal-body { padding:20px; font-size:13px; line-height:1.5; }
+    .wf-modal-footer { padding:14px 20px; border-top:1px solid var(--color-border-default); display:flex; justify-content:flex-end; gap:8px; }
+    .wf-modal-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--color-border-default); background:#fff; }
+    .wf-modal-btn.primary { background:var(--color-brand-primary); color:#fff; border-color:var(--color-brand-primary); }
+    .wf-modal-btn.danger { background:var(--color-alert-critical); color:#fff; border-color:var(--color-alert-critical); }
+    .wf-detail-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--color-border-default); }
+    .wf-detail-row:last-child { border-bottom:none; }
+    .wf-detail-label { color:var(--color-text-secondary); font-weight:500; }
+    .wf-detail-value { font-weight:600; }
+    .wf-log-box { background:#111827; color:#E5E7EB; padding:12px; border-radius:8px; font-family:monospace; font-size:11px; line-height:1.6; overflow-x:auto; }
   </style>
 </head>
 <body>
@@ -198,31 +216,31 @@
         <span style="background:var(--color-alert-critical-bg);color:var(--color-alert-critical);border-radius:var(--radius-full);padding:2px 8px;font-size:11px;font-weight:700;">3 tasks</span>
       </div>
       <div style="padding:16px;">
-        <div class="failed-task">
+        <div class="failed-task" data-task-id="8821" data-attempt="3" data-error="FHIR endpoint timeout after 30s" data-patient="smith">
           <div class="failed-task-title">Task #8821 — Medication Reconciliation — Encounter #2041 (Smith, J.)</div>
           <div class="failed-task-meta">Error: FHIR endpoint timeout after 30s &nbsp;|&nbsp; Attempt: 3/3 &nbsp;|&nbsp; Failed at: 14:28:14</div>
           <div class="failed-task-actions">
-            <button class="btn-sm info">View Details</button>
-            <button class="btn-sm primary">Retry</button>
-            <button class="btn-sm secondary">Escalate to On-Call</button>
+            <button class="btn-sm info btn-view-details">View Details</button>
+            <button class="btn-sm primary btn-retry">Retry</button>
+            <button class="btn-sm secondary btn-escalate">Escalate to On-Call</button>
           </div>
         </div>
-        <div class="failed-task">
+        <div class="failed-task" data-task-id="8819" data-attempt="2" data-error="Drug interaction database timeout" data-patient="patel">
           <div class="failed-task-title">Task #8819 — Medication Reconciliation — Encounter #2039 (Patel, R.)</div>
           <div class="failed-task-meta">Error: Drug interaction database timeout &nbsp;|&nbsp; Attempt: 2/3 &nbsp;|&nbsp; Failed at: 14:22:05</div>
           <div class="failed-task-actions">
-            <button class="btn-sm info">View Details</button>
-            <button class="btn-sm primary">Retry</button>
-            <button class="btn-sm secondary">Escalate to On-Call</button>
+            <button class="btn-sm info btn-view-details">View Details</button>
+            <button class="btn-sm primary btn-retry">Retry</button>
+            <button class="btn-sm secondary btn-escalate">Escalate to On-Call</button>
           </div>
         </div>
-        <div class="failed-task">
+        <div class="failed-task" data-task-id="8815" data-attempt="1" data-error="Vertex AI quota exceeded" data-patient="nguyen">
           <div class="failed-task-title">Task #8815 — Documentation — Encounter #2035 (Lee, K.)</div>
           <div class="failed-task-meta">Error: Vertex AI quota exceeded &nbsp;|&nbsp; Attempt: 1/3 &nbsp;|&nbsp; Failed at: 14:09:44</div>
           <div class="failed-task-actions">
-            <button class="btn-sm info">View Details</button>
-            <button class="btn-sm primary">Retry</button>
-            <button class="btn-sm secondary">Escalate to On-Call</button>
+            <button class="btn-sm info btn-view-details">View Details</button>
+            <button class="btn-sm primary btn-retry">Retry</button>
+            <button class="btn-sm secondary btn-escalate">Escalate to On-Call</button>
           </div>
         </div>
       </div>
@@ -240,6 +258,59 @@
           <div class="infra-metric"><span class="infra-label">Vertex AI calls (1h):</span><span class="infra-value">18 / 60 quota</span></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Monitor Modals -->
+<div id="wf-modal-task-details" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Failed Task Details</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <div class="wf-detail-row"><span class="wf-detail-label">Task ID</span><span class="wf-detail-value" id="detail-task-id">—</span></div>
+      <div class="wf-detail-row"><span class="wf-detail-label">Agent</span><span class="wf-detail-value" id="detail-task-agent">—</span></div>
+      <div class="wf-detail-row"><span class="wf-detail-label">Encounter</span><span class="wf-detail-value" id="detail-task-encounter">—</span></div>
+      <div class="wf-detail-row"><span class="wf-detail-label">Patient</span><span class="wf-detail-value" id="detail-task-patient">—</span></div>
+      <div class="wf-detail-row"><span class="wf-detail-label">Failed at</span><span class="wf-detail-value" id="detail-task-time">—</span></div>
+      <div class="wf-detail-row"><span class="wf-detail-label">Attempt</span><span class="wf-detail-value" id="detail-task-attempt">—</span></div>
+      <div style="margin-top:12px;font-weight:600;margin-bottom:6px;">Error Log</div>
+      <div class="wf-log-box" id="detail-task-log">No log available.</div>
+    </div>
+    <div class="wf-modal-footer"><button class="wf-modal-btn" data-modal-close>Close</button></div>
+  </div>
+</div>
+
+<div id="wf-modal-retry" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Retry Failed Task</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p>You are about to retry <strong id="retry-task-title">Task #—</strong>.</p>
+      <p style="color:var(--color-text-secondary)">This will reset the attempt counter and re-queue the task. The care team will be notified on success or failure.</p>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-modal-btn" data-modal-close>Cancel</button>
+      <button class="wf-modal-btn primary" id="btn-confirm-retry">Retry Task</button>
+    </div>
+  </div>
+</div>
+
+<div id="wf-modal-escalate" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Escalate to On-Call Engineer</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p>Escalate <strong id="escalate-task-title">Task #—</strong> to the on-call engineering team.</p>
+      <label style="display:block;margin:12px 0 6px;font-size:12px;font-weight:600;">Urgency</label>
+      <select id="escalate-urgency" style="width:100%;padding:8px;border:1px solid var(--color-border-default);border-radius:6px;">
+        <option value="P3">P3 — Normal</option>
+        <option value="P2">P2 — High</option>
+        <option value="P1">P1 — Critical</option>
+      </select>
+      <label style="display:block;margin:12px 0 6px;font-size:12px;font-weight:600;">Notes for on-call</label>
+      <textarea id="escalate-notes" rows="3" style="width:100%;padding:8px;border:1px solid var(--color-border-default);border-radius:6px;resize:vertical;" placeholder="Add context for the on-call engineer..."></textarea>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-modal-btn" data-modal-close>Cancel</button>
+      <button class="wf-modal-btn danger" id="btn-confirm-escalate">Escalate Now</button>
     </div>
   </div>
 </div>
@@ -303,5 +374,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>
