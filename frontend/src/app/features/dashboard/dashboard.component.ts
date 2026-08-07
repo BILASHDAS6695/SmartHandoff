@@ -21,22 +21,15 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, interval } from 'rxjs';
 
 import { SignalRService, TaskUpdatedPayload, JoinGroupsRequest } from '../../core/signalr';
 import { EncounterTasksApiService } from '../../core/api';
 import { AgentTaskResponse, TaskStatus } from '../../core/models';
 import { AuthService } from '../../core/auth/auth.service';
-
-/** ADT event feed item. */
-export interface AdtEvent {
-  id: string;
-  unit: string;
-  patient: string;
-  event_type: string;
-  location: string;
-  time: string;
-}
+import { PatientApiService } from '../patients/services/patient-api.service';
+import { PatientSummary } from '../patients/models/patient.model';
+import { LiveAdtFeedComponent } from './components/live-adt-feed/live-adt-feed.component';
 
 /** Active patient risk overview item. */
 export interface ActivePatient {
@@ -56,7 +49,7 @@ export interface AgentStatus {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule],
+  imports: [CommonModule, RouterModule, MatIconModule, LiveAdtFeedComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -64,10 +57,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly signalR = inject(SignalRService);
   private readonly tasksApi = inject(EncounterTasksApiService);
+  private readonly patientApi = inject(PatientApiService);
   private readonly authService = inject(AuthService);
 
   private taskSub?: Subscription;
   private documentCreatedSub?: Subscription;
+  private pollSub?: Subscription;
+  private readonly POLL_INTERVAL_MS = 30_000;
   
   // Reactive state using signals
   readonly encounterId = signal<string>('');
@@ -75,24 +71,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly isLoading = signal<boolean>(true);
   readonly isReconnecting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly adtPaused = signal<boolean>(false);
 
-  // Wireframe data signals
+  // User and timestamp signals
   readonly currentUserName = signal<string>('Nancy');
   readonly lastUpdated = signal<string>(new Date().toLocaleTimeString());
-  readonly adtEvents = signal<AdtEvent[]>([
-    { id: '1', unit: 'A03', patient: 'Smith, J', event_type: 'Discharge', location: 'Unit 4W', time: '14:32' },
-    { id: '2', unit: 'A01', patient: 'Patel, R', event_type: 'Admit', location: 'Unit 3N', time: '14:29' },
-    { id: '3', unit: 'A02', patient: 'Nguyen, L', event_type: 'Transfer', location: '4W → ICU', time: '14:25' },
-    { id: '4', unit: 'A01', patient: 'Garcia, M', event_type: 'Admit', location: 'Unit 3N', time: '14:18' },
-    { id: '5', unit: 'A03', patient: 'Lee, K', event_type: 'Discharge', location: 'Unit 5E', time: '14:12' },
-  ]);
-  readonly activePatients = signal<ActivePatient[]>([
-    { id: 'p1', name: 'Smith, John', riskScore: 0.82, riskLevel: 'HIGH' },
-    { id: 'p2', name: 'Garcia, Maria', riskScore: 0.75, riskLevel: 'HIGH' },
-    { id: 'p3', name: 'Patel, Rita', riskScore: 0.45, riskLevel: 'MED' },
-    { id: 'p4', name: 'Nguyen, Lee', riskScore: 0.18, riskLevel: 'LOW' },
-  ]);
+
+  // Live data signals
+  readonly patients = signal<PatientSummary[]>([]);
   readonly agentStatusList = signal<AgentStatus[]>([
     { name: 'Transition Coordinator', status: 'Active' },
     { name: 'Documentation', status: 'Active' },
@@ -102,50 +87,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { name: 'Patient Communications', status: 'Active' },
   ]);
 
-  // Static mock tasks for wireframe preview
-  readonly mockTasks = signal<AgentTaskResponse[]>([
-    {
-      id: 'task-1',
-      encounter_id: 'enc-001',
-      agent_type: 'medication_reconciliation',
-      status: TaskStatus.PENDING,
-      start_time: new Date().toISOString(),
-      unit_id: '4-West',
-      target_role: 'pharmacist',
-      completed_time: null,
-      payload: null,
-      output: null,
-    },
-    {
-      id: 'task-2',
-      encounter_id: 'enc-002',
-      agent_type: 'discharge_summary',
-      status: TaskStatus.PENDING,
-      start_time: new Date().toISOString(),
-      unit_id: '3-North',
-      target_role: 'physician',
-      completed_time: null,
-      payload: null,
-      output: null,
-    },
-    {
-      id: 'task-3',
-      encounter_id: 'enc-003',
-      agent_type: 'follow_up_care',
-      status: TaskStatus.IN_PROGRESS,
-      start_time: new Date().toISOString(),
-      unit_id: 'ICU',
-      target_role: 'nurse',
-      completed_time: null,
-      payload: null,
-      output: null,
-    },
-  ]);
-
   readonly taskPriority = signal<Record<string, 'urgent' | 'critical' | 'normal'>>({
-    'task-1': 'urgent',
-    'task-2': 'critical',
-    'task-3': 'normal',
+    'medication_reconciliation': 'urgent',
+    'discharge_summary': 'critical',
+    'follow_up_care': 'normal',
   });
 
   readonly taskDisplayName = signal<Record<string, string>>({
@@ -153,6 +98,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
     'discharge_summary': 'Discharge Summary Review',
     'follow_up_care': 'Follow-up Care Plan',
   });
+
+  /** Map encounter_id → "Last, First" for task subtitles. */
+  readonly patientNameMap = computed<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const p of this.patients()) {
+      map[p.encounter_id] = `${p.last_name}, ${p.first_name}`;
+    }
+    return map;
+  });
+
+  /** Active patients derived from the live patient list. */
+  readonly activePatients = computed<ActivePatient[]>(() =>
+    this.patients()
+      .filter(p => p.risk_score != null)
+      .map(p => ({
+        id: p.encounter_id,
+        name: `${p.first_name} ${p.last_name}`,
+        riskScore: p.risk_score ?? 0,
+        riskLevel: this._riskTierToLevel(p.risk_tier),
+      }))
+  );
 
   // Computed signals for derived state
   readonly pendingTasks = computed(() => 
@@ -202,53 +168,47 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Extract encounter ID from route params
+    // Extract optional encounter ID from route params, then load live data
     this.route.params.subscribe(params => {
-      const encounterId = params['encounterId'] || params['id'];
-      if (encounterId) {
-        this.encounterId.set(encounterId);
-        this._initialize(encounterId);
-      } else {
-        // Wireframe mode: show dashboard with static mock data
-        this.tasks.set(this.mockTasks());
-        this.errorMessage.set(null);
-        this.isLoading.set(false);
-      }
+      const encounterId = params['encounterId'] || params['id'] || '';
+      this.encounterId.set(encounterId);
+      void this._initialize(encounterId);
     });
   }
 
   ngOnDestroy(): void {
     this.taskSub?.unsubscribe();
     this.documentCreatedSub?.unsubscribe();
+    this.pollSub?.unsubscribe();
     void this.signalR.disconnect();
   }
 
   /**
-   * Refresh tasks manually — useful when user suspects stale data.
+   * Refresh tasks and patients manually — useful when user suspects stale data.
    */
   refreshTasks(): void {
     const encounterId = this.encounterId();
     this.lastUpdated.set(new Date().toLocaleTimeString());
-    if (!encounterId) return;
 
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.tasksApi.getTasksForEncounter(encounterId).subscribe({
-      next: tasks => {
+    forkJoin({
+      tasks: encounterId
+        ? this.tasksApi.getTasksForEncounter(encounterId)
+        : this.tasksApi.getMyTasks(),
+      patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+    }).subscribe({
+      next: ({ tasks, patients }) => {
         this.tasks.set(tasks);
+        this.patients.set(patients.items ?? []);
         this.isLoading.set(false);
       },
       error: error => {
-        this.errorMessage.set(`Failed to refresh tasks: ${error.message}`);
+        this.errorMessage.set(`Failed to refresh dashboard: ${error.message}`);
         this.isLoading.set(false);
       }
     });
-  }
-
-  /** Toggle ADT feed pause/resume. */
-  toggleAdtFeed(): void {
-    this.adtPaused.update(paused => !paused);
   }
 
   // ---------------------------------------------------------------------------
@@ -257,24 +217,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private async _initialize(encounterId: string): Promise<void> {
     try {
-      // 1. Fetch initial task list
-      await this._loadInitialTasks(encounterId);
+      this.isLoading.set(true);
+      this.errorMessage.set(null);
+      this.lastUpdated.set(new Date().toLocaleTimeString());
 
-      // 2. Start SignalR connection with group subscriptions
       const currentUser = this.authService.currentUser();
       if (!currentUser) {
         throw new Error('User not authenticated');
       }
 
+      // 1. Load tasks and patients in parallel
+      await this._loadDashboardData(encounterId, currentUser);
+
+      // 2. Start SignalR connection with group subscriptions (best-effort)
+      //    Local development does not run Azure SignalR Service, so a missing
+      //    hub is expected. We degrade to REST polling instead of failing init.
       const joinRequest: JoinGroupsRequest = {
         units: currentUser.units || [],
         roles: [currentUser.role],
       };
 
-      await this.signalR.connect(joinRequest);
-
-      // 3. Subscribe to real-time task updates
-      this._subscribeToTaskUpdates();
+      try {
+        await this.signalR.connect(joinRequest);
+        this._subscribeToTaskUpdates();
+      } catch (signalrError) {
+        console.warn('SignalR real-time hub unavailable; falling back to polling:', signalrError);
+        this._startPolling(joinRequest);
+      }
 
       this.isLoading.set(false);
     } catch (error) {
@@ -283,11 +252,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async _loadInitialTasks(encounterId: string): Promise<void> {
+  private async _loadDashboardData(encounterId: string, currentUser: { role: string; units?: string[] }): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.tasksApi.getTasksForEncounter(encounterId).subscribe({
-        next: tasks => {
+      forkJoin({
+        tasks: encounterId
+          ? this.tasksApi.getTasksForEncounter(encounterId)
+          : this.tasksApi.getMyTasks(),
+        patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+      }).subscribe({
+        next: ({ tasks, patients }) => {
           this.tasks.set(tasks);
+          this.patients.set(patients.items ?? []);
           resolve();
         },
         error: error => {
@@ -337,20 +312,60 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  getPatientName(encounterId: string): string {
-    const map: Record<string, string> = {
-      'enc-001': 'Smith, John',
-      'enc-002': 'Garcia, Maria',
-      'enc-003': 'Nguyen, Lee',
-    };
-    return map[encounterId] || 'Unknown Patient';
+  /**
+   * REST fallback for real-time updates when SignalR hub is unavailable.
+   * Refreshes tasks and patients on a fixed interval without blocking the UI.
+   */
+  private _startPolling(joinRequest: JoinGroupsRequest): void {
+    this.pollSub?.unsubscribe();
+    this.pollSub = interval(this.POLL_INTERVAL_MS).subscribe(() => {
+      const encounterId = this.encounterId();
+      const currentUser = this.authService.currentUser();
+      if (!currentUser) return;
+
+      forkJoin({
+        tasks: encounterId
+          ? this.tasksApi.getTasksForEncounter(encounterId)
+          : this.tasksApi.getMyTasks(),
+        patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+      }).subscribe({
+        next: ({ tasks, patients }) => {
+          this.tasks.set(tasks);
+          this.patients.set(patients.items ?? []);
+          this.lastUpdated.set(new Date().toLocaleTimeString());
+        },
+        error: error => {
+          console.error('Dashboard polling refresh failed:', error);
+        }
+      });
+    });
   }
 
-  getDueTime(startTime: string): string {
+  getPatientName(encounterId: string): string {
+    return this.patientNameMap()[encounterId] || 'Unknown Patient';
+  }
+
+  private _riskTierToLevel(tier: string): ActivePatient['riskLevel'] {
+    switch (tier?.toUpperCase()) {
+      case 'HIGH':
+        return 'HIGH';
+      case 'MEDIUM':
+        return 'MED';
+      case 'LOW':
+        return 'LOW';
+      default:
+        return 'LOW';
+    }
+  }
+
+  getDueTime(startTime: string | null | undefined): string {
+    if (!startTime) return '—';
     const start = new Date(startTime);
+    if (isNaN(start.getTime())) return '—';
     const now = new Date();
     const diffMs = now.getTime() - start.getTime();
     const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ago`;
@@ -374,12 +389,4 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return labels[level] ?? level;
   }
 
-  getAdtTagClass(unitCode: string): string {
-    const map: Record<string, string> = {
-      'A01': 'a01',
-      'A02': 'a02',
-      'A03': 'a03',
-    };
-    return map[unitCode] ?? 'a02';
-  }
 }

@@ -45,7 +45,7 @@
                 <div class="task-subtitle">{{ getPatientName(task.encounter_id) }} — Unit {{ task.unit_id ?? '—' }}</div>
               </div>
               <div class="task-meta">
-                <span class="priority" [class]="'priority-' + (taskPriority()[task.id] || 'normal')">{{ getPriorityLabel(taskPriority()[task.id]) }}</span>
+                <span class="priority" [class]="'priority-' + (taskPriority()[task.agent_type] || 'normal')">{{ getPriorityLabel(taskPriority()[task.agent_type]) }}</span>
                 <span class="due-time">Due {{ getDueTime(task.start_time) }}</span>
               </div>
             </li>
@@ -59,25 +59,7 @@
 
       <!-- Live ADT Event Feed -->
       <section class="dashboard-card adt-feed" aria-labelledby="adt-feed-title">
-        <div class="card-header">
-          <h2 id="adt-feed-title">Live ADT Event Feed</h2>
-          <button class="link-pause" (click)="toggleAdtFeed()">
-            <mat-icon aria-hidden="true">pause</mat-icon>
-            <span>{{ adtPaused() ? 'Resume' : 'Pause' }}</span>
-          </button>
-        </div>
-        <ul class="feed-list">
-          @for (event of adtEvents(); track event.id) {
-            <li class="feed-row">
-              <span class="event-tag" [class]="getAdtTagClass(event.unit)">{{ event.unit }}</span>
-              <span class="event-detail">{{ event.patient }} — {{ event.event_type }} — {{ event.location }}</span>
-              <span class="event-time">{{ event.time }}</span>
-            </li>
-          }
-          @if (adtEvents().length === 0) {
-            <li class="empty-state">No recent ADT events</li>
-          }
-        </ul>
+        <app-live-adt-feed></app-live-adt-feed>
       </section>
 
       <!-- Active Patients — Risk Overview -->

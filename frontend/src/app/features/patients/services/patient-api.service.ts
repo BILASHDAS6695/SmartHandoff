@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { PatientListQuery, PatientListResponse } from '../models/patient.model';
+import { PatientDetail, PatientListQuery, PatientListResponse } from '../models/patient.model';
 
 /**
  * HTTP client for the patient list API endpoint.
@@ -31,5 +31,13 @@ export class PatientApiService {
     }
 
     return this.http.get<PatientListResponse>(this.baseUrl, { params });
+  }
+
+  /**
+   * Fetches detailed data for a single patient encounter.
+   * @param encounterId - Encounter UUID (returned by list endpoint)
+   */
+  getPatient(encounterId: string): Observable<PatientDetail> {
+    return this.http.get<PatientDetail>(`${this.baseUrl}/${encounterId}`);
   }
 }

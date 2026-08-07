@@ -11,7 +11,7 @@
  * Design: Standalone Angular service using HttpClient with JWT interceptor.
  */
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
 
@@ -38,6 +38,27 @@ export class EncounterTasksApiService {
       .get<AgentTaskResponse[]>(`${this.baseUrl}/encounters/${encounterId}/tasks`)
       .pipe(
         retry(2), // Retry up to 2 times on transient failures
+        catchError(this._handleError)
+      );
+  }
+
+  /**
+   * Fetches tasks assigned to the current user across all encounters.
+   *
+   * Used by DashboardComponent when no encounter context is present.
+   *
+   * @param status - Optional status filter
+   * @returns Observable of task array
+   */
+  getMyTasks(status?: string): Observable<AgentTaskResponse[]> {
+    let params = new HttpParams();
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http
+      .get<AgentTaskResponse[]>(`${this.baseUrl}/tasks`, { params })
+      .pipe(
+        retry(2),
         catchError(this._handleError)
       );
   }

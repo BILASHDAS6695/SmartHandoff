@@ -31,3 +31,19 @@ export interface PatientListQuery {
   page?: number;
   page_size?: number;
 }
+
+/** Detailed patient/encounter record as returned by GET /api/v1/patients/{id} */
+export interface PatientDetail {
+  encounter_id: string;
+  patient_id: string;
+  mrn_masked: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+  current_unit: string;
+  room_number: string;
+  status: string;
+  risk_tier: RiskTier;
+  risk_score: number | null;
+  admission_date: string;
+}
