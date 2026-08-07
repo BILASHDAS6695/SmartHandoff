@@ -1,0 +1,143 @@
+<main class="profile-main">
+  <div class="profile-col">
+    <div class="page-header">
+      <div>
+        <h1>My Profile</h1>
+        <div class="sub">Manage your account, preferences, and active sessions.</div>
+      </div>
+    </div>
+
+    <!-- Identity -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Identity</h2>
+        <span class="ann" data-id="UXR-027">Read-only ID from SSO</span>
+      </div>
+      <div class="card-body">
+        <div class="identity">
+          <div class="avatar-lg" aria-hidden="true">{{ getUserInitials() }}</div>
+          <div class="identity-info">
+            <div class="name">{{ displayName() }}</div>
+            <div class="email">{{ currentUser()?.email ?? 'it.admin@hospital.org' }}</div>
+            <span class="role-chip">{{ getRoleLabel() }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Preferences -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Preferences</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="wf-profile-name">Display Name</label>
+          <input
+            id="wf-profile-name"
+            type="text"
+            [(ngModel)]="preferences().displayName"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="wf-profile-unit">Default Unit</label>
+            <select id="wf-profile-unit" [(ngModel)]="preferences().defaultUnit">
+              @for (unit of units; track unit) {
+                <option [value]="unit">{{ unit }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wf-profile-phone">Phone (for secure alerts)</label>
+            <input
+              id="wf-profile-phone"
+              type="text"
+              [(ngModel)]="preferences().phone"
+            />
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="label">Email notifications</div>
+            <div class="desc">Receive daily handoff digests and critical alerts.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="preferences().emailNotifications" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="label">Push alerts to mobile</div>
+            <div class="desc">Instant notifications for high-risk medication flags.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="preferences().pushAlerts" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="label">Compact patient cards</div>
+            <div class="desc">Show less detail per row on patient lists.</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" [(ngModel)]="preferences().compactCards" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-actions">
+      <button class="btn-secondary" (click)="onBack()">Back</button>
+      <button class="btn-primary" (click)="onSave()">Save Changes</button>
+    </div>
+  </div>
+
+  <div class="side-col">
+    <!-- Active Sessions -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Active Sessions</h2>
+      </div>
+      <div class="card-body session-list">
+        @for (session of sessions(); track session.id) {
+          <div class="session-row" [class.revoked]="!!session.revoked">
+            <div class="session-info">
+              <div class="device">{{ session.device }}</div>
+              <div class="loc">
+                @if (session.isCurrent) {
+                  Current session · {{ session.location }}
+                } @else {
+                  Last active {{ session.lastActive }}
+                }
+              </div>
+            </div>
+            @if (session.isCurrent) {
+              <span class="active-status">Active</span>
+            } @else if (!session.revoked) {
+              <button class="btn-xs" (click)="revokeSession(session.id)">Revoke</button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Security -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Security</h2>
+      </div>
+      <div class="card-body security-stack">
+        <button class="btn-secondary" (click)="openChangePassword()">Change Password</button>
+        <button class="btn-danger" (click)="openSignOutAll()">Sign Out All Devices</button>
+      </div>
+    </section>
+  </div>
+</main>

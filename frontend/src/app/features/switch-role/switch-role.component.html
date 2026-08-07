@@ -1,0 +1,60 @@
+<main class="switch-role-main">
+  <div class="page-header">
+    <div>
+      <h1>Switch Role</h1>
+      <div class="sub">Choose the role and unit context for this session.</div>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Available Roles</h2>
+      <span class="ann" data-id="UXR-028">Context-aware dashboard reload</span>
+    </div>
+    <div class="card-body">
+      <div class="role-grid">
+        @for (role of roles; track role.id) {
+          <div
+            class="role-card"
+            [class.selected]="selectedRole() === role.id"
+            [style.--role-bg]="role.bgColor"
+            [style.--role-color]="role.iconColor"
+            (click)="selectRole(role.id)">
+
+            <div class="check">
+              <svg viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            <div class="icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.5">
+                <path [attr.d]="role.icon" />
+              </svg>
+            </div>
+
+            <div class="title">{{ role.title }}</div>
+            <div class="desc">{{ role.description }}</div>
+          </div>
+        }
+      </div>
+
+      <div class="context-row">
+        <span><strong>Session unit:</strong></span>
+        <select id="wf-switch-unit" [(ngModel)]="selectedUnit">
+          @for (unit of units; track unit) {
+            <option [value]="unit">{{ unit }}</option>
+          }
+        </select>
+        <span class="current-context">
+          Current: <strong>{{ currentRole() }}</strong> · {{ currentUnit() }}
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-actions">
+    <button class="btn-secondary" (click)="onCancel()">Cancel</button>
+    <button class="btn-primary" id="wf-confirm-switch" (click)="onConfirm()">Confirm Switch</button>
+  </div>
+</main>

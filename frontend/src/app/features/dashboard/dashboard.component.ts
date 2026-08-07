@@ -355,4 +355,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const diffHours = Math.floor(diffMins / 60);
     return `${diffHours}h ago`;
   }
+
+  getPriorityLabel(priority: 'urgent' | 'critical' | 'normal' | undefined): string {
+    const labels: Record<string, string> = {
+      urgent: 'URGENT',
+      critical: 'CRITICAL',
+      normal: 'NORMAL',
+    };
+    return labels[priority ?? 'normal'] ?? 'NORMAL';
+  }
+
+  getRiskLabel(level: ActivePatient['riskLevel']): string {
+    const labels: Record<string, string> = {
+      HIGH: 'HIGH',
+      MED: 'MED',
+      LOW: 'LOW',
+    };
+    return labels[level] ?? level;
+  }
+
+  getAdtTagClass(unitCode: string): string {
+    const map: Record<string, string> = {
+      'A01': 'a01',
+      'A02': 'a02',
+      'A03': 'a03',
+    };
+    return map[unitCode] ?? 'a02';
+  }
 }

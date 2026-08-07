@@ -56,6 +56,18 @@ export const routes: Routes = [
       import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
   {
+    path: 'profile',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES),
+  },
+  {
+    path: 'switch-role',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/switch-role/switch-role.routes').then((m) => m.SWITCH_ROLE_ROUTES),
+  },
+  {
     path: 'portal',
     loadChildren: () =>
       import('./features/patient-portal/patient-portal.routes').then(
