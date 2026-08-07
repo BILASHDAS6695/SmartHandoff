@@ -55,6 +55,29 @@ export const routes: Routes = [
     loadChildren: () =>
       import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
+  {    path: 'admin/audit-log',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/admin/audit-log/audit-log.routes').then((m) => m.AUDIT_LOG_ROUTES),
+  },
+  {    path: 'admin/system-configuration',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/admin/system-configuration/system-configuration.routes').then(
+        (m) => m.SYSTEM_CONFIGURATION_ROUTES,
+      ),
+  },
+  {    path: 'profile',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES),
+  },
+  {
+    path: 'switch-role',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/switch-role/switch-role.routes').then((m) => m.SWITCH_ROLE_ROUTES),
+  },
   {
     path: 'portal',
     loadChildren: () =>

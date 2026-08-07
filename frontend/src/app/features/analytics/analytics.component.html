@@ -22,6 +22,12 @@
   </div>
 
   <!-- KPI Tiles -->
+  @if (isLoading()) {
+    <div class="kpi-grid" aria-busy="true">Loading KPIs…</div>
+  }
+  @if (loadError()) {
+    <div class="kpi-error" role="alert">{{ loadError() }}</div>
+  }
   <div class="kpi-grid">
     @for (kpi of kpiCards(); track kpi.label) {
       <div class="kpi-card">

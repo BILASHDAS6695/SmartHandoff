@@ -1,3 +1,9 @@
+<!-- Back button -->
+<button class="back-btn" (click)="goBack()">
+  <mat-icon>arrow_back</mat-icon>
+  Back to Patient
+</button>
+
 <!-- Loading state -->
 <div *ngIf="isLoading()" class="med-review__loading" aria-busy="true" aria-label="Loading medication reconciliation">
   <mat-spinner diameter="40"></mat-spinner>

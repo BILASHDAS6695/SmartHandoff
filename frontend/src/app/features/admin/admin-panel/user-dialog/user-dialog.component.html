@@ -1,0 +1,56 @@
+<div class="modal-header">
+  <h3>{{ title }}</h3>
+  <button class="modal-close" (click)="onCancel()">&times;</button>
+</div>
+
+<div class="modal-body">
+  <div class="form-group">
+    <label for="wf-user-name">Full Name</label>
+    <input
+      id="wf-user-name"
+      type="text"
+      [(ngModel)]="user.name"
+      placeholder="e.g. Smith, Nancy" />
+  </div>
+
+  <div class="form-group">
+    <label for="wf-user-email">Email</label>
+    <input
+      id="wf-user-email"
+      type="email"
+      [(ngModel)]="user.email"
+      placeholder="n.smith@hospital.org" />
+  </div>
+
+  <div class="form-group">
+    <label for="wf-user-role">Role</label>
+    <select id="wf-user-role" [(ngModel)]="user.role">
+      @for (role of roles; track role) {
+        <option [value]="role">{{ role }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="wf-user-unit">Unit Assignment</label>
+    <select id="wf-user-unit" [(ngModel)]="user.unit">
+      @for (unit of units; track unit) {
+        <option [value]="unit">{{ unit }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="wf-user-status">Status</label>
+    <select id="wf-user-status" [(ngModel)]="user.status">
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+<div class="modal-footer">
+  <button class="btn-secondary" (click)="onCancel()">Cancel</button>
+  <button class="btn-primary" (click)="onSave()">Save User</button>
+</div>

@@ -11,12 +11,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { KpiFilterParams, KpiResponse } from './analytics.models';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/v1/analytics';
+  private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/analytics`;
 
   /**
    * Fetch KPI data for the given filter parameters.

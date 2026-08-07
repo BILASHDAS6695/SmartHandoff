@@ -57,7 +57,16 @@ export class AuthService {
     private readonly http: HttpClient,
     private readonly router: Router,
     private readonly idleTimeoutService: IdleTimeoutService,
-  ) {}
+  ) {
+    // Restore dev token from sessionStorage in local development only.
+    // Production JWTs are never persisted (US-056); this branch is guarded by devMode.
+    if ((environment as any).devMode === true) {
+      const devToken = sessionStorage.getItem('dev_access_token');
+      if (devToken && !this.#isTokenExpired(devToken)) {
+        this.#tokenSignal.set(devToken);
+      }
+    }
+  }
 
   /**
    * Returns the raw JWT string, or null if not authenticated / token expired.
@@ -127,6 +136,7 @@ export class AuthService {
    */
   clearSession(): void {
     this.#tokenSignal.set(null);
+    sessionStorage.removeItem('dev_access_token');
     this.idleTimeoutService.stop();
     this.router.navigate(['/login']);
   }

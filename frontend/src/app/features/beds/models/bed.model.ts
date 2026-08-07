@@ -17,9 +17,12 @@ export interface BedItem {
   unit: string;
   room: string;
   bedNumber: string;
+  bedType?: string;
   bedStatus: BedStatus;
+  isolationRequired?: boolean;
+  genderDesignation?: string;
   encounterId: string | null;
-  lastUpdated: string; // ISO datetime
+  lastUpdated?: string; // ISO datetime
 
   // US-036 prediction fields
   predictedDischargeTime: string | null;          // ISO datetime UTC

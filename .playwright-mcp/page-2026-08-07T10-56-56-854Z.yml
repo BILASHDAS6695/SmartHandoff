@@ -1,0 +1,4 @@
+- generic [ref=f16e4]:
+  - generic [ref=f16e5]: "TS2551: Property 'mockPatients' does not exist on type 'PatientListComponent'. Did you mean 'patients'?"
+  - generic [ref=f16e6]: src/app/features/patients/components/patient-list/patient-list.component.ts:151:28
+  - generic [ref=f16e8]: Click outside, press Esc key, or fix the code to dismiss.

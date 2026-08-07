@@ -27,16 +27,33 @@
     <div class="header-actions">
 
       <!-- Notification -->
-      <button
-        mat-icon-button
-        class="notification-btn"
-        [matTooltip]="'You have ' + notificationCount + ' notifications'">
+      <div class="notification-wrapper">
+        <button
+          mat-icon-button
+          class="notification-btn"
+          [attr.aria-label]="'Notifications, ' + unreadCount() + ' unread'"
+          [matTooltip]="'You have ' + unreadCount() + ' notifications'"
+          (click)="toggleNotificationPanel(); $event.stopPropagation()">
 
-        <mat-icon>notifications</mat-icon>
+          <mat-icon>notifications</mat-icon>
 
-        <span class="notification-dot"></span>
+          @if (unreadCount() > 0) {
+            <span class="notification-badge" aria-hidden="true">{{ unreadCount() }}</span>
+          }
 
-      </button>
+        </button>
+
+        <app-notification-panel
+          [isOpen]="isNotificationPanelOpen()"
+          [notifications]="notifications()"
+          [unreadCount]="unreadCount()"
+          (closePanel)="closeNotificationPanel()"
+          (notificationClick)="onNotificationClick($event)"
+          (markAsRead)="onMarkAsRead($event)"
+          (dismiss)="onDismiss($event)"
+          (markAllAsRead)="onMarkAllAsRead()">
+        </app-notification-panel>
+      </div>
 
       <!-- User -->
       <button
@@ -68,49 +85,28 @@
   yPosition="below"
   [overlapTrigger]="false">
 
-  <div class="user-menu-header">
-
-    <span class="user-avatar large">
-      {{ getUserInitials() }}
-    </span>
-
-    <div class="user-info">
-
-      <span class="user-email">
-        {{ currentUser()?.email || 'User' }}
-      </span>
-
-      <span class="user-role">
-        {{ currentUser()?.role || 'Staff' }}
-      </span>
-
-    </div>
-
-  </div>
-
-  <mat-divider></mat-divider>
-
   <button
     mat-menu-item
-    (click)="toggleTheme()">
+    (click)="navigateToProfile()">
 
-    <mat-icon>
-      {{ isDarkMode() ? 'light_mode' : 'dark_mode' }}
-    </mat-icon>
-
-    <span>
-      {{ isDarkMode() ? 'Light mode' : 'Dark mode' }}
-    </span>
+    <span>Profile</span>
 
   </button>
 
   <button
     mat-menu-item
+    (click)="switchRole()">
+
+    <span>Switch Role</span>
+
+  </button>
+
+  <button
+    mat-menu-item
+    class="sign-out-item"
     (click)="logout()">
 
-    <mat-icon>logout</mat-icon>
-
-    <span>Logout</span>
+    <span>Sign Out</span>
 
   </button>
 

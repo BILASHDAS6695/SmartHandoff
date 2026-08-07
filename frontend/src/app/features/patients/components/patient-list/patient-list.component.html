@@ -33,12 +33,7 @@
       </mat-select>
     </div>
 
-    <button class="refresh-btn" (click)="retry()" [disabled]="loading()" aria-label="Refresh patient list">
-      <mat-icon>refresh</mat-icon>
-      <span>Refresh</span>
-    </button>
-
-    <span class="phi-badge">UXR-014 PHI masked by default — ● toggle to reveal</span>
+    <span class="ann" data-id="UXR-014">PHI masked by default — ● toggle to reveal</span>
   </div>
 
   <!-- Loading bar -->
@@ -157,7 +152,13 @@
           <!-- No data row -->
           <tr class="mat-row" *matNoDataRow>
             <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
-              No patients found for the selected filters.
+              @if (loading()) {
+                Loading patients…
+              } @else if (error()) {
+                {{ error() }}
+              } @else {
+                No patients found for the selected filters.
+              }
             </td>
           </tr>
         </table>

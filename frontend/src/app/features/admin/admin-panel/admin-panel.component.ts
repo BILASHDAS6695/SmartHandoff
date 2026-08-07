@@ -1,11 +1,17 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
-interface AdminUser {
+import { UserDialogComponent, UserDialogData } from './user-dialog/user-dialog.component';
+
+export interface AdminUser {
   name: string;
   email: string;
   role: string;
+  unit?: string;
   status: 'Active' | 'Inactive';
   lastLogin: string;
 }
@@ -23,11 +29,13 @@ interface AuditLogEntry {
 @Component({
   selector: 'app-admin-panel',
   standalone: true,
-  imports: [CommonModule, MatSelectModule],
+  imports: [CommonModule, FormsModule, RouterModule, MatSelectModule, MatDialogModule],
   templateUrl: './admin-panel.component.html',
   styleUrl: './admin-panel.component.scss',
 })
 export class AdminPanelComponent {
+  private readonly dialog = inject(MatDialog);
+
   readonly activeTab = signal<string>('User Management');
   readonly adminTabs = signal<string[]>(['User Management', 'Audit Log', 'System Configuration']);
 
@@ -75,11 +83,25 @@ export class AdminPanelComponent {
   }
 
   addUser(): void {
-    // Placeholder for add user action
+    const dialogRef = this.dialog.open(UserDialogComponent, {
+      width: '480px',
+      autoFocus: false,
+      data: { mode: 'add' } satisfies UserDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result: AdminUser | undefined) => {
+      if (result) {
+        this.users.update((list) => [...list, result]);
+      }
+    });
   }
 
   editUser(user: AdminUser): void {
-    // Placeholder for edit user action
+    this.dialog.open(UserDialogComponent, {
+      width: '480px',
+      autoFocus: false,
+      data: { mode: 'edit', user } satisfies UserDialogData,
+    });
   }
 
   toggleUserStatus(user: AdminUser): void {

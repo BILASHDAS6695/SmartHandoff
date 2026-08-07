@@ -397,3 +397,96 @@ async def exchange_code(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"OAuth code exchange failed unexpectedly ({type(exc).__name__})",
         ) from exc
+
+
+# ── POST /api/v1/auth/dev/test-token (DEV ONLY) ───────────────────────────────
+
+@router.post(
+    "/dev/test-token",
+    response_model=TokenResponse,
+    summary="[DEV ONLY] Generate test JWT without OAuth",
+    description=(
+        "Development-only endpoint to generate a test JWT token without going "
+        "through OAuth. This endpoint is disabled in production (when "
+        "ALLOW_UNAUTHENTICATED_LOCALHOST is not set to 'true')."
+    ),
+)
+async def dev_test_token(
+    email: str = "dev@smarthandoff.local",
+    role: str = "physician",
+) -> TokenResponse:
+    """Generate a test JWT for local development without OAuth.
+    
+    ⚠️ SECURITY WARNING: This endpoint bypasses all authentication!
+    Only available when ALLOW_UNAUTHENTICATED_LOCALHOST=true.
+    
+    Args:
+        email: Email address for the test user
+        role: Role to assign (physician, nurse, pharmacist, bed_manager, admin)
+        
+    Returns:
+        TokenResponse with a valid JWT for the test user
+    """
+    # Security check: Only allow in development mode
+    allow_dev = os.environ.get("ALLOW_UNAUTHENTICATED_LOCALHOST", "").lower() == "true"
+    if not allow_dev:
+        logger.warning(
+            "Dev test-token endpoint called but ALLOW_UNAUTHENTICATED_LOCALHOST is not 'true'",
+            extra={"event_type": "security_blocked", "endpoint": "dev_test_token"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Development endpoint disabled. Set ALLOW_UNAUTHENTICATED_LOCALHOST=true to enable.",
+        )
+
+    # Validate role
+    valid_roles = {"physician", "nurse", "pharmacist", "bed_manager", "admin"}
+    if role.lower() not in valid_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {', '.join(sorted(valid_roles))}",
+        )
+
+    logger.warning(
+        "🔧 DEV MODE: Generating test token for email=%s role=%s",
+        email,
+        role,
+        extra={
+            "event_type": "dev_token_issued",
+            "email": email,
+            "role": role,
+        },
+    )
+
+    # Create synthetic OIDC claims for the test user
+    import uuid
+    import time
+    
+    test_claims = {
+        "sub": f"dev-{uuid.uuid4().hex[:8]}",  # Unique subject ID
+        "email": email,
+        "email_verified": True,
+        "name": f"Dev User ({role.title()})",
+        "given_name": "Dev",
+        "family_name": role.title(),
+        "picture": "",
+        "aud": "dev-client",
+        "iss": "http://localhost:8001",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 28800,  # 8 hours
+        # SmartHandoff-specific claims
+        "role": role.lower(),
+        "units": ["ICU", "ED", "MED-SURG"],  # Default units for dev
+    }
+
+    # Issue the app JWT using the existing function
+    app_token, jti = issue_app_jwt(test_claims)
+
+    logger.info(
+        "✅ DEV MODE: Test token issued for %s (role=%s, jti=%s)",
+        email,
+        role,
+        jti,
+    )
+
+    return TokenResponse(access_token=app_token)
