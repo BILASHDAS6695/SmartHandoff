@@ -24,6 +24,7 @@ from app.core.auth.otp_helpers import (
 )
 from app.dependencies.redis import get_redis
 from app.dependencies.twilio import get_twilio_client
+from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,7 @@ async def request_otp(
             headers={"Retry-After": str(retry_after)},
         )
 
-    # 3. Send OTP via Twilio Verify (AC Scenario 1)
+    # 3. Send OTP via Twilio Verify (primary channel — US-065)
     verify_sid = _get_twilio_verify_sid()
 
     try:
@@ -153,6 +154,33 @@ async def request_otp(
             status_code=502,
             detail="OTP delivery failed. Please try again.",
         )
+
+    # 3b. Fallback email notification when patient has an email on file (US-064)
+    #     This is sent in addition to Twilio Verify SMS so the patient also sees
+    #     an email alert about the portal login attempt. Uses notification-svc.
+    if claims.patient_id and getattr(claims, "email", None):
+        try:
+            notifier = PatientNotificationPublisher()
+            await notifier.send_email(
+                email=claims.email,
+                subject="SmartHandoff portal login code requested",
+                body=(
+                    "A login code was just requested for your SmartHandoff patient portal. "
+                    "If this wasn't you, contact your care team."
+                ),
+                patient_id=claims.patient_id,
+                priority="HIGH",
+                urgency_override=True,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to send OTP email notification",
+                extra={
+                    "event_type": "otp_email_notification_failed",
+                    "error": str(exc),
+                    "portal_session_id": claims.portal_session_id,
+                },
+            )
 
     # 4. Store verification SID in Redis
     #    Twilio Verify manages the actual OTP code and its own internal hash.

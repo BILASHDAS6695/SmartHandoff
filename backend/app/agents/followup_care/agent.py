@@ -34,6 +34,7 @@ from app.config.care_pathways import CarePathwayConfig
 from app.core.fhir_client import FHIRClient
 from app.models.agent_task import AgentTask, AgentTaskStatus
 from app.models.encounter import Encounter
+from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class FollowUpCareAgent(BaseAgent):
                 idempotency_key=f"CARE_MANAGER_ALERT:{encounter_id}:{appointment_id}",
             )
             try:
-                self._notification_publisher.publish_care_manager_alert(alert_payload)
+                await self._notification_publisher.publish_care_manager_alert(alert_payload)
             except Exception as exc:
                 # Log but don't fail the entire process if notification fails
                 logger.error(
@@ -222,6 +223,40 @@ class FollowUpCareAgent(BaseAgent):
             # Log but don't fail the entire risk assessment if check-in scheduling fails
             logger.error(
                 "Failed to schedule 48-hour check-in: %s",
+                exc,
+                extra={"encounter_id": encounter_id},
+            )
+
+        # ── Step 7: Patient discharge notification (US-064) ───────────────
+        # Inform patient of discharge and follow-up plan. Best-effort; failures logged.
+        try:
+            async with self._db_session_factory() as notify_session:
+                from sqlalchemy import select
+                from app.models.patient import Patient
+                patient_result = await notify_session.execute(
+                    select(Patient).where(Patient.id == encounter.patient_id)
+                )
+                patient = patient_result.scalar_one_or_none()
+                if patient and not patient.notification_opt_out:
+                    notifier = PatientNotificationPublisher()
+                    follow_up_text = (
+                        " A follow-up appointment has been scheduled for you."
+                        if appointment_id
+                        else ""
+                    )
+                    await notifier.send_both(
+                        phone=patient.phone,
+                        email=patient.email,
+                        subject="You've been discharged",
+                        body=(
+                            f"Hi {patient.first_name or 'there'}, you've been discharged. "
+                            f"Your care team will follow up via SmartHandoff.{follow_up_text}"
+                        ),
+                        patient_id=str(patient.id),
+                    )
+        except Exception as exc:
+            logger.error(
+                "Failed to send patient discharge notification: %s",
                 exc,
                 extra={"encounter_id": encounter_id},
             )

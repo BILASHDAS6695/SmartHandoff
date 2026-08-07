@@ -16,6 +16,7 @@ Design refs:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -44,7 +45,7 @@ class NotificationPublisher:
         self._topic_path = f"projects/{project_id}/topics/{topic_id}"
         self._client = publisher_client or pubsub_v1.PublisherClient()
 
-    def publish_care_manager_alert(self, payload: CareManagerAlertPayload) -> str:
+    async def publish_care_manager_alert(self, payload: CareManagerAlertPayload) -> str:
         """Publish a CARE_MANAGER_ALERT to the notification-requests topic.
 
         Args:
@@ -63,7 +64,7 @@ class NotificationPublisher:
             data=data,
             idempotency_key=payload.idempotency_key,
         )
-        message_id: str = future.result(timeout=10)
+        message_id: str = await asyncio.to_thread(future.result, timeout=10)
 
         logger.info(
             "CARE_MANAGER_ALERT published",

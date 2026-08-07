@@ -22,6 +22,7 @@ from app.schemas.encounter_request import (
 from app.services.adt_event_publisher import AdtEventPublisher
 from app.services.cancellation_service import CancellationService
 from app.services.cancellation_dispatcher import CancellationDispatcher
+from app.services.patient_notification_publisher import PatientNotificationPublisher
 from app.signalr import SignalRHub
 
 router = APIRouter(prefix="/encounters", tags=["encounters"])
@@ -106,6 +107,21 @@ async def create_encounter(
 
     await db.commit()
     await db.refresh(encounter)
+
+    # Notify patient of admission (US-064)
+    if encounter.status == EncounterStatus.ADMITTED.value and not patient.notification_opt_out:
+        notifier = PatientNotificationPublisher()
+        await notifier.send_both(
+            phone=patient.phone,
+            email=patient.email,
+            subject="You've been admitted",
+            body=(
+                f"Hi {patient.first_name or 'there'}, you've been admitted to "
+                f"{encounter.unit or 'the hospital'}. We'll send updates through SmartHandoff."
+            ),
+            patient_id=str(patient.id),
+        )
+
     return encounter
 
 
@@ -138,12 +154,31 @@ async def update_encounter(
     if body.risk_tier is not None:
         encounter.risk_tier = body.risk_tier
 
+    discharged = False
     if status_changed or unit_changed:
         publisher = AdtEventPublisher()
         await publisher.publish_for_encounter(db, encounter, patient)
+        discharged = (
+            status_changed and encounter.status == EncounterStatus.DISCHARGED.value
+        )
 
     await db.commit()
     await db.refresh(encounter)
+
+    # Notify patient of discharge (US-064)
+    if discharged and not patient.notification_opt_out:
+        notifier = PatientNotificationPublisher()
+        await notifier.send_both(
+            phone=patient.phone,
+            email=patient.email,
+            subject="You've been discharged",
+            body=(
+                f"Hi {patient.first_name or 'there'}, you've been discharged. "
+                "Your care team will follow up via SmartHandoff."
+            ),
+            patient_id=str(patient.id),
+        )
+
     return encounter
 
 

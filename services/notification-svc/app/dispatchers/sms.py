@@ -74,7 +74,9 @@ class TwilioSMSDispatcher:
     """
 
     def __init__(self) -> None:
-        self._from_number: str = os.environ["TWILIO_FROM_NUMBER"]
+        self._from_number: str = os.environ.get(
+            "TWILIO_FROM_NUMBER"
+        ) or get_secret("twilio-phone-number")
 
     async def dispatch(
         self,
@@ -142,7 +144,7 @@ class TwilioSMSDispatcher:
                 body=self._render_template(request.template, request.substitutions),
             )
             # Success — update status and store SID
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(timezone.utc)
             await session.execute(
                 sa_text(
                     """UPDATE notification 
@@ -291,7 +293,7 @@ class TwilioSMSDispatcher:
                 "status": NotificationStatus.FAILED.value,
                 "last_error": error_message[:1000],
                 "retry_count": _MAX_RETRIES,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc),
                 "id": str(notification_id),
             },
         )
@@ -415,7 +417,7 @@ class TwilioSMSDispatcher:
             {
                 "status": status.value,
                 "urgency_override": urgency_override,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc),
                 "id": str(notification_id),
             },
         )
@@ -432,7 +434,7 @@ class TwilioSMSDispatcher:
             ),
             {
                 "retry_count": attempt,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc),
                 "id": str(notification_id),
             },
         )

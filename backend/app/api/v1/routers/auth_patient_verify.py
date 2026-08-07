@@ -111,7 +111,11 @@ async def verify_otp(
 
     access_token = create_access_token(
         subject=claims.patient_id,
-        extra_claims={"role": "PATIENT", "phone": phone},
+        extra_claims={
+            "role": "PATIENT",
+            "phone": phone,
+            "email": claims.email,
+        },
     )
 
     return {"access_token": access_token, "token_type": "bearer"}

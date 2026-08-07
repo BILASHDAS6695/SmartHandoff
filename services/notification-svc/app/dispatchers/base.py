@@ -89,7 +89,7 @@ class BaseNotificationDispatcher:
             return
 
         audit_id = uuid.uuid4()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         try:
             await session.execute(

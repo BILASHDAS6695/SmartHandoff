@@ -40,6 +40,7 @@ COPY --from=builder /root/.local /home/notifapp/.local
 
 # Copy application code
 COPY app/ ./app/
+COPY config/ ./config/
 COPY alembic.ini .
 
 # Set ownership

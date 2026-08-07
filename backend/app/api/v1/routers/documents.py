@@ -14,10 +14,42 @@ from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import require_permission
 from app.db.deps import get_write_db
 from app.models.document import Document, DocumentStatus
+from app.models.encounter import Encounter
+from app.models.patient import Patient
 from app.schemas.document_schemas import DocumentResponse
 from app.services.audit_service import write_audit_log
+from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+async def _notify_patient_on_document_approved(
+    db: AsyncSession,
+    document: Document,
+) -> None:
+    """Send patient-facing email/SMS when a document is approved."""
+    if document.document_type.lower() != "discharge_summary":
+        return
+
+    encounter = await db.get(Encounter, document.encounter_id)
+    if encounter is None or encounter.patient_id is None:
+        return
+
+    patient = await db.get(Patient, encounter.patient_id)
+    if patient is None or patient.notification_opt_out:
+        return
+
+    publisher = PatientNotificationPublisher()
+    await publisher.send_both(
+        phone=patient.phone,
+        email=patient.email,
+        subject="Your discharge summary is ready",
+        body=(
+            f"Hi {patient.first_name or 'there'}, your discharge summary has been "
+            "approved and is available in the SmartHandoff patient portal."
+        ),
+        patient_id=str(patient.id),
+    )
 
 
 @router.get("")
@@ -117,6 +149,9 @@ async def approve_document(
 
     await db.commit()
     await db.refresh(doc)
+
+    # Notify patient after successful commit (US-064)
+    await _notify_patient_on_document_approved(db, doc)
 
     # Build response with resolved display name
     response = DocumentResponse.model_validate(doc)
