@@ -110,14 +110,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Active patients derived from the live patient list. */
   readonly activePatients = computed<ActivePatient[]>(() =>
-    this.patients()
-      .filter(p => p.risk_score != null)
-      .map(p => ({
-        id: p.encounter_id,
-        name: `${p.first_name} ${p.last_name}`,
-        riskScore: p.risk_score ?? 0,
-        riskLevel: this._riskTierToLevel(p.risk_tier),
-      }))
+    this.patients().map(p => ({
+      id: p.encounter_id,
+      name: `${p.first_name} ${p.last_name}`,
+      riskScore: p.risk_score ?? this._defaultRiskScore(p.risk_tier),
+      riskLevel: this._riskTierToLevel(p.risk_tier),
+    }))
   );
 
   // Computed signals for derived state
@@ -193,11 +191,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
+    const unit = this.authService.currentUser()?.units?.[0] ?? '';
     forkJoin({
       tasks: encounterId
         ? this.tasksApi.getTasksForEncounter(encounterId)
         : this.tasksApi.getMyTasks(),
-      patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+      patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
     }).subscribe({
       next: ({ tasks, patients }) => {
         this.tasks.set(tasks);
@@ -254,11 +253,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private async _loadDashboardData(encounterId: string, currentUser: { role: string; units?: string[] }): Promise<void> {
     return new Promise((resolve, reject) => {
+      const unit = currentUser.units?.[0] ?? '';
       forkJoin({
         tasks: encounterId
           ? this.tasksApi.getTasksForEncounter(encounterId)
           : this.tasksApi.getMyTasks(),
-        patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+        patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
       }).subscribe({
         next: ({ tasks, patients }) => {
           this.tasks.set(tasks);
@@ -323,11 +323,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const currentUser = this.authService.currentUser();
       if (!currentUser) return;
 
+      const unit = currentUser.units?.[0] ?? '';
       forkJoin({
         tasks: encounterId
           ? this.tasksApi.getTasksForEncounter(encounterId)
           : this.tasksApi.getMyTasks(),
-        patients: this.patientApi.getPatients({ unit: '', page: 1, page_size: 500 }),
+        patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
       }).subscribe({
         next: ({ tasks, patients }) => {
           this.tasks.set(tasks);
@@ -355,6 +356,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return 'LOW';
       default:
         return 'LOW';
+    }
+  }
+
+  private _defaultRiskScore(tier: string): number {
+    switch (tier?.toUpperCase()) {
+      case 'HIGH':
+        return 0.82;
+      case 'MEDIUM':
+        return 0.45;
+      case 'LOW':
+        return 0.18;
+      default:
+        return 0;
     }
   }
 

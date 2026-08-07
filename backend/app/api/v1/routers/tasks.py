@@ -7,19 +7,22 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import sqlalchemy as sa
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import require_role
 from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import require_permission
-from app.db.deps import get_write_db
+from app.db.deps import get_read_db, get_write_db
+from app.models.agent_task import AgentTask
 from app.repositories.agent_task_repository import (
     AgentTaskRepository,
     InvalidTaskTypeError,
     TaskAlreadyCompletedError,
     TaskNotFoundError,
 )
+from app.schemas.agent_task import AgentTaskResponse
 from app.schemas.task_override import TaskOverrideRequest, TaskOverrideResponse
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -28,21 +31,35 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 _OVERRIDE_ALLOWED_ROLES = ["CHARGE_PHARMACIST", "PHARMACY_SUPERVISOR"]
 
 
-@router.get("")
+@router.get("", response_model=list[AgentTaskResponse])
 async def list_tasks(
     current_user: Annotated[TokenClaims, Depends(require_permission("agent_task", "list"))],
-) -> dict:
-    """List agent tasks — requires agent_task:list permission."""
-    return {"tasks": [], "user": current_user.sub}
+    status: str | None = Query(None, description="Optional status filter"),
+    db: AsyncSession = Depends(get_read_db),
+) -> list[AgentTaskResponse]:
+    """List agent tasks across all encounters — requires agent_task:list permission."""
+    stmt = sa.select(AgentTask).order_by(AgentTask.created_at.desc())
+    if status:
+        stmt = stmt.where(AgentTask.status == status.upper())
+    result = await db.execute(stmt)
+    tasks: list[AgentTask] = list(result.scalars().all())
+    return [AgentTaskResponse.model_validate(task) for task in tasks]
 
 
-@router.get("/{task_id}")
+@router.get("/{task_id}", response_model=AgentTaskResponse)
 async def get_task(
     task_id: uuid.UUID,
     current_user: Annotated[TokenClaims, Depends(require_permission("agent_task", "read"))],
-) -> dict:
+    db: AsyncSession = Depends(get_read_db),
+) -> AgentTaskResponse:
     """Get a single agent task — requires agent_task:read permission."""
-    return {"task_id": str(task_id), "user": current_user.sub}
+    task = await db.get(AgentTask, task_id)
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found.",
+        )
+    return AgentTaskResponse.model_validate(task)
 
 
 @router.patch(

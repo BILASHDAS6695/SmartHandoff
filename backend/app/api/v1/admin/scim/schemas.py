@@ -195,12 +195,17 @@ class ScimRoleMapper:
         """
         if path is None:
             # File lives at: backend/app/api/v1/admin/scim/schemas.py
-            # Repository root is 6 parents up
-            base = Path(__file__).resolve().parents[6]
-            resolved = base / "config" / "scim_role_mapping.yaml"
+            # Repository root is 6 parents up; backend folder is 5 parents up
+            repo_root = Path(__file__).resolve().parents[6]
+            resolved = repo_root / "backend" / "config" / "scim_role_mapping.yaml"
+            # Fallback: legacy location under repo root config/
+            if not resolved.exists():
+                resolved = repo_root / "config" / "scim_role_mapping.yaml"
             # Fallback: look relative to cwd (CI / test runner)
             if not resolved.exists():
                 resolved = Path("config") / "scim_role_mapping.yaml"
+                if not resolved.exists():
+                    resolved = Path("backend") / "config" / "scim_role_mapping.yaml"
             path = str(resolved)
 
         with open(path, encoding="utf-8") as fh:
