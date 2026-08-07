@@ -200,11 +200,68 @@
 
     <!-- Bottom actions -->
     <div class="bottom-actions">
-      <button class="btn-reject" title="UXR-025: Rejection reason required">← Reject &amp; Return</button>
+      <button id="btn-reject-return" class="btn-reject" title="UXR-025: Rejection reason required">← Reject &amp; Return</button>
       <div style="display:flex;gap:10px;">
-        <button class="btn-save">Save Draft</button>
-        <button class="btn-approve" title="UXR-025: Confirm modal before signing" onclick="location.href='wireframe-SCR-004-patient-detail.html'">Approve &amp; Sign ✓</button>
+        <button id="btn-save-draft" class="btn-save">Save Draft</button>
+        <button id="btn-approve-sign" class="btn-approve" title="UXR-025: Confirm modal before signing">Approve &amp; Sign ✓</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Document Review Modals -->
+<style>
+  .wf-modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:24px; }
+  .wf-modal.active { display:flex; }
+  .wf-modal-box { background:#fff; border-radius:12px; width:100%; max-width:520px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 25px -5px rgba(0,0,0,.2); }
+  .wf-modal-header { padding:16px 20px; border-bottom:1px solid var(--color-border-default); display:flex; align-items:center; justify-content:space-between; }
+  .wf-modal-header h3 { font-size:14px; font-weight:700; margin:0; }
+  .wf-modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--color-text-secondary); }
+  .wf-modal-body { padding:20px; font-size:13px; line-height:1.5; }
+  .wf-modal-footer { padding:14px 20px; border-top:1px solid var(--color-border-default); display:flex; justify-content:flex-end; gap:8px; }
+  .wf-modal-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--color-border-default); background:#fff; }
+  .wf-modal-btn.primary { background:var(--color-brand-primary); color:#fff; border-color:var(--color-brand-primary); }
+  .wf-modal-btn.danger { background:var(--color-alert-critical); color:#fff; border-color:var(--color-alert-critical); }
+  .wf-evidence-list { list-style:none; padding:0; }
+  .wf-evidence-list li { padding:8px 0; border-bottom:1px solid var(--color-border-default); }
+  .wf-evidence-list li:last-child { border-bottom:none; }
+</style>
+<div id="wf-modal-reject" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Return Document to Queue</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p>Please select a reason for returning this discharge summary.</p>
+      <label style="display:block;margin:12px 0 6px;font-size:12px;font-weight:600;">Rejection reason</label>
+      <select id="reject-reason" style="width:100%;padding:8px;border:1px solid var(--color-border-default);border-radius:6px;">
+        <option value="">Select a reason...</option>
+        <option value="incomplete">Incomplete / missing information</option>
+        <option value="inaccurate">Clinical content inaccurate</option>
+        <option value="followup">Follow-up details unclear</option>
+        <option value="other">Other</option>
+      </select>
+      <label style="display:block;margin:12px 0 6px;font-size:12px;font-weight:600;">Additional notes</label>
+      <textarea id="reject-notes" rows="3" style="width:100%;padding:8px;border:1px solid var(--color-border-default);border-radius:6px;resize:vertical;" placeholder="Add optional notes for the author..."></textarea>
+    </div>
+    <div class="wf-modal-footer">
+      <button class="wf-modal-btn" data-modal-close>Cancel</button>
+      <button id="btn-confirm-reject" class="wf-modal-btn primary">Return to Queue</button>
+    </div>
+  </div>
+</div>
+
+<div id="wf-modal-approved" class="wf-modal">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header"><h3>Document Approved &amp; Signed</h3><button class="wf-modal-close" data-modal-close>&times;</button></div>
+    <div class="wf-modal-body">
+      <p><strong>Discharge Summary</strong> has been electronically signed by <strong>Dr. David Chen</strong>.</p>
+      <ul class="wf-evidence-list">
+        <li>Signed: <span id="approved-timestamp">—</span></li>
+        <li>Status: <span style="color:var(--color-alert-success);font-weight:700">Approved ✓</span></li>
+        <li>Document is now locked and visible to care team and patient portal.</li>
+      </ul>
+    </div>
+    <div class="wf-modal-footer">
+      <button id="btn-return-patient" class="wf-modal-btn primary">Return to Patient Detail</button>
     </div>
   </div>
 </div>
@@ -271,5 +328,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>

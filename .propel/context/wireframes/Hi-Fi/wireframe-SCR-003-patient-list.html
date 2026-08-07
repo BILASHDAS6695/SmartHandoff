@@ -170,9 +170,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
+          <tr data-patient="smith">
             <td><span class="mrn-masked">●●●●●●&nbsp;<span class="reveal-btn" title="UXR-014">👁</span></span></td>
-            <td><a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:none"><strong>Smith, John</strong></a></td>
+            <td><a href="wireframe-SCR-004-patient-detail.html?patient=smith" style="color:inherit;text-decoration:none"><strong>Smith, John</strong></a></td>
             <td>4-West</td>
             <td>2026-07-10</td>
             <td><span class="status-chip discharging">Discharging</span></td>
@@ -180,11 +180,11 @@
               <span class="risk-bar-wrap"><div class="risk-bar" style="width:82%;background:var(--color-risk-high)"></div></span>
               <span class="risk-chip high">⚠ 0.82 HIGH</span>
             </td>
-            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html'">View</button></td>
+            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=smith'">View</button></td>
           </tr>
-          <tr>
+          <tr data-patient="patel">
             <td><span class="mrn-masked">●●●●●●</span></td>
-            <td><a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:none"><strong>Patel, Rita</strong></a></td>
+            <td><a href="wireframe-SCR-004-patient-detail.html?patient=patel" style="color:inherit;text-decoration:none"><strong>Patel, Rita</strong></a></td>
             <td>3-North</td>
             <td>2026-07-12</td>
             <td><span class="status-chip admitted">Admitted</span></td>
@@ -192,11 +192,11 @@
               <span class="risk-bar-wrap"><div class="risk-bar" style="width:45%;background:var(--color-risk-medium)"></div></span>
               <span class="risk-chip med">▲ 0.45 MED</span>
             </td>
-            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html'">View</button></td>
+            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=patel'">View</button></td>
           </tr>
-          <tr>
+          <tr data-patient="nguyen">
             <td><span class="mrn-masked">●●●●●●</span></td>
-            <td><a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:none"><strong>Nguyen, Lee</strong></a></td>
+            <td><a href="wireframe-SCR-004-patient-detail.html?patient=nguyen" style="color:inherit;text-decoration:none"><strong>Nguyen, Lee</strong></a></td>
             <td>ICU</td>
             <td>2026-07-13</td>
             <td><span class="status-chip transferred">Transferred</span></td>
@@ -204,11 +204,11 @@
               <span class="risk-bar-wrap"><div class="risk-bar" style="width:18%;background:var(--color-risk-low)"></div></span>
               <span class="risk-chip low">✓ 0.18 LOW</span>
             </td>
-            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html'">View</button></td>
+            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=nguyen'">View</button></td>
           </tr>
-          <tr>
+          <tr data-patient="garcia">
             <td><span class="mrn-masked">●●●●●●</span></td>
-            <td><a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:none"><strong>Garcia, Maria</strong></a></td>
+            <td><a href="wireframe-SCR-004-patient-detail.html?patient=garcia" style="color:inherit;text-decoration:none"><strong>Garcia, Maria</strong></a></td>
             <td>3-North</td>
             <td>2026-07-14</td>
             <td><span class="status-chip admitted">Admitted</span></td>
@@ -216,11 +216,11 @@
               <span class="risk-bar-wrap"><div class="risk-bar" style="width:75%;background:var(--color-risk-high)"></div></span>
               <span class="risk-chip high">⚠ 0.75 HIGH</span>
             </td>
-            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html'">View</button></td>
+            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=garcia'">View</button></td>
           </tr>
-          <tr style="opacity:.6">
+          <tr data-patient="lee" style="opacity:.6">
             <td><span class="mrn-masked">●●●●●●</span></td>
-            <td><a href="wireframe-SCR-004-patient-detail.html" style="color:inherit;text-decoration:none"><strong>Lee, Kim</strong></a></td>
+            <td><a href="wireframe-SCR-004-patient-detail.html?patient=lee" style="color:inherit;text-decoration:none"><strong>Lee, Kim</strong></a></td>
             <td>5-East</td>
             <td>2026-07-11</td>
             <td><span class="status-chip admitted">Admitted</span></td>
@@ -228,7 +228,7 @@
               <span class="risk-bar-wrap"><div class="risk-bar" style="width:30%;background:var(--color-risk-low)"></div></span>
               <span class="risk-chip low">✓ 0.30 LOW</span>
             </td>
-            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html'">View</button></td>
+            <td><button class="btn-view" onclick="location.href='wireframe-SCR-004-patient-detail.html?patient=lee'">View</button></td>
           </tr>
         </tbody>
       </table>
@@ -313,5 +313,6 @@
   </div>
 </div>
 
+<script src="wf-shared-interactions.js"></script>
 </body>
 </html>
