@@ -190,70 +190,32 @@
 
 ::ng-deep .user-menu-panel {
   .mat-mdc-menu-content {
-    padding: 0 !important;
-  }
-
-  .user-menu-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
-
-    .user-avatar.large {
-      width: 40px;
-      height: 40px;
-      font-size: 14px;
-      background: #2563eb;
-      color: white;
-      border-radius: 50%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-    }
-
-    .user-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-
-      .user-email {
-        font-size: 13px;
-        font-weight: 600;
-        color: #111827;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 180px;
-      }
-
-      .user-role {
-        font-size: 11px;
-        color: #6b7280;
-        text-transform: capitalize;
-      }
-    }
+    padding: 8px !important;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    min-width: 160px;
   }
 
   .mat-mdc-menu-item {
-    min-height: 40px;
-    font-size: 13px;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #111827;
 
-    mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-      color: #6b7280;
+    .mdc-list-item__primary-text {
+      color: inherit;
     }
-  }
-}
 
-mat-menu {
-  [matMenuTriggerFor] {
-    min-width: 180px;
+    &:hover {
+      background-color: #f3f4f6;
+    }
+
+    &.sign-out-item {
+      color: #dc2626;
+    }
   }
 }
 

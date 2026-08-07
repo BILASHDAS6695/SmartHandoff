@@ -1,0 +1,379 @@
+$primary: #2563eb;
+$text-main: #111827;
+$text-secondary: #4b5563;
+$border-color: #e5e7eb;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-full: 9999px;
+
+:host {
+  display: block;
+}
+
+.profile-main {
+  padding: 24px;
+  display: flex;
+  gap: 24px;
+  overflow-y: auto;
+  flex-wrap: wrap;
+  background: #f9fafb;
+  min-height: calc(100vh - 56px);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.profile-col {
+  flex: 1;
+  min-width: 320px;
+  max-width: 560px;
+}
+
+.side-col {
+  width: 300px;
+  min-width: 300px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: $text-main;
+    margin: 0 0 4px;
+  }
+
+  .sub {
+    font-size: 13px;
+    color: $text-secondary;
+  }
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid $border-color;
+  border-radius: $radius-lg;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 18px;
+
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid $border-color;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: $text-secondary;
+      margin: 0;
+    }
+  }
+
+  .card-body {
+    padding: 18px;
+    display: grid;
+    gap: 16px;
+  }
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  .avatar-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: $primary;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .identity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .name {
+    font-size: 16px;
+    font-weight: 700;
+    color: $text-main;
+  }
+
+  .email {
+    font-size: 13px;
+    color: $text-secondary;
+  }
+
+  .role-chip {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: $radius-full;
+    font-size: 12px;
+    font-weight: 600;
+    background: #eff6ff;
+    color: $primary;
+    margin-top: 6px;
+    width: fit-content;
+  }
+}
+
+.form-group {
+  display: grid;
+  gap: 6px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $text-secondary;
+  }
+
+  input,
+  select {
+    padding: 9px 12px;
+    border: 1.5px solid $border-color;
+    border-radius: $radius-md;
+    font-size: 13px;
+    font-family: inherit;
+    background: #ffffff;
+    color: $text-main;
+
+    &:focus {
+      outline: 2px solid #bfdbfe;
+      border-color: $primary;
+    }
+  }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .label {
+    font-size: 13px;
+    font-weight: 500;
+    color: $text-main;
+  }
+
+  .desc {
+    font-size: 12px;
+    color: $text-secondary;
+  }
+}
+
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: $border-color;
+    border-radius: $radius-full;
+    transition: 0.2s;
+
+    &::before {
+      position: absolute;
+      content: '';
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+  }
+
+  input:checked + .slider {
+    background: $primary;
+  }
+
+  input:checked + .slider::before {
+    transform: translateX(20px);
+  }
+}
+
+.btn-primary {
+  padding: 9px 16px;
+  background: $primary;
+  color: #ffffff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-secondary {
+  padding: 9px 16px;
+  background: transparent;
+  border: 1.5px solid $border-color;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: $text-secondary;
+  font-family: inherit;
+}
+
+.btn-danger {
+  padding: 9px 16px;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.session-list {
+  display: grid;
+  gap: 0;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid $border-color;
+  font-size: 13px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .device {
+      font-weight: 600;
+      color: $text-main;
+    }
+
+    .loc {
+      font-size: 11px;
+      color: $text-secondary;
+    }
+  }
+
+  .active-status {
+    font-size: 11px;
+    font-weight: 600;
+    color: #16a34a;
+  }
+
+  .btn-xs {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1.5px solid $border-color;
+    background: transparent;
+    cursor: pointer;
+    color: $text-secondary;
+    font-family: inherit;
+  }
+
+  &.revoked {
+    opacity: 0.5;
+    text-decoration: line-through;
+
+    .btn-xs {
+      display: none;
+    }
+
+    &::after {
+      content: 'Revoked';
+      font-size: 11px;
+      font-weight: 600;
+      color: #dc2626;
+    }
+  }
+}
+
+.security-stack {
+  display: grid;
+  gap: 10px;
+
+  .btn-secondary,
+  .btn-danger {
+    width: 100%;
+  }
+}
+
+.ann {
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 10px;
+  color: #713f12;
+  display: inline-block;
+
+  &::before {
+    content: attr(data-id);
+    font-weight: 700;
+    margin-right: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-main {
+    flex-direction: column;
+  }
+
+  .profile-col,
+  .side-col {
+    width: 100%;
+    max-width: none;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

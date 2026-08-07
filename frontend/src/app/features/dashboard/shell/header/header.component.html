@@ -85,49 +85,28 @@
   yPosition="below"
   [overlapTrigger]="false">
 
-  <div class="user-menu-header">
-
-    <span class="user-avatar large">
-      {{ getUserInitials() }}
-    </span>
-
-    <div class="user-info">
-
-      <span class="user-email">
-        {{ currentUser()?.email || 'User' }}
-      </span>
-
-      <span class="user-role">
-        {{ currentUser()?.role || 'Staff' }}
-      </span>
-
-    </div>
-
-  </div>
-
-  <mat-divider></mat-divider>
-
   <button
     mat-menu-item
-    (click)="toggleTheme()">
+    (click)="navigateToProfile()">
 
-    <mat-icon>
-      {{ isDarkMode() ? 'light_mode' : 'dark_mode' }}
-    </mat-icon>
-
-    <span>
-      {{ isDarkMode() ? 'Light mode' : 'Dark mode' }}
-    </span>
+    <span>Profile</span>
 
   </button>
 
   <button
     mat-menu-item
+    (click)="switchRole()">
+
+    <span>Switch Role</span>
+
+  </button>
+
+  <button
+    mat-menu-item
+    class="sign-out-item"
     (click)="logout()">
 
-    <mat-icon>logout</mat-icon>
-
-    <span>Logout</span>
+    <span>Sign Out</span>
 
   </button>
 

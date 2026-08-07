@@ -15,20 +15,18 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { Router } from '@angular/router';
 
-import { ThemeService } from '@core/theme/theme.service';
 import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/notifications/notification.service';
 import { NotificationPanelComponent } from '@shared/components';
 import { AppNotification } from '@core/models';
 
 /**
- * HeaderComponent — Dashboard header with user info, notifications, and theme toggle.
+ * HeaderComponent — Dashboard header with user info, notifications, and user menu.
  *
  * Features:
  *   - User avatar and display name
  *   - Notifications bell with dropdown panel (UXR-021)
- *   - Dark mode toggle
- *   - Logout button
+ *   - User menu: Profile, Switch Role, Sign Out
  */
 @Component({
   selector: 'app-header',
@@ -48,13 +46,11 @@ import { AppNotification } from '@core/models';
   styleUrl: './header.component.scss',
 })
 export class HeaderComponent {
-  private readonly theme = inject(ThemeService);
   private readonly auth = inject(AuthService);
   private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
 
-  readonly isDarkMode = this.theme.isDarkMode;
   readonly currentUser = this.auth.currentUser;
   readonly notifications = this.notificationService.notifications;
   readonly unreadCount = this.notificationService.unreadCount;
@@ -102,12 +98,16 @@ export class HeaderComponent {
     this.notificationService.markAllAsRead();
   }
 
-  toggleTheme(): void {
-    this.theme.toggleDarkMode();
-  }
-
   logout(): void {
     this.auth.logout();
+  }
+
+  navigateToProfile(): void {
+    void this.router.navigate(['/profile']);
+  }
+
+  switchRole(): void {
+    // Wireframe only — in production this would open the role-switcher modal
   }
 
   getUserInitials(): string {
