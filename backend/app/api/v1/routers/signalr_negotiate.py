@@ -33,8 +33,9 @@ from pydantic import BaseModel
 from app.core.auth.jwt import TokenClaims
 from app.core.auth.dependencies import get_current_staff_user
 from app.core.config import get_settings
-from app.signalr.broadcaster import _parse_connection_string
+from app.signalr.broadcaster import SignalRBroadcaster, _parse_connection_string
 from app.signalr.group_resolver import GroupResolver, UserClaims
+from app.api.v1.routers.signalr_hub import get_signalr_broadcaster
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +65,14 @@ class NegotiateResponse(BaseModel):
 )
 async def negotiate(
     current_user: Annotated[TokenClaims, Depends(get_current_staff_user)],
+    broadcaster: Annotated[SignalRBroadcaster, Depends(get_signalr_broadcaster)],
 ) -> NegotiateResponse:
     """Generate a client access token scoped to the user's groups.
 
     US-022 Scenario 4: authentication failure returns 401 before this handler runs.
     """
     settings = get_settings()
-    
+
     # Map TokenClaims to UserClaims for group resolution.
     # unit_id: use first unit from units list (primary unit assignment)
     # encounter_ids: would come from custom JWT claim or DB lookup; empty for now
@@ -80,24 +82,31 @@ async def negotiate(
         unit_id=current_user.units[0] if current_user.units else None,
         encounter_ids=[],  # TODO: Populate from DB or custom JWT claim
     )
-    
+
     groups = _resolver.resolve(user_claims)
 
     endpoint, access_key = _parse_connection_string(settings.AZURE_SIGNALR_CONNECTION_STRING)
     hub_url = f"{endpoint}/client/?hub={_HUB_NAME}"
 
     # Generate a client-scoped token — audience is the WebSocket URL.
-    # Groups are embedded as a custom claim consumed by Azure SignalR Service.
+    # ``nameid`` is the claim Azure SignalR Service uses for user ID; keep
+    # ``sub`` as well for compatibility.
     client_token = pyjwt.encode(
         {
             "aud": hub_url,
             "sub": current_user.sub,
+            "nameid": current_user.sub,
             "exp": int(time.time()) + 3600,
             "groups": groups,
         },
         access_key,
         algorithm="HS256",
     )
+
+    # Serverless mode does not honour the ``groups`` claim in the client token;
+    # group membership must be managed explicitly via the REST API. Add the user
+    # to their resolved groups before the client connects.
+    await broadcaster.add_user_to_groups(current_user.sub, groups)
 
     logger.info(
         "SignalR negotiate issued",

@@ -12,6 +12,14 @@ from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import require_permission
 from app.db.deps import get_write_db
 from app.exceptions import EncounterNotFoundError, EncounterStateTransitionError
+from app.models.encounter import Encounter, EncounterStatus
+from app.models.patient import Patient
+from app.schemas.encounter_request import (
+    EncounterCreateRequest,
+    EncounterUpdateRequest,
+    EncounterWriteResponse,
+)
+from app.services.adt_event_publisher import AdtEventPublisher
 from app.services.cancellation_service import CancellationService
 from app.services.cancellation_dispatcher import CancellationDispatcher
 from app.signalr import SignalRHub
@@ -70,21 +78,73 @@ async def get_encounter(
     return {"encounter_id": str(encounter_id), "user": current_user.sub}
 
 
-@router.post("")
+@router.post("", response_model=EncounterWriteResponse)
 async def create_encounter(
+    body: EncounterCreateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("encounter", "write"))],
-) -> dict:
-    """Create an encounter — requires encounter:write permission."""
-    return {"created": True, "user": current_user.sub}
+    db: AsyncSession = Depends(get_write_db),
+) -> Encounter:
+    """Create an encounter — requires encounter:write permission.
+
+    Also records an ADT event and broadcasts it to the unit's SignalR group.
+    """
+    patient = await db.get(Patient, body.patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    encounter = Encounter(
+        patient_id=body.patient_id,
+        status=body.status.value,
+        unit=body.unit,
+        risk_tier=body.risk_tier,
+    )
+    db.add(encounter)
+    await db.flush([encounter])
+
+    publisher = AdtEventPublisher()
+    await publisher.publish_for_encounter(db, encounter, patient)
+
+    await db.commit()
+    await db.refresh(encounter)
+    return encounter
 
 
-@router.patch("/{encounter_id}")
+@router.patch("/{encounter_id}", response_model=EncounterWriteResponse)
 async def update_encounter(
     encounter_id: uuid.UUID,
+    body: EncounterUpdateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("encounter", "write"))],
-) -> dict:
-    """Update an encounter — requires encounter:write permission."""
-    return {"encounter_id": str(encounter_id), "user": current_user.sub}
+    db: AsyncSession = Depends(get_write_db),
+) -> Encounter:
+    """Update an encounter — requires encounter:write permission.
+
+    Records an ADT event and broadcasts it when the status or unit changes.
+    """
+    encounter = await db.get(Encounter, encounter_id)
+    if encounter is None:
+        raise HTTPException(status_code=404, detail="Encounter not found")
+
+    patient = await db.get(Patient, encounter.patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    status_changed = body.status is not None and body.status.value != encounter.status
+    unit_changed = body.unit is not None and body.unit != encounter.unit
+
+    if body.status is not None:
+        encounter.transition_to(EncounterStatus(body.status.value))
+    if body.unit is not None:
+        encounter.unit = body.unit
+    if body.risk_tier is not None:
+        encounter.risk_tier = body.risk_tier
+
+    if status_changed or unit_changed:
+        publisher = AdtEventPublisher()
+        await publisher.publish_for_encounter(db, encounter, patient)
+
+    await db.commit()
+    await db.refresh(encounter)
+    return encounter
 
 
 @router.post(
