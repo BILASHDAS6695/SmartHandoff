@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
@@ -28,7 +29,7 @@ interface AuditLogEntry {
 @Component({
   selector: 'app-admin-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatSelectModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, RouterModule, MatSelectModule, MatDialogModule],
   templateUrl: './admin-panel.component.html',
   styleUrl: './admin-panel.component.scss',
 })

@@ -1,0 +1,80 @@
+<section class="config-shell" aria-label="System configuration">
+  <!-- Admin sub-nav -->
+  <aside class="admin-sidebar">
+    <h2>Admin Sections</h2>
+    <a class="admin-nav-item" routerLink="/admin">User Management</a>
+    <a class="admin-nav-item" routerLink="/admin/audit-log">Audit Log</a>
+    <a class="admin-nav-item active" routerLink="/admin/system-configuration">System Configuration</a>
+  </aside>
+
+  <!-- Content area -->
+  <div class="content">
+    <div class="page-header">
+      <h1>System Configuration</h1>
+      <button class="btn-save" (click)="saveChanges()" [class.pending]="hasChanges()">Save Changes</button>
+    </div>
+
+    @for (section of sections(); track section.title) {
+      <div class="card">
+        <div class="card-header">
+          <h2>{{ section.title }}</h2>
+        </div>
+        <div class="card-body">
+          @if (section.texts) {
+            @for (item of section.texts; track item.key) {
+              <div class="config-row">
+                <div class="config-info">
+                  <div class="config-label">{{ item.label }}</div>
+                  <div class="config-desc">{{ item.desc }}</div>
+                </div>
+                <input class="config-input" type="text" [(ngModel)]="item.value" [attr.aria-label]="item.label" />
+              </div>
+            }
+          }
+
+          @if (section.selects) {
+            @for (item of section.selects; track item.key) {
+              <div class="config-row">
+                <div class="config-info">
+                  <div class="config-label">{{ item.label }}</div>
+                  <div class="config-desc">{{ item.desc }}</div>
+                </div>
+                <select class="config-select" [(ngModel)]="item.value" [attr.aria-label]="item.label">
+                  @for (option of item.options; track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </div>
+            }
+          }
+
+          @if (section.toggles) {
+            @for (item of section.toggles; track item.key) {
+              <div class="config-row">
+                <div class="config-info">
+                  <div class="config-label">{{ item.label }}</div>
+                  <div class="config-desc">{{ item.desc }}</div>
+                </div>
+                <div class="config-control">
+                  <button
+                    type="button"
+                    class="toggle"
+                    [class.on]="item.enabled"
+                    (click)="toggle(section, item)"
+                    [attr.aria-pressed]="item.enabled"
+                    [attr.aria-label]="item.label">
+                  </button>
+                  <span class="toggle-label" [class.enabled]="item.enabled">
+                    {{ item.enabled ? 'Enabled' : 'Disabled' }}
+                  </span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    <span class="ann" data-id="UXR-028">Changes require explicit save</span>
+  </div>
+</section>
