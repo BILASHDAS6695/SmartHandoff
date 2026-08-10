@@ -145,7 +145,7 @@ def require_permission(resource: str, action: str) -> Callable:
     async def _dependency(
         current_user: TokenClaims = Depends(get_current_user),
     ) -> TokenClaims:
-        role: str = current_user.role
+        role: str = current_user.role.upper()
 
         # Hardcoded PATIENT boundary — PATIENT-role JWTs never pass staff endpoints
         if role == _PATIENT_ROLE:

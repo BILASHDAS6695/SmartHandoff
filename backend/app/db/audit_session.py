@@ -32,6 +32,15 @@ def _build_audit_db_url() -> str:
         )
         return url
 
+    # Local dev fallback: reuse the primary app database URL if no audit URL is configured.
+    primary_url = os.getenv("PRIMARY_DATABASE_URL") or os.getenv("DATABASE_URL")
+    if primary_url:
+        logger.warning(
+            "AUDIT_WRITER_DATABASE_URL not set — falling back to PRIMARY_DATABASE_URL. "
+            "Audit logging will share the app DB in local development only."
+        )
+        return primary_url
+
     # Production: resolve from Secret Manager
     secret_id = os.getenv(
         "AUDIT_WRITER_DB_URL_SECRET_ID",

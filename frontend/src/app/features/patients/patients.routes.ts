@@ -20,7 +20,7 @@ export const PATIENTS_ROUTES: Routes = [
       {
         path: ':patientId/medications',
         canActivate: [RoleGuard],
-        data: { roles: ['pharmacist', 'physician', 'ADMIN'] },
+        data: { roles: ['pharmacist', 'physician', 'admin'] },
         loadComponent: () =>
           import('../medications/components/medication-review/medication-review.component').then(
             (m) => m.MedicationReviewComponent,
@@ -29,7 +29,7 @@ export const PATIENTS_ROUTES: Routes = [
       {
         path: ':patientId/documents',
         canActivate: [RoleGuard],
-        data: { roles: ['physician', 'nurse', 'ADMIN'] },
+        data: { roles: ['physician', 'nurse', 'admin'] },
         loadComponent: () =>
           import('../documents/document-review/document-review.component').then(
             (m) => m.DocumentReviewComponent,

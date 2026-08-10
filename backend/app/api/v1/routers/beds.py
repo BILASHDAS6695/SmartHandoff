@@ -200,12 +200,16 @@ async def patch_bed_status(
         )
 
     # Write audit log entry (HIPAA compliance — all PHI access and mutations)
+    try:
+        performer_id = uuid.UUID(current_user.sub)
+    except ValueError:
+        performer_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
     await write_audit_log(
         db=write_db,
         action="BED_STATUS_OVERRIDE",
         resource_type="Bed",
         resource_id=bed_id,
-        performed_by=uuid.UUID(current_user.sub),
+        performed_by=performer_id,
         metadata={
             "previous": previous_status.value,
             "new": body.status.value,

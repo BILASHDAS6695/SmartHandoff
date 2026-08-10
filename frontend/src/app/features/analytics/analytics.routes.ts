@@ -13,7 +13,7 @@ export const ANALYTICS_ROUTES: Routes = [
     loadComponent: () =>
       import('../dashboard/shell/shell.component').then((m) => m.ShellComponent),
     canActivate: [RoleGuard],
-    data: { roles: ['MANAGER', 'ADMIN'] },
+    data: { roles: ['manager', 'admin'] },
     children: [
       {
         path: '',

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { PatientDetail, PatientListQuery, PatientListResponse } from '../models/patient.model';
+import { PatientDetail, PatientListQuery, PatientListResponse, PatientSummary } from '../models/patient.model';
 
 /**
  * HTTP client for the patient list API endpoint.
@@ -15,6 +15,14 @@ import { PatientDetail, PatientListQuery, PatientListResponse } from '../models/
 export class PatientApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/patients`;
+
+  /**
+   * Fetches a single encounter-level patient record by encounter id.
+   * @param encounterId - The encounter UUID
+   */
+  getPatientByEncounter(encounterId: string): Observable<PatientSummary & { mrn?: string; attending?: string }> {
+    return this.http.get<PatientSummary & { mrn?: string; attending?: string }>(`${this.baseUrl}/${encounterId}`);
+  }
 
   /**
    * Fetches paginated patient list for the specified unit.

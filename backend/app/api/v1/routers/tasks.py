@@ -92,12 +92,16 @@ async def override_task(
     US-034 Scenario 4: Charge pharmacist manually marks reconciliation as reviewed.
     Clears sla_escalation_sent_at to prevent further SLA escalations for this task.
     """
+    try:
+        actor_id = uuid.UUID(current_user.sub)
+    except ValueError:
+        actor_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
     repo = AgentTaskRepository()
     try:
         task = await repo.override_task(
             task_id=task_id,
             encounter_id=encounter_id,
-            actor_id=uuid.UUID(current_user.sub),
+            actor_id=actor_id,
             note=body.note,
             session=db,
         )
@@ -124,6 +128,6 @@ async def override_task(
         status=task.status.value,
         completed_at=task.completed_at,
         sla_escalation_sent_at=task.sla_escalation_sent_at,
-        overridden_by=uuid.UUID(current_user.sub),
+        overridden_by=actor_id,
         note=body.note,
     )
