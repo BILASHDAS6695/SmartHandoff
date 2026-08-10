@@ -116,64 +116,67 @@ async def list_patients(
         raise HTTPException(status_code=500, detail=f"Failed to fetch patients: {str(e)}")
 
 
-@router.get("/{patient_id}")
+@router.get("/{encounter_id}")
 async def get_patient(
-    patient_id: uuid.UUID,
+    encounter_id: uuid.UUID,
     current_user: Annotated[TokenClaims, Depends(require_permission("patient", "read"))],
     db: AsyncSession = Depends(get_write_db),
 ) -> dict:
     """Get a single encounter-level patient record — requires patient:read permission.
 
-    The ``patient_id`` path parameter is the encounter UUID returned by the list
-    endpoint (the frontend treats encounter records as patient rows).
+    The route parameter is the encounter id; returns patient + encounter details
+    for the patient detail screen.
     """
-    logger.info(f"Fetching patient detail for encounter_id={patient_id}")
-
-    stmt = (
-        select(
-            Encounter.id.label("encounter_id"),
-            Patient.id.label("patient_id"),
-            Patient.first_name,
-            Patient.last_name,
-            Patient.date_of_birth,
-            Patient.mrn_encrypted,
-            Encounter.status,
-            Encounter.unit.label("current_unit"),
-            Bed.bed_number.label("room_number"),
-            Encounter.risk_tier,
-            Encounter.created_at.label("admission_date"),
+    try:
+        query = (
+            select(
+                Encounter.id.label("encounter_id"),
+                Patient.id.label("patient_id"),
+                Patient.first_name,
+                Patient.last_name,
+                Patient.date_of_birth,
+                Patient.mrn_encrypted,
+                Encounter.unit.label("current_unit"),
+                Encounter.status.label("status"),
+                Encounter.risk_tier,
+                Bed.bed_number.label("room_number"),
+                Encounter.created_at.label("admission_date"),
+            )
+            .join(Patient, Encounter.patient_id == Patient.id)
+            .outerjoin(Bed, Bed.current_encounter_id == Encounter.id)
+            .where(Encounter.id == encounter_id)
+            .where(Patient.deleted_at.is_(None))
+            .where(Encounter.deleted_at.is_(None))
         )
-        .join(Patient, Encounter.patient_id == Patient.id)
-        .outerjoin(Bed, Bed.current_encounter_id == Encounter.id)
-        .where(Encounter.id == patient_id)
-        .where(Patient.deleted_at.is_(None))
-        .where(Encounter.deleted_at.is_(None))
-    )
 
-    result = await db.execute(stmt)
-    row = result.one_or_none()
+        result = await db.execute(query)
+        row = result.one_or_none()
+        if not row:
+            raise HTTPException(status_code=404, detail="Encounter not found")
 
-    if not row:
-        logger.warning(f"Encounter not found: {patient_id}")
-        raise HTTPException(status_code=404, detail="Patient encounter not found")
+        mrn = row.mrn_encrypted or ""
+        mrn_masked = f"****{mrn[-4:]}" if mrn and len(str(mrn)) >= 4 else "****"
 
-    mrn = row.mrn_encrypted or ""
-    mrn_masked = f"****{mrn[-4:]}" if mrn and len(str(mrn)) >= 4 else "****"
-
-    return {
-        "encounter_id": str(row.encounter_id),
-        "patient_id": str(row.patient_id),
-        "first_name": row.first_name or "",
-        "last_name": row.last_name or "",
-        "date_of_birth": row.date_of_birth or "",
-        "current_unit": row.current_unit or "",
-        "room_number": row.room_number or "",
-        "status": row.status or "",
-        "mrn_masked": mrn_masked,
-        "risk_tier": row.risk_tier or "UNKNOWN",
-        "risk_score": None,
-        "admission_date": row.admission_date.isoformat() if row.admission_date else "",
-    }
+        return {
+            "encounter_id": str(row.encounter_id),
+            "patient_id": str(row.patient_id),
+            "first_name": row.first_name or "",
+            "last_name": row.last_name or "",
+            "date_of_birth": row.date_of_birth or "",
+            "current_unit": row.current_unit or "",
+            "room_number": row.room_number or "",
+            "mrn_masked": mrn_masked,
+            "mrn": mrn_masked,
+            "risk_tier": row.risk_tier or "UNKNOWN",
+            "risk_score": None,
+            "status": row.status or "",
+            "admission_date": row.admission_date.isoformat() if row.admission_date else "",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error fetching patient detail: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch patient detail: {str(e)}")
 
 
 @router.patch("/{patient_id}")

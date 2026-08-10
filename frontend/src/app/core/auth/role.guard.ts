@@ -33,9 +33,9 @@ export class RoleGuard implements CanActivate {
       return this.router.parseUrl('/login');
     }
 
-    const userRole = this.auth.currentUser()?.role;
+    const userRole = this.auth.currentUser()?.role?.toLowerCase();
     const userRoles: string[] = userRole ? [userRole] : [];
-    const hasRole = requiredRoles.length === 0 || requiredRoles.some((r) => userRoles.includes(r));
+    const hasRole = requiredRoles.length === 0 || requiredRoles.some((r) => userRoles.includes(r.toLowerCase()));
 
     if (!hasRole) {
       return this.router.parseUrl('/403');

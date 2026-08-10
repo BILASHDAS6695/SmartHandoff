@@ -1,13 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { MedicationReconciliation, MedicationRow } from '../models/medication-row.model';
 
-/**
- * Raw medication record as returned by the backend reconciliation endpoint.
- */
-interface BackendMedication {
+/** Backend medication reconciliation row (US-030). */
+export interface MedicationReconciliationResult {
   id: string;
   name: string;
   rxnorm_cui: string | null;
@@ -22,11 +19,12 @@ interface BackendMedication {
   interaction_severity: 'HIGH' | 'MEDIUM' | 'LOW' | null;
 }
 
-interface BackendReconciliationResponse {
+/** Backend medication reconciliation response shape. */
+export interface MedicationReconciliationResponse {
   encounter_id: string;
   total_medications: number;
   reconciliation_completed_at: string | null;
-  medications: BackendMedication[];
+  medications: MedicationReconciliationResult[];
 }
 
 /**
@@ -41,34 +39,12 @@ export class MedicationApiService {
   private readonly base = `${environment.apiBaseUrl}/api/v1/encounters`;
 
   /**
-   * Retrieves the three-panel reconciliation payload for an encounter.
+   * Retrieves the medication reconciliation results for an encounter.
    * GET /api/v1/encounters/{encounterId}/medications/reconciliation
    */
-  getReconciliation(encounterId: string): Observable<MedicationReconciliation> {
-    return this.http
-      .get<BackendReconciliationResponse>(
-        `${this.base}/${encounterId}/medications/reconciliation`
-      )
-      .pipe(map((response) => this.toViewModel(response)));
-  }
-
-  private toViewModel(response: BackendReconciliationResponse): MedicationReconciliation {
-    const medications = response.medications ?? [];
-
-    const toRow = (med: BackendMedication): MedicationRow => ({
-      id: med.id,
-      drugName: med.name,
-      dose: med.dose ?? '',
-      frequency: med.frequency ?? '',
-      interactionSeverity: med.interaction_severity ?? null,
-      alertId: med.flags?.length ? med.flags[0] : null,
-    });
-
-    return {
-      encounterId: response.encounter_id,
-      preAdmit: medications.filter((m) => m.pre_admit).map(toRow),
-      inpatient: medications.filter((m) => m.inpatient).map(toRow),
-      discharge: medications.filter((m) => m.discharge).map(toRow),
-    };
+  getReconciliation(encounterId: string): Observable<MedicationReconciliationResponse> {
+    return this.http.get<MedicationReconciliationResponse>(
+      `${this.base}/${encounterId}/medications/reconciliation`
+    );
   }
 }

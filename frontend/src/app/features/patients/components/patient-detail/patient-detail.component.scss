@@ -147,8 +147,13 @@
   font-weight: 500;
   color: #4b5563;
   cursor: pointer;
+  border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
+  background: transparent;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 
   &:hover {
     color: #2563eb;

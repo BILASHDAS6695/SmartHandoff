@@ -1,7 +1,8 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
+import { AuthService } from '@core/auth/auth.service';
 import { DocumentQueueStore } from '../../../documents/store/document-queue.store';
 
 interface MenuSection {
@@ -15,6 +16,7 @@ interface MenuItem {
   route: string;
   badge?: () => number | null;
   tag?: string;
+  roles?: string[];
 }
 
 /**
@@ -36,9 +38,10 @@ export class SidebarComponent {
   @Output() readonly linkClicked = new EventEmitter<void>();
 
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
   private readonly queueStore = inject(DocumentQueueStore);
 
-  readonly sections: MenuSection[] = [
+  private readonly allSections: MenuSection[] = [
     {
       title: 'Navigation',
       items: [
@@ -55,12 +58,24 @@ export class SidebarComponent {
     {
       title: 'Role-Gated',
       items: [
-        { icon: 'hotel', label: 'Bed Board', route: '/beds', tag: 'BedMgr only' },
-        { icon: 'analytics', label: 'Analytics', route: '/analytics', tag: 'Manager only' },
-        { icon: 'admin_panel_settings', label: 'Admin', route: '/admin', tag: 'Admin only' },
+        { icon: 'hotel', label: 'Bed Board', route: '/beds', tag: 'BedMgr only', roles: ['bed_manager', 'admin'] },
+        { icon: 'analytics', label: 'Analytics', route: '/analytics', tag: 'Manager only', roles: ['admin'] },
+        { icon: 'admin_panel_settings', label: 'Admin', route: '/admin', tag: 'Admin only', roles: ['admin'] },
       ],
     },
   ];
+
+  readonly sections = computed<MenuSection[]>(() => {
+    const userRole = this.auth.currentUser()?.role?.toLowerCase() ?? '';
+    return this.allSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter(
+          (item) => !item.roles || item.roles.includes(userRole),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  });
 
   onLinkClick(): void {
     this.linkClicked.emit();

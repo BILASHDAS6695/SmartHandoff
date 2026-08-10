@@ -41,20 +41,13 @@
   </div>
 
   <!-- Tabs -->
-  <div class="tabs">
-    @for (tab of tabs(); track tab) {
-      <div
-        class="tab"
-        [class.active]="activeTab() === tab"
-        (click)="setTab(tab)"
-        tabindex="0"
-        (keydown.enter)="setTab(tab)"
-        role="tab"
-        [attr.aria-selected]="activeTab() === tab">
-        {{ tab }}
-      </div>
-    }
-  </div>
+  <nav class="tabs" role="tablist" aria-label="Patient detail sections">
+    <button class="tab" [class.active]="activeTab() === 'Overview'" (click)="setTab('Overview')" role="tab" [attr.aria-selected]="activeTab() === 'Overview'">Overview</button>
+    <button class="tab" [class.active]="activeTab() === 'Medications'" (click)="setTab('Medications')" role="tab" [attr.aria-selected]="activeTab() === 'Medications'">Medications</button>
+    <button class="tab" [class.active]="activeTab() === 'Documents'" (click)="setTab('Documents')" role="tab" [attr.aria-selected]="activeTab() === 'Documents'">Documents</button>
+    <button class="tab" [class.active]="activeTab() === 'Tasks'" (click)="setTab('Tasks')" role="tab" [attr.aria-selected]="activeTab() === 'Tasks'">Tasks</button>
+    <button class="tab" [class.active]="activeTab() === 'Timeline'" (click)="setTab('Timeline')" role="tab" [attr.aria-selected]="activeTab() === 'Timeline'">Timeline</button>
+  </nav>
 
   <!-- Overview content -->
   @if (activeTab() === 'Overview') {
@@ -79,7 +72,7 @@
       <div class="card">
         <div class="card-header">
           <h3>Pending Approvals</h3>
-          <span class="count-badge critical">1</span>
+          <span class="count-badge critical">{{ pendingApprovalCount() }}</span>
         </div>
         <div class="card-body">
           @for (approval of pendingApprovals(); track approval.title) {
@@ -90,7 +83,7 @@
               </div>
               <div class="approval-title">{{ approval.title }}</div>
               <div class="approval-meta">{{ approval.meta }}</div>
-              <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">Review & Approve →</button>
+              <button class="btn-review" (click)="onReviewApproval(approval)">Review & Approve →</button>
             </div>
           }
         </div>
@@ -102,19 +95,17 @@
       <div class="card">
         <div class="card-header">
           <h3>Active Alerts</h3>
-          <span class="count-badge critical">2</span>
+          <span class="count-badge critical">{{ activeAlertCount() }}</span>
         </div>
         <div class="card-body">
-          @for (alert of alerts(); track alert.title) {
+          @for (alert of alerts(); track alert.id) {
             <div class="alert-item" [class]="alert.type">
               <div class="alert-header">
                 <mat-icon>{{ alert.type === 'critical' ? 'error' : 'warning' }}</mat-icon>
                 {{ alert.title }}
               </div>
               <div class="alert-text">{{ alert.text }}</div>
-              @if (alert.link) {
-                <a class="alert-link">{{ alert.link }}</a>
-              }
+              <a class="alert-link" (click)="onAlertClick(alert)" (keydown.enter)="onAlertClick(alert)" tabindex="0" role="button">{{ alert.link }}</a>
             </div>
           }
         </div>
@@ -139,7 +130,7 @@
               </li>
             }
           </ul>
-          <a class="view-plan">View Care Plan →</a>
+          <a class="view-plan" (click)="onViewCarePlan()" (keydown.enter)="onViewCarePlan()" tabindex="0" role="button">View Care Plan →</a>
         </div>
       </div>
     </div>
@@ -161,7 +152,7 @@
               }
             </div>
             <span class="doc-status" [class.approved]="doc.status === 'Approved'">{{ doc.status }}</span>
-            <button class="btn-review" [routerLink]="['/patients', 'enc-001', 'documents']">
+            <button class="btn-review" [routerLink]="['/patients', patientId(), 'documents']">
               {{ doc.status === 'Approved' ? 'View' : 'Review' }}
             </button>
           </div>
