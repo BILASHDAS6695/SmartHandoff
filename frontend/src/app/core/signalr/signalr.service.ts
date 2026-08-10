@@ -84,26 +84,27 @@ export class SignalRService implements OnDestroy {
 
   /**
    * Builds and starts the SignalR hub connection.
-   * Invokes `JoinGroups` on the hub immediately after connection is established.
    *
-   * @param joinRequest - Units and roles for server-side group subscription
+   * Azure SignalR Service is used in Serverless mode: groups are assigned via
+   * the negotiate token's `groups` claim, so no client-side `JoinGroups` hub
+   * invocation is required (and would hang because there is no app server hub).
+   *
+   * @param _joinRequest - Kept for API compatibility; groups come from negotiate token
    */
-  async connect(joinRequest: JoinGroupsRequest): Promise<void> {
+  async connect(_joinRequest: JoinGroupsRequest): Promise<void> {
     if (this.connection?.state === HubConnectionState.Connected) {
       return; // Already connected — idempotent
     }
 
     this.connection = this.buildConnection();
     this.registerHandlers();
-    this.registerLifecycleHooks(joinRequest);
+    this.registerLifecycleHooks();
 
     this.connectionState.set('Connecting');
     try {
       await this.connection.start();
       // Transition to Connected state after successful start
       this.connectionState.set('Connected');
-      // Join groups on initial connection
-      await this.joinGroups(joinRequest);
     } catch (error) {
       this.connectionState.set('Disconnected');
       throw error;
@@ -139,7 +140,9 @@ export class SignalRService implements OnDestroy {
 
   private buildConnection(): HubConnection {
     return new HubConnectionBuilder()
-      .withUrl(`${environment.apiBaseUrl}/hubs/dashboard`, {
+      // Backend negotiate endpoint is /api/v1/signalr/negotiate (Azure SignalR Service).
+      // The negotiate response returns the real Azure SignalR WebSocket URL + client token.
+      .withUrl(`${environment.apiBaseUrl}/api/v1/signalr`, {
         // JWT in query param — SignalR limitation for WS upgrade handshake.
         // Token is sourced from in-memory store (never localStorage).
         accessTokenFactory: () => this.authService.getToken() ?? '',
@@ -190,7 +193,7 @@ export class SignalRService implements OnDestroy {
     });
   }
 
-  private registerLifecycleHooks(joinRequest: JoinGroupsRequest): void {
+  private registerLifecycleHooks(): void {
     if (!this.connection) return;
 
     this.connection.onclose(() => {
@@ -201,20 +204,10 @@ export class SignalRService implements OnDestroy {
       this.connectionState.set('Reconnecting');
     });
 
-    this.connection.onreconnected(async () => {
+    this.connection.onreconnected(() => {
       this.connectionState.set('Connected');
-      // Re-join groups after reconnect — server clears group memberships on disconnect
-      await this.joinGroups(joinRequest);
+      // Groups are re-applied automatically by Azure SignalR Service via the
+      // negotiate token; no client-side hub method invocation is needed.
     });
-  }
-
-  private async joinGroups(request: JoinGroupsRequest): Promise<void> {
-    if (this.connection?.state === HubConnectionState.Connected) {
-      try {
-        await this.connection.invoke('JoinGroups', request);
-      } catch (error) {
-        console.error('Error joining groups:', error);
-      }
-    }
   }
 }

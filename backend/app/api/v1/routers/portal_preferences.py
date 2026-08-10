@@ -16,6 +16,7 @@ Design refs:
 """
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 from typing import Annotated
 
@@ -27,6 +28,7 @@ from app.core.auth.dependencies import get_current_patient_user
 from app.db.deps import get_write_db
 from app.models.patient import Patient
 from app.schemas.portal import PortalPreferencesResponse, PortalPreferencesUpdateRequest
+from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 router = APIRouter(prefix="/portal/preferences", tags=["portal"])
 
@@ -97,6 +99,27 @@ async def update_portal_preferences(
     )
     db.add(audit_entry)
     await db.commit()
+
+    # Confirm change via email/SMS when patient opts back in (US-064)
+    if not body.notification_opt_out:
+        try:
+            notifier = PatientNotificationPublisher()
+            await notifier.send_both(
+                phone=patient.phone,
+                email=patient.email,
+                subject="SmartHandoff notifications enabled",
+                body=(
+                    "Hi, you've opted back in to SmartHandoff notifications. "
+                    "You'll receive updates about your care by text and email."
+                ),
+                patient_id=str(patient_id),
+            )
+        except Exception as exc:
+            logger = logging.getLogger(__name__)
+            logger.error(
+                "Failed to send preference update notification",
+                extra={"patient_id": str(patient_id), "error": str(exc)},
+            )
 
     return PortalPreferencesResponse(
         notification_opt_out=body.notification_opt_out,

@@ -7,12 +7,13 @@ HIPAA audit trail requirements (BR-001).
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentStatus(str, Enum):
@@ -147,3 +148,11 @@ class DocumentResponse(BaseModel):
     )
 
     model_config = {"from_attributes": True}
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def _parse_json_content(cls, value: Any) -> Any:
+        """Decrypting the ORM returns a JSON string; normalise to a dict."""
+        if isinstance(value, str):
+            return json.loads(value)
+        return value

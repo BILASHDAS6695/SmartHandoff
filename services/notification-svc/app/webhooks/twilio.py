@@ -122,15 +122,15 @@ async def twilio_status_webhook(
 
     from datetime import datetime, timezone
     import sqlalchemy as sa
-    
-    now = datetime.now(timezone.utc).isoformat()
+
+    now = datetime.now(timezone.utc)
     params = {
         "status": new_status.value,
         "updated_at": now,
         "sid": MessageSid,
     }
     sql = "UPDATE notification SET delivery_status = :status, updated_at = :updated_at"
-    
+
     if new_status == NotificationStatus.DELIVERED:
         sql += ", delivered_at = :delivered_at"
         params["delivered_at"] = now

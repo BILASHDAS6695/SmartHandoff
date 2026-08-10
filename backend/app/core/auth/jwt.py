@@ -79,6 +79,19 @@ def _jwt_signing_key() -> str:
     return key
 
 
+def sub_to_uuid(sub: str) -> _uuid.UUID:
+    """Convert a JWT ``sub`` claim to a deterministic UUID.
+
+    OIDC subjects are often opaque strings (e.g. ``dev-abc12345``), but audit
+    log columns require a UUID. This helper parses the sub if it is already a
+    UUID, otherwise derives a stable UUID5 from it.
+    """
+    try:
+        return _uuid.UUID(sub)
+    except ValueError:
+        return _uuid.uuid5(_uuid.NAMESPACE_OID, sub)
+
+
 # ── Claims mapping helpers ─────────────────────────────────────────────────────
 
 _ROLE_MAP: dict[str, str] = {
@@ -97,21 +110,11 @@ def _map_role(groups: list[str]) -> str:
 
     Takes the first matching group in priority order (most privileged first).
     Returns "unknown" if no known group is found; callers should reject unknown roles.
-    
-    TEMPORARY: For testing without Google Workspace, assigns 'ADMIN' role to all users.
-    TODO: Remove this default and enforce Google Groups in production.
     """
     for group in groups:
         if group in _ROLE_MAP:
             return _ROLE_MAP[group]
-    
-    # TEMPORARY: Default to ADMIN for testing without Google Groups
-    logger.warning(
-        "No SmartHandoff group found in groups=%r. Assigning default 'ADMIN' role for testing.",
-        groups,
-        extra={"event_type": "auth_warning", "reason": "default_role_assigned"},
-    )
-    return "ADMIN"  # TODO: Change back to "unknown" in production
+    return "unknown"
 
 
 def _map_claims(oidc_claims: dict) -> dict:
@@ -132,7 +135,14 @@ def _map_claims(oidc_claims: dict) -> dict:
     Raises:
         HTTPException 403: If the role cannot be determined from IdP groups.
     """
-    role = _map_role(oidc_claims.get("groups", []))
+    # Local/dev flows may already provide an explicit role claim (e.g. dev test-token).
+    # Prefer that; otherwise map from IdP groups.
+    explicit_role = oidc_claims.get("role")
+    if explicit_role and isinstance(explicit_role, str):
+        role = explicit_role.lower()
+    else:
+        role = _map_role(oidc_claims.get("groups", []))
+
     if role == "unknown":
         logger.warning(
             "No recognised SmartHandoff group for sub=%s groups=%r",

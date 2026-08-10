@@ -15,6 +15,8 @@ US-022 DoD:
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -76,4 +78,29 @@ async def broadcast_task_updated(
         },
     )
     await broadcaster.broadcast_task_updated(payload)
+    return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+@router.post(
+    "/dev/broadcast-adt",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="DEV ONLY: broadcast a fake ADT event",
+    description="Broadcasts a synthetic adt_event_received message to a unit group for UI testing.",
+)
+async def dev_broadcast_adt(
+    broadcaster: Annotated[SignalRBroadcaster, Depends(get_signalr_broadcaster)],
+) -> Response:
+    """Send a fake ADT event to Azure SignalR for local dashboard testing.
+
+    In production this endpoint should be removed or guarded.
+    """
+    payload = {
+        "eventType": "A01",
+        "patientUnit": "ICU",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "encounterId": str(uuid.uuid4()),
+        "patientDisplayName": "Test, Patient",
+    }
+    await broadcaster.broadcast_adt_event_to_all(payload)
+    logger.info("DEV broadcast ADT event", extra={"unit": "ICU"})
     return Response(status_code=status.HTTP_202_ACCEPTED)

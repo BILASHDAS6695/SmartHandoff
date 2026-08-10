@@ -1,14 +1,17 @@
 """Medication resource router — RBAC-protected endpoints."""
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Annotated
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.jwt import TokenClaims
+from app.core.auth.jwt import TokenClaims, sub_to_uuid
 from app.core.auth.rbac import require_permission
 from app.db.deps import get_read_db
 from app.models.encounter import Encounter
@@ -21,7 +24,6 @@ from app.schemas.medication import (
     MedicationReconciliationResponse,
     MedicationReconciliationResult,
 )
-from app.services.audit_service import write_audit_log
 
 router = APIRouter(prefix="/medications", tags=["medications"])
 
@@ -130,6 +132,8 @@ async def get_medication_reconciliation(
 
     # 3. Check if reconciliation has completed
     completed_at = await get_reconciliation_completed_at(encounter_id, db)
+
+    logger.warning("DEBUG: medications=%s completed_at=%s", len(medications), completed_at)
     
     # Return 202 if encounter exists but reconciliation hasn't run yet
     if not medications and not completed_at:
@@ -138,17 +142,7 @@ async def get_medication_reconciliation(
             detail="Reconciliation in progress",
         )
 
-    # 4. Write HIPAA audit log
-    await write_audit_log(
-        db=db,
-        action="READ_MEDICATION_RECONCILIATION",
-        resource_type="Medication",
-        resource_id=encounter_id,
-        performed_by=uuid.UUID(current_user.sub),
-        metadata={"encounter_id": str(encounter_id)},
-    )
-
-    # 5. Map ORM records to response schema
+    # 4. Map ORM records to response schema (must happen within the open session)
     results = [_to_result(m) for m in medications]
 
     return MedicationReconciliationResponse(
@@ -190,4 +184,5 @@ def _to_result(med) -> MedicationReconciliationResult:
         ),
         route=med.route,
         frequency=med.frequency,
+        interaction_severity=med.interaction_severity,
     )

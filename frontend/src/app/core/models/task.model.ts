@@ -11,6 +11,7 @@ export interface AgentTaskResponse {
   status: string;
   start_time: string;
   completed_time: string | null;
+  started_at: string | null;
   payload: Record<string, any> | null;
   output: Record<string, any> | null;
 }

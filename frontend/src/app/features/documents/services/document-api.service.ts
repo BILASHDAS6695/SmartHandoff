@@ -5,6 +5,50 @@ import { environment } from '../../../../environments/environment';
 import { PendingDocument, DocumentActionPayload } from '../models/pending-document.model';
 
 /**
+ * Structured document content returned by the backend.
+ */
+export interface DocumentContent {
+  diagnosis_summary?: Array<{
+    icd10_code: string;
+    description: string;
+    is_primary?: boolean;
+  }>;
+  hospital_course?: string;
+  medications_at_discharge?: Array<{
+    drug_name: string;
+    dose: string;
+    frequency: string;
+    route: string;
+  }>;
+  follow_up_instructions?: Array<{
+    instruction: string;
+    timeframe?: string;
+  }>;
+  warning_signs?: string[];
+  activity_restrictions?: string[];
+  generation_type?: 'AI' | 'TEMPLATE';
+}
+
+/**
+ * Full document resource returned by the backend.
+ */
+export interface BackendDocument {
+  id: string;
+  encounter_id: string;
+  document_type: string;
+  content: DocumentContent;
+  language_code: string;
+  status: string;
+  generation_type: string;
+  ai_assisted_label: boolean;
+  approved_at: string | null;
+  reviewed_by_user_id: string | null;
+  reviewed_by_display_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * HTTP client for document approval queue endpoints.
  * Source: US-025 Document API.
  *
@@ -14,6 +58,7 @@ import { PendingDocument, DocumentActionPayload } from '../models/pending-docume
 export class DocumentApiService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/api/v1/documents`;
+  private readonly encountersBase = `${environment.apiBaseUrl}/api/v1/encounters`;
 
   /**
    * Returns all PENDING_REVIEW documents assigned to the current physician.
@@ -38,5 +83,23 @@ export class DocumentApiService {
       `${this.base}/${documentId}/review`,
       payload
     );
+  }
+
+  /**
+   * Lists all documents for a specific encounter.
+   * GET /api/v1/encounters/{encounterId}/documents
+   */
+  getDocumentsByEncounter(encounterId: string): Observable<BackendDocument[]> {
+    return this.http.get<BackendDocument[]>(
+      `${this.encountersBase}/${encounterId}/documents`
+    );
+  }
+
+  /**
+   * Fetches a single document by ID.
+   * GET /api/v1/documents/{documentId}
+   */
+  getDocument(documentId: string): Observable<BackendDocument> {
+    return this.http.get<BackendDocument>(`${this.base}/${documentId}`);
   }
 }

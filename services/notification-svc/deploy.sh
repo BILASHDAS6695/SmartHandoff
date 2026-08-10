@@ -25,10 +25,6 @@ echo "Region: $REGION"
 echo "Project: $PROJECT_ID"
 echo "========================================="
 
-# Prompt for required environment variables
-read -p "Enter SENDGRID_FROM_EMAIL: " SENDGRID_FROM_EMAIL
-read -p "Enter TWILIO_FROM_NUMBER: " TWILIO_FROM_NUMBER
-
 # Build container image
 echo "Building container image..."
 gcloud builds submit \
@@ -49,8 +45,8 @@ gcloud run deploy "$SERVICE_NAME" \
     --image="$IMAGE_URL" \
     --platform=managed \
     --allow-unauthenticated \
-    --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID,SENDGRID_FROM_EMAIL=$SENDGRID_FROM_EMAIL,TWILIO_FROM_NUMBER=$TWILIO_FROM_NUMBER,PUBSUB_SUBSCRIPTION_ID=notification-service-sub" \
-    --set-secrets="DATABASE_URL=database-url:latest" \
+    --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID,PUBSUB_SUBSCRIPTION_ID=notification-service-sub" \
+    --set-secrets="DATABASE_URL=database-url:latest,SENDGRID_FROM_EMAIL=sendgrid-from-email:latest,TWILIO_FROM_NUMBER=twilio-phone-number:latest" \
     --min-instances=1 \
     --max-instances=10 \
     --memory=512Mi \

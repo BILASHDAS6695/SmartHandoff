@@ -1,124 +1,153 @@
-<!-- Back button -->
-<button class="back-btn" (click)="goBack()">
-  <mat-icon>arrow_back</mat-icon>
-  Back to Patient
-</button>
+<main class="medication-review">
+  <!-- Header -->
+  <header class="med-review__header">
+    <button class="back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Back to Patient
+    </button>
 
-<!-- Loading state -->
-<div *ngIf="isLoading()" class="med-review__loading" aria-busy="true" aria-label="Loading medication reconciliation">
-  <mat-spinner diameter="40"></mat-spinner>
-</div>
+    <div class="page-header">
+      <h1>Medication Reconciliation — {{ patientName() }}</h1>
+      <div class="ai-badge">
+        <mat-icon>auto_awesome</mat-icon>
+        <span>AI-Assisted — Review Required</span>
+      </div>
+    </div>
+  </header>
 
-<!-- Error state -->
-<div *ngIf="hasError() && !isLoading()" class="med-review__error" role="alert">
-  <mat-icon aria-hidden="true">error_outline</mat-icon>
-  <span>Failed to load medication reconciliation data.</span>
-  <button mat-stroked-button color="warn" (click)="load()">Retry</button>
-</div>
-
-<!-- Three-panel reconciliation table -->
-<ng-container *ngIf="reconciliation() as rec">
-  <div class="med-review__panels">
-
-    <!-- Pre-Admit Panel -->
-    <section class="med-review__panel" aria-labelledby="pre-admit-heading">
-      <h2 id="pre-admit-heading" class="med-review__panel-title">Pre-Admit</h2>
-      <table mat-table [dataSource]="rec.preAdmit" class="med-review__table" aria-label="Pre-Admit medications">
-        <ng-container matColumnDef="drugName">
-          <th mat-header-cell *matHeaderCellDef>Drug</th>
-          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
-        </ng-container>
-        <ng-container matColumnDef="dose">
-          <th mat-header-cell *matHeaderCellDef>Dose</th>
-          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
-        </ng-container>
-        <ng-container matColumnDef="frequency">
-          <th mat-header-cell *matHeaderCellDef>Frequency</th>
-          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
-        </ng-container>
-        <ng-container matColumnDef="severity">
-          <th mat-header-cell *matHeaderCellDef>Interaction</th>
-          <td mat-cell *matCellDef="let row">
-            <app-risk-badge
-              *ngIf="row.interactionSeverity"
-              [tier]="row.interactionSeverity"
-              [attr.aria-label]="row.interactionSeverity + ' severity interaction'"
-              (click)="onBadgeClick(row)"
-              style="cursor: pointer"
-            />
-            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
-    </section>
-
-    <!-- Inpatient Panel -->
-    <section class="med-review__panel" aria-labelledby="inpatient-heading">
-      <h2 id="inpatient-heading" class="med-review__panel-title">Inpatient</h2>
-      <table mat-table [dataSource]="rec.inpatient" class="med-review__table" aria-label="Inpatient medications">
-        <ng-container matColumnDef="drugName">
-          <th mat-header-cell *matHeaderCellDef>Drug</th>
-          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
-        </ng-container>
-        <ng-container matColumnDef="dose">
-          <th mat-header-cell *matHeaderCellDef>Dose</th>
-          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
-        </ng-container>
-        <ng-container matColumnDef="frequency">
-          <th mat-header-cell *matHeaderCellDef>Frequency</th>
-          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
-        </ng-container>
-        <ng-container matColumnDef="severity">
-          <th mat-header-cell *matHeaderCellDef>Interaction</th>
-          <td mat-cell *matCellDef="let row">
-            <app-risk-badge
-              *ngIf="row.interactionSeverity"
-              [tier]="row.interactionSeverity"
-              (click)="onBadgeClick(row)"
-              style="cursor: pointer"
-            />
-            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
-    </section>
-
-    <!-- Discharge Panel -->
-    <section class="med-review__panel" aria-labelledby="discharge-heading">
-      <h2 id="discharge-heading" class="med-review__panel-title">Discharge</h2>
-      <table mat-table [dataSource]="rec.discharge" class="med-review__table" aria-label="Discharge medications">
-        <ng-container matColumnDef="drugName">
-          <th mat-header-cell *matHeaderCellDef>Drug</th>
-          <td mat-cell *matCellDef="let row">{{ row.drugName }}</td>
-        </ng-container>
-        <ng-container matColumnDef="dose">
-          <th mat-header-cell *matHeaderCellDef>Dose</th>
-          <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
-        </ng-container>
-        <ng-container matColumnDef="frequency">
-          <th mat-header-cell *matHeaderCellDef>Frequency</th>
-          <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
-        </ng-container>
-        <ng-container matColumnDef="severity">
-          <th mat-header-cell *matHeaderCellDef>Interaction</th>
-          <td mat-cell *matCellDef="let row">
-            <app-risk-badge
-              *ngIf="row.interactionSeverity"
-              [tier]="row.interactionSeverity"
-              (click)="onBadgeClick(row)"
-              style="cursor: pointer"
-            />
-            <span *ngIf="!row.interactionSeverity" class="med-review__no-interaction" aria-label="No interaction detected">—</span>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-      </table>
-    </section>
-
+  <!-- Loading state -->
+  <div *ngIf="isLoading()" class="med-review__loading" aria-busy="true" aria-label="Loading medication reconciliation">
+    <mat-spinner diameter="40"></mat-spinner>
   </div>
-</ng-container>
+
+  <!-- Error state -->
+  <div *ngIf="hasError() && !isLoading()" class="med-review__error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>Failed to load medication reconciliation data.</span>
+    <button mat-stroked-button color="warn" (click)="load()">Retry</button>
+  </div>
+
+  <!-- Completion banner -->
+  <div *ngIf="isComplete()" class="med-review__complete-banner" role="status">
+    <mat-icon>check_circle</mat-icon>
+    <span>Medication reconciliation complete — discharge unblocked</span>
+  </div>
+
+  <!-- Empty state when reconciliation has not run for this encounter -->
+  <div *ngIf="isEmpty() && !isLoading()" class="med-review__empty" role="status">
+    <mat-icon>hourglass_empty</mat-icon>
+    <span>Reconciliation results are not yet available for this encounter.</span>
+  </div>
+
+  <!-- Three-panel reconciliation table -->
+  <ng-container *ngIf="viewModel() as rec">
+    @if (!isEmpty()) {
+      <div class="med-review__grid">
+        <!-- Pre-Admission -->
+        <section class="med-review__col" aria-labelledby="pre-admit-heading">
+          <div class="med-review__col-header">
+            <h3 id="pre-admit-heading">Pre-Admission</h3>
+            <p>FHIR MedicationStatement</p>
+          </div>
+          <div class="med-review__col-body">
+            @for (row of rec.preAdmit; track row.id) {
+              <div class="med-review__row">
+                <span class="med-review__drug">{{ row.drugName }} {{ row.dose }} {{ row.frequency }}</span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Inpatient -->
+        <section class="med-review__col" aria-labelledby="inpatient-heading">
+          <div class="med-review__col-header">
+            <h3 id="inpatient-heading">Inpatient</h3>
+            <p>FHIR MedicationAdministration</p>
+          </div>
+          <div class="med-review__col-body">
+            @for (row of rec.inpatient; track row.id) {
+              <div class="med-review__row">
+                <span class="med-review__drug">{{ row.drugName }} {{ row.dose }} {{ row.frequency }}</span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Discharge Rx -->
+        <section class="med-review__col" aria-labelledby="discharge-heading">
+          <div class="med-review__col-header">
+            <h3 id="discharge-heading">Discharge Rx</h3>
+            <p>FHIR MedicationRequest</p>
+          </div>
+          <div class="med-review__col-body">
+            @for (row of rec.discharge; track row.id) {
+              @if (row.isMissingBanner) {
+                <div class="med-review__missing-banner">
+                  <mat-icon>warning</mat-icon>
+                  <span>MISSING — {{ row.missingReason }}</span>
+                </div>
+              } @else {
+                <div class="med-review__row">
+                  <span class="med-review__drug">{{ row.drugName }} {{ row.dose }} {{ row.frequency }}</span>
+                  <span class="med-review__flag" [class]="'med-review__flag--' + (row.flag | lowercase)">
+                    @if (row.flag === 'OK') { ✓ OK }
+                    @if (row.flag === 'INTERACT') { ⚠ INTERACT }
+                    @if (row.flag === 'RESOLVED') { ✓ RESOLVED }
+                    @if (row.flag === 'OMITTED') { ✗ OMITTED }
+                    @if (row.flag === 'FLAGGED') { ⚑ FLAGGED }
+                  </span>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      </div>
+
+      <!-- Active Alerts -->
+      <section class="med-review__alerts" aria-labelledby="alerts-heading">
+        <h2 id="alerts-heading">Active Alerts ({{ rec.alerts.length }})</h2>
+        @for (alert of rec.alerts; track alert.id) {
+          <div class="med-review__alert-card" [class]="'med-review__alert-card--' + alert.type">
+            <div class="med-review__alert-title">
+              @if (alert.type === 'critical') { 🔴 }
+              @if (alert.type === 'warning') { 🟡 }
+              {{ alert.title }}
+            </div>
+            <div class="med-review__alert-body">{{ alert.body }}</div>
+            <div class="med-review__alert-actions">
+              <button
+                class="med-review__btn"
+                [class.med-review__btn--primary]="(alert.primaryActionClass || 'primary') === 'primary'"
+                [class.med-review__btn--info]="alert.primaryActionClass === 'info'"
+              [class.med-review__btn--secondary]="alert.primaryActionClass === 'secondary'"
+              (click)="onPrimaryAction(alert)"
+            >
+              {{ alert.primaryAction }}
+            </button>
+            @for (action of alert.secondaryActions; track action) {
+              <button class="med-review__btn" (click)="onSecondaryAction(alert, action)">
+                {{ action }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Bottom actions -->
+    <div class="med-review__bottom-actions">
+      <button class="med-review__btn med-review__btn--outline-primary" (click)="generateSummary()">
+        Generate Patient Medication Summary
+      </button>
+      <button
+        class="med-review__btn med-review__btn--success"
+        [class.med-review__btn--disabled]="rec.alerts.length > 0 || isComplete()"
+        [disabled]="rec.alerts.length > 0 || isComplete()"
+        (click)="completeReconciliation()"
+      >
+        {{ isComplete() ? 'Completed ✓' : 'Complete Reconciliation ✓' }}
+      </button>
+    </div>
+    }
+  </ng-container>
+</main>

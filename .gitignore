@@ -2,6 +2,10 @@
 .vs/
 *.vsidx
 
+# Playwright MCP snapshots / screenshots
+.playwright-mcp/
+*.png
+
 # Angular cache
 .angular/
 frontend/.angular/

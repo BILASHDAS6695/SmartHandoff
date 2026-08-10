@@ -1,0 +1,21 @@
+steps:
+  - name: "python:3.11-slim"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        apt-get update && apt-get install -y gcc libpq-dev
+        pip install -r requirements.txt
+        cd app
+        alembic upgrade head
+    env:
+      - DATABASE_URL=postgresql+asyncpg://postgres:SmartHandoff%40123@/smarthandoff?host=/cloudsql/smarthandoff:us-central1:smarthandoff
+      - GCP_PROJECT_ID=smarthandoff
+    volumes:
+      - name: cloudsql
+        path: /cloudsql
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+serviceAccount: projects/smarthandoff/serviceAccounts/notification-service@smarthandoff.iam.gserviceaccount.com

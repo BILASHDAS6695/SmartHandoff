@@ -19,7 +19,6 @@ Design refs:
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 import logging
 import uuid
@@ -132,13 +131,13 @@ async def _upsert_notification(
         1 if a new row was inserted; 0 if the idempotency key already existed.
     """
     recipient_address = request.phone if request.type == NotificationTypeEnum.SMS else request.email
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
     result = await session.execute(
         sa.text(
             """
             INSERT INTO notification (
                 id, idempotency_key, type, recipient_id, phone_or_email,
-                template, substitutions, status, retry_count, urgency_override, created_at, updated_at
+                template, substitutions, delivery_status, retry_count, urgency_override, created_at, updated_at
             ) VALUES (
                 :id, :idempotency_key, :type, :recipient_id, :phone_or_email,
                 :template, :substitutions, 'PENDING', 0, :urgency_override, :created_at, :updated_at
@@ -192,10 +191,25 @@ async def run_consumer(project_id: str, subscription_id: str) -> None:
         )
 
         for received_message in response.received_messages:
-            data = base64.b64decode(received_message.message.data)
-            await _process_message(
-                message_data=data,
-                ack_id=received_message.ack_id,
-                subscriber=subscriber,
-                subscription_path=subscription_path,
-            )
+            # message.data is already decoded bytes from the Pub/Sub client
+            data = received_message.message.data
+            try:
+                await _process_message(
+                    message_data=data,
+                    ack_id=received_message.ack_id,
+                    subscriber=subscriber,
+                    subscription_path=subscription_path,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "notification_consumer.unexpected_error",
+                    extra={"error": str(exc)},
+                )
+                # ACK the message to avoid infinite redelivery loops.
+                # Permanent failures (e.g. FK violation) should not block the consumer.
+                await asyncio.to_thread(
+                    subscriber.acknowledge,
+                    request=pubsub_v1.types.AcknowledgeRequest(
+                        subscription=subscription_path, ack_ids=[received_message.ack_id]
+                    ),
+                )

@@ -27,12 +27,12 @@ import uuid
 from datetime import datetime, timezone
 
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, To, DynamicTemplateData
+from sendgrid.helpers.mail import Content, Mail, To, DynamicTemplateData
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.secrets import get_secret
-from app.core.sendgrid_config import get_template_id
+from app.core.sendgrid_config import TemplateConfigError, get_template_id
 from app.db.session import AsyncSessionFactory
 from app.dispatchers.base import BaseNotificationDispatcher
 from app.models.notification import Notification, NotificationStatus
@@ -53,7 +53,7 @@ def _build_sendgrid_client() -> SendGridAPIClient:
 
 
 class SendGridEmailDispatcher(BaseNotificationDispatcher):
-    """Dispatches email via SendGrid Dynamic Templates.
+    """Dispatches email via SendGrid Dynamic Templates or plain text fallback.
 
     Usage::
 
@@ -62,7 +62,9 @@ class SendGridEmailDispatcher(BaseNotificationDispatcher):
     """
 
     def __init__(self) -> None:
-        self._from_email: str = os.environ["SENDGRID_FROM_EMAIL"]
+        self._from_email: str = os.environ.get(
+            "SENDGRID_FROM_EMAIL"
+        ) or get_secret("sendgrid-from-email")
 
     async def dispatch(
         self,
@@ -125,59 +127,66 @@ class SendGridEmailDispatcher(BaseNotificationDispatcher):
             request: Validated notification request (template field = name).
             attempt: Current attempt number (1-indexed).
         """
-        # Resolve template name → SendGrid template ID
+        # Resolve template name → SendGrid template ID.
+        # If no dynamic template is configured, fall back to a plain text email
+        # where `template` becomes the subject and substitutions["body"] (or the
+        # template itself) becomes the message body.
+        template_id: str | None = None
+        message = Mail(from_email=self._from_email, to_emails=To(request.email))
         try:
             template_id = get_template_id(request.template)
-        except Exception as exc:
-            logger.error(
-                "email_dispatcher.template_resolution_failed",
+        except TemplateConfigError as exc:
+            logger.warning(
+                "email_dispatcher.no_dynamic_template",
                 extra={
                     "notification_id": str(notification_id),
                     "template_name": request.template,
                     "error": str(exc),
                 },
             )
-            # Template resolution failure is non-retryable
-            await self._handle_final_failure(session, notification_id, request, str(exc))
-            return
 
-        # Validate substitutions against the Pydantic schema
-        schema_class = TEMPLATE_SCHEMA_REGISTRY.get(request.template)
-        if schema_class:
-            try:
-                # Validate substitutions by instantiating the schema
-                validated = schema_class(
-                    template_name=request.template, **request.substitutions
-                )
-                # Use validated model's dict (excludes template_name field)
-                substitutions = validated.model_dump(exclude={"template_name"})
-            except Exception as exc:
-                logger.error(
-                    "email_dispatcher.substitution_validation_failed",
+        client = _build_sendgrid_client()
+        if template_id:
+            # Validate substitutions against the Pydantic schema
+            schema_class = TEMPLATE_SCHEMA_REGISTRY.get(request.template)
+            if schema_class:
+                try:
+                    # Validate substitutions by instantiating the schema
+                    validated = schema_class(
+                        template_name=request.template, **request.substitutions
+                    )
+                    # Use validated model's dict (excludes template_name field)
+                    substitutions = validated.model_dump(exclude={"template_name"})
+                except Exception as exc:
+                    logger.error(
+                        "email_dispatcher.substitution_validation_failed",
+                        extra={
+                            "notification_id": str(notification_id),
+                            "template_name": request.template,
+                            "error": str(exc),
+                        },
+                    )
+                    # Validation failure is non-retryable
+                    await self._handle_final_failure(session, notification_id, request, str(exc))
+                    return
+            else:
+                # No schema registered; use raw substitutions
+                logger.warning(
+                    "email_dispatcher.no_schema_registered",
                     extra={
                         "notification_id": str(notification_id),
                         "template_name": request.template,
-                        "error": str(exc),
                     },
                 )
-                # Validation failure is non-retryable
-                await self._handle_final_failure(session, notification_id, request, str(exc))
-                return
-        else:
-            # No schema registered; use raw substitutions
-            logger.warning(
-                "email_dispatcher.no_schema_registered",
-                extra={
-                    "notification_id": str(notification_id),
-                    "template_name": request.template,
-                },
-            )
-            substitutions = request.substitutions
+                substitutions = request.substitutions
 
-        client = _build_sendgrid_client()
-        message = Mail(from_email=self._from_email, to_emails=To(request.email))
-        message.template_id = template_id
-        message.dynamic_template_data = DynamicTemplateData(substitutions)
+            message.template_id = template_id
+            message.dynamic_template_data = DynamicTemplateData(substitutions)
+        else:
+            subject = request.template[:200] if request.template else "SmartHandoff Notification"
+            body = str(request.substitutions.get("body", request.template or ""))
+            message.subject = subject
+            message.add_content(Content(mime_type="text/plain", content=body))
 
         try:
             response = client.send(message)

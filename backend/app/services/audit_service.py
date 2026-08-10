@@ -53,6 +53,8 @@ async def write_audit_log(
         # Flushed (not committed) here; the caller's commit includes this row.
         await db.flush()
     except Exception as exc:  # noqa: BLE001
+        # Roll back so the caller's session remains usable after a flush failure.
+        await db.rollback()
         logger.error(
             "Failed to write audit log entry: action=%s resource_id=%s error=%s",
             action,

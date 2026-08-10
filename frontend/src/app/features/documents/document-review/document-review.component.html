@@ -11,61 +11,121 @@
     </div>
   </div>
 
-  <!-- Fallback banner -->
-  @if (fallbackVisible()) {
-    <div class="fallback-banner" role="alert">
-      ⚠ AI generation timed out — template-based summary used. Review carefully before approving.
+  @if (isLoading()) {
+    <div class="loading-state" role="status">
+      <mat-spinner diameter="40"></mat-spinner>
+      <span>Loading document…</span>
     </div>
   }
 
-  <!-- Dual-pane editor -->
-  <div class="dual-pane">
-    <!-- AI Draft pane -->
-    <div class="pane ai-pane-col">
-      <div class="pane-header">
-        <h3>AI Draft (read-only)</h3>
-        <span class="meta">Generated {{ aiGeneratedAt() }} · Vertex AI</span>
+  @if (!isLoading() && hasError()) {
+    <div class="error-state" role="alert">
+      ⚠ {{ errorMessage() }}
+      <button mat-button (click)="goBack()">Back to Patient</button>
+    </div>
+  }
+
+  @if (!isLoading() && !hasError()) {
+    <!-- Approved banner -->
+    @if (isApproved()) {
+      <div class="approved-banner" role="status">
+        <mat-icon>check_circle</mat-icon>
+        <span>Document approved and signed — locked for editing</span>
       </div>
-      <div class="pane-body ai-pane">
-        <div class="doc-heading">{{ documentTitle() }}</div>
-        @for (field of fields(); track field.label) {
-          <div class="doc-field">
-            <label>{{ field.label }}</label>
-            <p class="ai-text">{{ field.aiText }}</p>
-          </div>
-        }
+    }
+
+    <!-- Rejected banner -->
+    @if (isRejected()) {
+      <div class="rejected-banner" role="alert">
+        <mat-icon>error</mat-icon>
+        <span>Document rejected and returned to the queue</span>
+      </div>
+    }
+
+    <!-- Fallback banner -->
+    @if (fallbackVisible()) {
+      <div class="fallback-banner" role="alert">
+        <mat-icon>warning</mat-icon>
+        <span>AI generation timed out — template-based summary used. Review carefully before approving.</span>
+      </div>
+    }
+
+    <!-- Dual-pane editor -->
+    <div class="dual-pane">
+      <!-- AI Draft pane -->
+      <div class="pane ai-pane-col">
+        <div class="pane-header">
+          <h3>AI Draft (read-only)</h3>
+          <span class="meta">Generated {{ aiGeneratedAt() }} · Vertex AI</span>
+        </div>
+        <div class="pane-body ai-pane">
+          <div class="doc-heading">{{ documentTitle() }}</div>
+          @for (field of fields(); track field.label) {
+            <div class="doc-field">
+              <label>{{ field.label }}</label>
+              <p class="ai-text">{{ field.aiText }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Editable pane -->
+      <div class="pane">
+        <div class="pane-header">
+          <h3>Editable Copy</h3>
+          <span class="meta">{{ isLocked() ? 'Locked' : 'Dr. David Chen · 14:37' }}</span>
+        </div>
+        <div class="pane-body edit-pane" [class.locked-pane]="isLocked()">
+          <div class="doc-heading">{{ documentTitle() }}</div>
+          @for (field of fields(); track field.label; let i = $index) {
+            <div class="doc-field">
+              <label>
+                {{ field.label }}
+                @if (field.isEdited && !isLocked()) {
+                  <span class="edited-badge">EDITED ✎</span>
+                }
+              </label>
+              <p
+                contenteditable="true"
+                class="editable-text"
+                [attr.contenteditable]="!isLocked()"
+                (blur)="onFieldEdit(i, $any($event.target).innerText)"
+              >{{ field.editedText }}</p>
+            </div>
+          }
+        </div>
       </div>
     </div>
 
-    <!-- Editable pane -->
-    <div class="pane">
-      <div class="pane-header">
-        <h3>Editable Copy</h3>
-        <span class="meta">Dr. David Chen · 14:37</span>
-      </div>
-      <div class="pane-body edit-pane">
-        <div class="doc-heading">{{ documentTitle() }}</div>
-        @for (field of fields(); track field.label) {
-          <div class="doc-field">
-            <label>{{ field.label }}</label>
-            <p contenteditable="true" class="editable-text">{{ field.editedText }}</p>
-          </div>
-        }
+    <!-- Change log -->
+    <div class="change-log">
+      {{ changeLog() }}
+    </div>
+
+    <!-- Bottom actions -->
+    <div class="bottom-actions">
+      <button
+        class="btn-reject"
+        [disabled]="isLocked()"
+        (click)="rejectDocument()"
+        title="UXR-025: Rejection reason required"
+      >
+        ← Reject & Return
+      </button>
+      <div class="action-group">
+        <button class="btn-save" [disabled]="isLocked()" (click)="saveDraft()">
+          Save Draft
+        </button>
+        <button
+          class="btn-approve"
+          [class.btn-approve--signed]="isApproved()"
+          [disabled]="isLocked()"
+          (click)="approveDocument()"
+          title="UXR-025: Confirm modal before signing"
+        >
+          {{ isApproved() ? 'Signed ✓' : 'Approve & Sign ✓' }}
+        </button>
       </div>
     </div>
-  </div>
-
-  <!-- Change log -->
-  <div class="change-log">
-    {{ changeLog() }}
-  </div>
-
-  <!-- Bottom actions -->
-  <div class="bottom-actions">
-    <button class="btn-reject" (click)="rejectDocument()" title="UXR-025: Rejection reason required">← Reject & Return</button>
-    <div class="action-group">
-      <button class="btn-save" (click)="saveDraft()">Save Draft</button>
-      <button class="btn-approve" (click)="approveDocument()" title="UXR-025: Confirm modal before signing">Approve & Sign ✓</button>
-    </div>
-  </div>
+  }
 </main>

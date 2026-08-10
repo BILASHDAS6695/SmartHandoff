@@ -52,17 +52,21 @@ steps:
       - '--no-git'
     waitFor: ['lint-python', 'lint-js']
 
-  # US-066 TASK-003: Upload SendGrid templates before deployment
+  # US-066 TASK-003: Upload SendGrid templates before deployment (optional)
   - name: 'python:3.11-slim'
     id: 'upload-sendgrid-templates'
     entrypoint: bash
     args:
       - '-c'
       - |
-        pip install sendgrid pyyaml --quiet
-        SENDGRID_API_KEY=$$(gcloud secrets versions access latest \
-          --secret=sendgrid-api-key --project=${_PROJECT_ID}) \
-        python notifications/upload_sendgrid_templates.py
+        if [ -d notifications/templates ] && [ "$(ls -A notifications/templates)" ]; then
+          pip install sendgrid pyyaml --quiet
+          SENDGRID_API_KEY=$$(gcloud secrets versions access latest \
+            --secret=sendgrid-api-key --project=${_PROJECT_ID}) \
+          python notifications/upload_sendgrid_templates.py
+        else
+          echo "No SendGrid templates directory or it is empty; skipping dynamic template upload."
+        fi
     dir: 'services/${_SERVICE_NAME}'
     waitFor: ['-']  # Run as early step, no prerequisite
 

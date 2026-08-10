@@ -28,6 +28,9 @@ class PortalTokenClaims(NamedTuple):
     portal_session_id: str
     """Unique session ID from the patient portal."""
 
+    email: str | None
+    """Optional patient email address for notification fallbacks (US-064)."""
+
 
 def _get_portal_secret() -> str:
     """Return the PORTAL_JWT_SECRET from environment.
@@ -98,8 +101,11 @@ def validate_portal_token(token: str) -> PortalTokenClaims:
             detail="Invalid phone number format in portal token",
         )
 
+    email: str | None = claims.get("email")
+
     return PortalTokenClaims(
         patient_id=patient_id,
         phone_number=phone_number,
         portal_session_id=portal_session_id,
+        email=email,
     )
