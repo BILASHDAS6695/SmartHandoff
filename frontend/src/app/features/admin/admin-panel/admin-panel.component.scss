@@ -198,6 +198,21 @@ table {
   gap: 6px;
 }
 
+.state-message {
+  padding: 16px 18px;
+  font-size: 13px;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &.error {
+    color: #991b1b;
+    background: #fef2f2;
+  }
+}
+
 .btn-sm {
   padding: 5px 12px;
   border-radius: 8px;

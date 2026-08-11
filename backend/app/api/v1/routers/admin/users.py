@@ -6,6 +6,7 @@ Routes:
     POST   /api/v1/admin/users            — create user
     PATCH  /api/v1/admin/users/{user_id}  — update user
     DELETE /api/v1/admin/users/{user_id}  — deprovision user + blocklist JWT (US-059)
+    POST   /api/v1/admin/users/{user_id}/re-enable  — re-enable a deprovisioned user
 
 Design refs:
     design.md §3.3 Routers — /admin/users
@@ -16,15 +17,18 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.jwt import TokenClaims
-from app.core.auth.rbac import require_permission
-from app.db.deps import get_write_db
+from app.core.auth.rbac import load_rbac_matrix, require_permission
+from app.db.deps import get_read_db, get_write_db
 from app.models.app_user import AppUser
+from app.schemas.user import UserCreateRequest, UserListResponse, UserResponse, UserUpdateRequest
 from app.services.deprovision_service import deprovision_user as _deprovision_user
 
 logger = logging.getLogger(__name__)
@@ -32,38 +36,189 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
 
-@router.get("")
+def _get_valid_roles() -> frozenset[str]:
+    """Return lowercase role names from the RBAC permission matrix.
+
+    Keeps admin user roles consistent with ``rbac_permissions.yaml``.
+    """
+    matrix = load_rbac_matrix()
+    return frozenset(role.lower() for role in matrix.keys())
+
+
+def _raise_for_invalid_role(role: str) -> None:
+    """Validate role against the RBAC matrix roles."""
+    valid = _get_valid_roles()
+    if role not in valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role '{role}'. Allowed: {sorted(valid)}",
+        )
+
+
+# ── GET /api/v1/admin/users ──────────────────────────────────────────────────
+
+@router.get(
+    "",
+    response_model=UserListResponse,
+    summary="List staff users (ADMIN only)",
+)
 async def list_users(
     current_user: Annotated[TokenClaims, Depends(require_permission("user", "list"))],
-) -> dict:
-    """List users — requires user:list permission (ADMIN only)."""
-    return {"users": [], "user": current_user.sub}
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+) -> UserListResponse:
+    """List all staff users from ``app_user``.
+
+    Requires ``user:list`` permission, which is restricted to the ADMIN role.
+    """
+    total_result = await db.execute(select(func.count()).select_from(AppUser))
+    total: int = total_result.scalar_one()
+
+    rows_result = await db.execute(select(AppUser).order_by(AppUser.full_name))
+    rows = rows_result.scalars().all()
+
+    return UserListResponse(
+        users=[UserResponse.model_validate(row) for row in rows],
+        total=total,
+    )
 
 
-@router.get("/{user_id}")
+# ── GET /api/v1/admin/users/{user_id} ────────────────────────────────────────
+
+@router.get(
+    "/{user_id}",
+    response_model=UserResponse,
+    summary="Get a single staff user (ADMIN only)",
+)
 async def get_user(
     user_id: uuid.UUID,
     current_user: Annotated[TokenClaims, Depends(require_permission("user", "read"))],
-) -> dict:
-    """Get a single user — requires user:read permission (ADMIN only)."""
-    return {"user_id": str(user_id), "user": current_user.sub}
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+) -> UserResponse:
+    """Return a single ``app_user`` record by UUID."""
+    result = await db.execute(select(AppUser).where(AppUser.id == user_id))
+    user: AppUser | None = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return UserResponse.model_validate(user)
 
 
-@router.post("")
+# ── POST /api/v1/admin/users ─────────────────────────────────────────────────
+
+@router.post(
+    "",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a staff user (ADMIN only)",
+)
 async def create_user(
+    payload: UserCreateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("user", "write"))],
-) -> dict:
-    """Create a user — requires user:write permission (ADMIN only)."""
-    return {"created": True, "user": current_user.sub}
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> UserResponse:
+    """Create a new ``app_user`` record via the admin UI.
+
+    ``idp_subject`` is derived deterministically from the supplied email so
+    the record is consistent with OIDC-provisioned users while remaining
+    editable in the admin panel before first login.
+    """
+    _raise_for_invalid_role(payload.role)
+
+    existing_result = await db.execute(
+        select(AppUser).where(AppUser.email == payload.email)
+    )
+    if existing_result.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with this email already exists",
+        )
+
+    idp_subject = f"admin-created:{payload.email}"
+    new_user = AppUser(
+        id=uuid.uuid4(),
+        idp_subject=idp_subject,
+        email=str(payload.email),
+        full_name=payload.full_name,
+        role=payload.role,
+        unit=payload.unit,
+        is_active=True,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    logger.info(
+        "User created via admin endpoint: user_id=%s by admin=%s",
+        new_user.id,
+        current_user.sub,
+        extra={
+            "event_type": "user_created",
+            "target_user_id": str(new_user.id),
+            "admin_sub": current_user.sub,
+        },
+    )
+    return UserResponse.model_validate(new_user)
 
 
-@router.patch("/{user_id}")
+# ── PATCH /api/v1/admin/users/{user_id} ──────────────────────────────────────
+
+@router.patch(
+    "/{user_id}",
+    response_model=UserResponse,
+    summary="Update a staff user (ADMIN only)",
+)
 async def update_user(
     user_id: uuid.UUID,
+    payload: UserUpdateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("user", "write"))],
-) -> dict:
-    """Update a user — requires user:write permission (ADMIN only)."""
-    return {"user_id": str(user_id), "user": current_user.sub}
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> UserResponse:
+    """Partially update an ``app_user`` record."""
+    result = await db.execute(select(AppUser).where(AppUser.id == user_id))
+    user: AppUser | None = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "role" in updates:
+        _raise_for_invalid_role(updates["role"])
+
+    if "email" in updates and updates["email"] != user.email:
+        email_check = await db.execute(
+            select(AppUser).where(
+                AppUser.email == updates["email"],
+                AppUser.id != user_id,
+            )
+        )
+        if email_check.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A user with this email already exists",
+            )
+
+    for field, value in updates.items():
+        setattr(user, field, value)
+
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info(
+        "User updated via admin endpoint: user_id=%s by admin=%s",
+        user_id,
+        current_user.sub,
+        extra={
+            "event_type": "user_updated",
+            "target_user_id": str(user_id),
+            "admin_sub": current_user.sub,
+        },
+    )
+    return UserResponse.model_validate(user)
 
 
 # ── DELETE /api/v1/admin/users/{user_id} ─────────────────────────────────────
@@ -91,14 +246,27 @@ async def deprovision_user(
 
     Raises:
         HTTP 404: User not found.
+        HTTP 409: User is already deprovisioned.
         HTTP 503: Redis unavailable (blocklist write failed — fail-closed).
-
-    Note:
-        Already-deprovisioned users are handled idempotently — no error is raised.
     """
+    result = await db.execute(select(AppUser).where(AppUser.id == user_id))
+    user: AppUser | None = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.deprovisioned_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already deprovisioned",
+        )
+
     try:
         await _deprovision_user(user_id, db=db)
     except LookupError:
+        # Defensive: race between the check above and the service lookup.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
@@ -115,3 +283,55 @@ async def deprovision_user(
         },
     )
     return {"message": "User deprovisioned successfully", "user_id": str(user_id)}
+
+
+# ── POST /api/v1/admin/users/{user_id}/re-enable ─────────────────────────────
+
+@router.post(
+    "/{user_id}/re-enable",
+    response_model=UserResponse,
+    summary="Re-enable a deprovisioned staff user (ADMIN only)",
+)
+async def reenable_user(
+    user_id: Annotated[uuid.UUID, Path(description="UUID of the user to re-enable")],
+    current_user: Annotated[TokenClaims, Depends(require_permission("user", "write"))],
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> UserResponse:
+    """Re-enable a previously deprovisioned user.
+
+    Clears ``deprovisioned_at`` and sets ``is_active=True``.  The user's
+    JWT blocklist entry is NOT removed (US-059): the previous token remains
+    revoked; re-enabling only allows future logins to succeed.
+    """
+    result = await db.execute(select(AppUser).where(AppUser.id == user_id))
+    user: AppUser | None = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user.deprovisioned_at is None and user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already active",
+        )
+
+    user.deprovisioned_at = None
+    user.is_active = True
+    user.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(user)
+
+    logger.info(
+        "User re-enabled via admin endpoint: user_id=%s by admin=%s",
+        user_id,
+        current_user.sub,
+        extra={
+            "event_type": "user_reenabled",
+            "target_user_id": str(user_id),
+            "admin_sub": current_user.sub,
+        },
+    )
+    return UserResponse.model_validate(user)

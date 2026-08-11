@@ -9,7 +9,8 @@
     <input
       id="wf-user-name"
       type="text"
-      [(ngModel)]="user.name"
+      [ngModel]="full_name()"
+      (ngModelChange)="full_name.set($event)"
       placeholder="e.g. Smith, Nancy" />
   </div>
 
@@ -18,33 +19,25 @@
     <input
       id="wf-user-email"
       type="email"
-      [(ngModel)]="user.email"
+      [ngModel]="email()"
+      (ngModelChange)="email.set($event)"
       placeholder="n.smith@hospital.org" />
   </div>
 
   <div class="form-group">
     <label for="wf-user-role">Role</label>
-    <select id="wf-user-role" [(ngModel)]="user.role">
-      @for (role of roles; track role) {
-        <option [value]="role">{{ role }}</option>
+    <select id="wf-user-role" [ngModel]="role()" (ngModelChange)="role.set($event)">
+      @for (roleOption of roles; track roleOption.value) {
+        <option [value]="roleOption.value">{{ roleOption.label }}</option>
       }
     </select>
   </div>
 
   <div class="form-group">
     <label for="wf-user-unit">Unit Assignment</label>
-    <select id="wf-user-unit" [(ngModel)]="user.unit">
-      @for (unit of units; track unit) {
-        <option [value]="unit">{{ unit }}</option>
-      }
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label for="wf-user-status">Status</label>
-    <select id="wf-user-status" [(ngModel)]="user.status">
-      @for (status of statuses; track status) {
-        <option [value]="status">{{ status }}</option>
+    <select id="wf-user-unit" [ngModel]="unit()" (ngModelChange)="unit.set($event)">
+      @for (unitOption of units; track unitOption) {
+        <option [value]="unitOption">{{ unitOption }}</option>
       }
     </select>
   </div>
@@ -52,5 +45,5 @@
 
 <div class="modal-footer">
   <button class="btn-secondary" (click)="onCancel()">Cancel</button>
-  <button class="btn-primary" (click)="onSave()">Save User</button>
+  <button class="btn-primary" [disabled]="!isValid()" (click)="onSave()">Save User</button>
 </div>
