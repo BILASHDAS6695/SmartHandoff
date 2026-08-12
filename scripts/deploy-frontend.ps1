@@ -21,8 +21,8 @@ if ($BackendUrl) {
 }
 Write-Host ""
 
-# Navigate to frontend directory
-Set-Location "$env:USERPROFILE\source\repos\SmartHandoff\frontend"
+# Navigate to frontend directory relative to this script's location
+Set-Location ([System.IO.Path]::Combine($PSScriptRoot, "..", "frontend"))
 
 Write-Host "Step 1: Building and deploying frontend..." -ForegroundColor Green
 Write-Host ""
