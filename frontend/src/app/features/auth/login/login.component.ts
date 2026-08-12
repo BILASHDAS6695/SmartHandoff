@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -210,6 +210,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 export class LoginComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
 
   isDevMode = environment.devMode ?? false;
@@ -252,8 +253,13 @@ export class LoginComponent implements OnInit {
       // Production tokens are intentionally in-memory only (US-056)
       sessionStorage.setItem('dev_access_token', data.access_token);
 
-      // Navigate to dashboard
-      this.router.navigate(['/dashboard']);
+      // Navigate to the originally requested route or dashboard
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+      const navigated = await this.router.navigateByUrl(returnUrl);
+      if (!navigated) {
+        console.error('Dev login: router.navigateByUrl() returned false for', returnUrl);
+        this.errorMessage = 'Login succeeded but navigation was blocked.';
+      }
     } catch (err) {
       console.error('Dev login failed:', err);
       this.errorMessage = err instanceof Error ? err.message : 'Login failed. Is the backend running?';

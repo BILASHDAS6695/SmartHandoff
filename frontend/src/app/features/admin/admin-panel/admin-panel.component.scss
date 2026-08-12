@@ -70,6 +70,36 @@
     color: #111827;
     margin: 0;
   }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+.btn-normalize {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1.5px solid #16a34a;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #16a34a;
+  cursor: pointer;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: #f0fdf4;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .btn-add {

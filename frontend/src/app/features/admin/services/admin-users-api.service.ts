@@ -81,6 +81,21 @@ export interface BulkRoleAssignResponse {
   total_assigned: number;
 }
 
+export interface RoleNormalizeResult {
+  user_id: string;
+  previous_role: string;
+  new_role: string;
+}
+
+export interface RoleNormalizeResponse {
+  normalized: RoleNormalizeResult[];
+  already_standard: string[];
+  unrecognized: RoleNormalizeResult[];
+  total_normalized: number;
+  total_already_standard: number;
+  total_unrecognized: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminUsersApiService {
   private readonly http = inject(HttpClient);
@@ -136,5 +151,12 @@ export class AdminUsersApiService {
    */
   bulkAssignRoles(request: BulkRoleAssignRequest): Observable<BulkRoleAssignResponse> {
     return this.http.post<BulkRoleAssignResponse>(`${this.baseUrl}/bulk-assign-roles`, request);
+  }
+
+  /**
+   * Normalize legacy/non-standard roles to standard RBAC roles.
+   */
+  normalizeRoles(): Observable<RoleNormalizeResponse> {
+    return this.http.post<RoleNormalizeResponse>(`${this.baseUrl}/normalize-roles`, {});
   }
 }

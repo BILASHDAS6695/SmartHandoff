@@ -27,7 +27,19 @@
     @if (activeTab() === 'User Management') {
       <div class="page-header">
         <h1>User Management</h1>
-        <button class="btn-add" (click)="addUser()">+ Add User</button>
+        <div class="header-actions">
+          <button
+            class="btn-normalize"
+            (click)="normalizeRoles()"
+            [disabled]="normalizeLoading()">
+            @if (normalizeLoading()) {
+              Normalizing…
+            } @else {
+              Normalize Roles
+            }
+          </button>
+          <button class="btn-add" (click)="addUser()">+ Add User</button>
+        </div>
       </div>
 
       <!-- User table -->

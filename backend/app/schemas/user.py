@@ -104,3 +104,22 @@ class BulkRoleAssignResponse(BaseModel):
     not_found: list[uuid.UUID]
     total_requested: int
     total_assigned: int
+
+
+class RoleNormalizeResult(BaseModel):
+    """Result item for a single user role normalization."""
+
+    user_id: uuid.UUID
+    previous_role: str
+    new_role: str
+
+
+class RoleNormalizeResponse(BaseModel):
+    """Envelope for role normalization response."""
+
+    normalized: list[RoleNormalizeResult]
+    already_standard: list[uuid.UUID]
+    unrecognized: list[RoleNormalizeResult]
+    total_normalized: int
+    total_already_standard: int
+    total_unrecognized: int

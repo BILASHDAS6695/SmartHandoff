@@ -59,6 +59,7 @@ export class AdminPanelComponent implements OnInit {
   readonly selectedUserIds = signal<Set<string>>(new Set());
   readonly bulkRoleTarget = signal<string>('');
   readonly bulkAssignLoading = signal<boolean>(false);
+  readonly normalizeLoading = signal<boolean>(false);
 
   readonly filteredUsers = computed(() => {
     const search = this.userSearch().trim().toLowerCase();
@@ -289,6 +290,25 @@ export class AdminPanelComponent implements OnInit {
       this.toast.error('Failed to assign roles.');
     } finally {
       this.bulkAssignLoading.set(false);
+    }
+  }
+
+  async normalizeRoles(): Promise<void> {
+    this.normalizeLoading.set(true);
+    try {
+      const result = await firstValueFrom(this.api.normalizeRoles());
+      this.loadUsers();
+      if (result.total_unrecognized > 0) {
+        this.toast.success(
+          `Normalized ${result.total_normalized} role(s). ${result.total_unrecognized} unrecognized role(s) left unchanged.`
+        );
+      } else {
+        this.toast.success(`Normalized ${result.total_normalized} role(s).`);
+      }
+    } catch {
+      this.toast.error('Failed to normalize roles.');
+    } finally {
+      this.normalizeLoading.set(false);
     }
   }
 

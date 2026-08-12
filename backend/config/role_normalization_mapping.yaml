@@ -1,0 +1,35 @@
+# Role Normalization Mapping
+# Maps legacy/non-standard role strings stored in app_user.role to the
+# canonical roles defined in rbac_permissions.yaml.
+#
+# Used by: POST /api/v1/admin/users/normalize-roles
+# Update this file for hospital-specific role aliases without modifying code.
+
+role_mapping:
+  # Clinical aliases
+  md: PHYSICIAN
+  do: PHYSICIAN
+  doctor: PHYSICIAN
+  clinician: PHYSICIAN
+
+  # Nursing aliases
+  rn: NURSE
+  lpn: NURSE
+  cna: NURSE
+  nursing: NURSE
+
+  # Pharmacy aliases
+  rph: PHARMACIST
+  pharmd: PHARMACIST
+  pharmacy: PHARMACIST
+
+  # Bed management aliases
+  bed_mgr: BED_MANAGER
+  bedmanager: BED_MANAGER
+  bed_management: BED_MANAGER
+  housekeeping: BED_MANAGER
+
+  # Administration aliases
+  administrator: ADMIN
+  it: ADMIN
+  manager: ADMIN

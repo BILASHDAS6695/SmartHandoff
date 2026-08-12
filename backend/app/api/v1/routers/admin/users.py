@@ -16,10 +16,13 @@ Design refs:
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path as FilePath
 from typing import Annotated
 
+import yaml
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +35,8 @@ from app.schemas.user import (
     BulkRoleAssignRequest,
     BulkRoleAssignResponse,
     BulkRoleAssignResult,
+    RoleNormalizeResponse,
+    RoleNormalizeResult,
     UserCreateRequest,
     UserListResponse,
     UserResponse,
@@ -61,6 +66,28 @@ def _raise_for_invalid_role(role: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid role '{role}'. Allowed: {sorted(valid)}",
         )
+
+
+def _load_role_normalization_map() -> dict[str, str]:
+    """Load legacy role → canonical role mapping from YAML config.
+
+    Falls back to an empty map if the config file is missing so the
+    endpoint remains functional even without hospital-specific aliases.
+    """
+    config_path = FilePath(
+        os.getenv(
+            "ROLE_NORMALIZATION_CONFIG_PATH",
+            "config/role_normalization_mapping.yaml",
+        )
+    )
+    if not config_path.exists():
+        return {}
+
+    with config_path.open("r") as fh:
+        raw = yaml.safe_load(fh) or {}
+
+    mapping = raw.get("role_mapping", {})
+    return {str(k).lower().strip(): str(v).lower().strip() for k, v in mapping.items()}
 
 
 # ── GET /api/v1/admin/users ──────────────────────────────────────────────────
@@ -408,4 +435,88 @@ async def bulk_assign_roles(
         not_found=not_found,
         total_requested=len(payload.user_ids),
         total_assigned=len(assigned),
+    )
+
+
+# ── POST /api/v1/admin/users/normalize-roles ─────────────────────────────────
+
+@router.post(
+    "/normalize-roles",
+    response_model=RoleNormalizeResponse,
+    summary="Normalize legacy roles to standard RBAC roles (ADMIN only)",
+)
+async def normalize_roles(
+    current_user: Annotated[TokenClaims, Depends(require_permission("user", "write"))],
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> RoleNormalizeResponse:
+    """Scan all ``app_user`` records and map non-standard roles to RBAC roles.
+
+    Reads ``config/role_normalization_mapping.yaml`` to resolve aliases such
+    as ``md`` → ``physician`` or ``rn`` → ``nurse``.  Roles already matching
+    the RBAC matrix are left unchanged.  Unrecognized roles are reported but
+    not modified.
+    """
+    valid_roles = _get_valid_roles()
+    normalization_map = _load_role_normalization_map()
+
+    result = await db.execute(select(AppUser))
+    users: list[AppUser] = list(result.scalars().all())
+
+    normalized: list[RoleNormalizeResult] = []
+    already_standard: list[uuid.UUID] = []
+    unrecognized: list[RoleNormalizeResult] = []
+
+    for user in users:
+        current_role = user.role.lower().strip()
+
+        if current_role in valid_roles:
+            already_standard.append(user.id)
+            continue
+
+        canonical = normalization_map.get(current_role)
+        if canonical and canonical in valid_roles:
+            previous_role = user.role
+            user.role = canonical
+            user.updated_at = datetime.now(timezone.utc)
+            normalized.append(
+                RoleNormalizeResult(
+                    user_id=user.id,
+                    previous_role=previous_role,
+                    new_role=canonical,
+                )
+            )
+        else:
+            unrecognized.append(
+                RoleNormalizeResult(
+                    user_id=user.id,
+                    previous_role=user.role,
+                    new_role=canonical or "unknown",
+                )
+            )
+
+    if normalized:
+        await db.commit()
+        for item in normalized:
+            logger.info(
+                "Role normalized: user_id=%s %s -> %s by admin=%s",
+                item.user_id,
+                item.previous_role,
+                item.new_role,
+                current_user.sub,
+                extra={
+                    "event_type": "user_role_normalized",
+                    "target_user_id": str(item.user_id),
+                    "admin_sub": current_user.sub,
+                    "previous_role": item.previous_role,
+                    "new_role": item.new_role,
+                },
+            )
+
+    return RoleNormalizeResponse(
+        normalized=normalized,
+        already_standard=already_standard,
+        unrecognized=unrecognized,
+        total_normalized=len(normalized),
+        total_already_standard=len(already_standard),
+        total_unrecognized=len(unrecognized),
     )
