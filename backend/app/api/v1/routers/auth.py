@@ -84,7 +84,7 @@ async def exchange_token(
             detail="You do not have access to this application. Please contact your administrator.",
         )
 
-    app_token, jti = issue_app_jwt(oidc_claims)
+    app_token, jti = issue_app_jwt(oidc_claims, db_role=user.role)
 
     # Persist the issued jti so deprovisioning can blocklist it (US-059/TASK-004)
     try:
@@ -404,8 +404,8 @@ async def exchange_code(
                 detail="You do not have access to this application. Please contact your administrator.",
             )
 
-        # Step 3: Issue SmartHandoff application JWT
-        app_token, jti = issue_app_jwt(oidc_claims)
+        # Step 3: Issue SmartHandoff application JWT using role from app_user.
+        app_token, jti = issue_app_jwt(oidc_claims, db_role=user.role)
 
         # Step 4: Persist the issued jti for deprovisioning
         try:

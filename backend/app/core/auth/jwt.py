@@ -117,37 +117,44 @@ def _map_role(groups: list[str]) -> str:
     return "unknown"
 
 
-def _map_claims(oidc_claims: dict) -> dict:
+def _map_claims(oidc_claims: dict, db_role: str | None = None) -> dict:
     """Map OIDC id_token claims to SmartHandoff application JWT claims.
 
     Mapping spec (US-056 DoD):
         sub      → user_id  (OIDC subject identifier)
-        groups   → role     (via _ROLE_MAP)
+        role     → db_role if supplied, otherwise from IdP groups via _ROLE_MAP
         units    → units    (custom claim set by IdP, default [])
         email    → email
 
     Args:
         oidc_claims: Decoded OIDC id_token claims dict.
+        db_role: Optional role already resolved from the local app_user table.
+            When provided it takes precedence over IdP group mapping, which lets
+            SmartHandoff manage roles centrally even when the IdP does not send
+            group claims.
 
     Returns:
         dict: Application claims ready for JWT encoding.
 
     Raises:
-        HTTPException 403: If the role cannot be determined from IdP groups.
+        HTTPException 403: If the role cannot be determined.
     """
-    # Local/dev flows may already provide an explicit role claim (e.g. dev test-token).
-    # Prefer that; otherwise map from IdP groups.
-    explicit_role = oidc_claims.get("role")
-    if explicit_role and isinstance(explicit_role, str):
-        role = explicit_role.lower()
+    if db_role and isinstance(db_role, str):
+        role = db_role.lower()
     else:
-        role = _map_role(oidc_claims.get("groups", []))
+        # Local/dev flows may already provide an explicit role claim.
+        explicit_role = oidc_claims.get("role")
+        if explicit_role and isinstance(explicit_role, str):
+            role = explicit_role.lower()
+        else:
+            role = _map_role(oidc_claims.get("groups", []))
 
-    if role == "unknown":
+    if role == "unknown" or not role:
         logger.warning(
-            "No recognised SmartHandoff group for sub=%s groups=%r",
+            "No recognised SmartHandoff role for sub=%s groups=%r db_role=%r",
             oidc_claims.get("sub"),
             oidc_claims.get("groups"),
+            db_role,
             extra={"event_type": "auth_failure", "reason": "no_role"},
         )
         raise HTTPException(
@@ -165,11 +172,13 @@ def _map_claims(oidc_claims: dict) -> dict:
 
 # ── JWT issuance ───────────────────────────────────────────────────────────────
 
-def issue_app_jwt(oidc_claims: dict) -> tuple[str, str]:
+def issue_app_jwt(oidc_claims: dict, db_role: str | None = None) -> tuple[str, str]:
     """Issue a SmartHandoff application JWT from validated OIDC claims.
 
     Args:
         oidc_claims: Decoded and validated OIDC id_token claims (from TASK-003).
+        db_role: Optional role resolved from the local app_user table. Takes
+            precedence over IdP group mapping.
 
     Returns:
         tuple[str, str]: (signed JWT string, jti UUID string).
@@ -177,7 +186,7 @@ def issue_app_jwt(oidc_claims: dict) -> tuple[str, str]:
     Raises:
         HTTPException 403: If role mapping fails.
     """
-    app_claims = _map_claims(oidc_claims)
+    app_claims = _map_claims(oidc_claims, db_role=db_role)
     now = int(datetime.now(tz=timezone.utc).timestamp())
     jti = str(_uuid.uuid4())  # unique token ID — enables per-token blocklisting (US-059)
 
