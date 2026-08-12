@@ -60,7 +60,9 @@ Write-Host ""
 # Build the Cloud SQL Unix socket path and common connection string pieces
 $socketDir = "/cloudsql/$DatabaseInstance"
 $dbPassword = [Environment]::GetEnvironmentVariable("DB_PASSWORD")
-$dbUrl = "postgresql+asyncpg://postgres:${dbPassword}@/smarthandoff?host=$socketDir"
+# URL-encode special characters (@, :, /, etc.) so the password does not break the URL parser.
+$encodedDbPassword = [System.Uri]::EscapeDataString($dbPassword)
+$dbUrl = "postgresql+asyncpg://postgres:${encodedDbPassword}@/smarthandoff?host=$socketDir"
 
 # Write environment variables to a YAML file to avoid comma escaping issues.
 # NOTE: For production, mount these from Google Secret Manager instead of local env vars.
