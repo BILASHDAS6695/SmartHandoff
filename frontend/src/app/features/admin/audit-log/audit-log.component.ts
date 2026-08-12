@@ -1,13 +1,17 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { finalize } from 'rxjs';
 
-interface AuditLogEntry {
+import { AdminUsersApiService } from '../services/admin-users-api.service';
+
+interface AuditLogViewEntry {
   time: string;
   date: string;
   user: string;
-  action: 'READ' | 'WRITE' | 'SIGN' | 'LOGIN';
+  action: string;
+  displayAction: string;
   targetHtml: string;
 }
 
@@ -27,82 +31,99 @@ interface AuditLogEntry {
   templateUrl: './audit-log.component.html',
   styleUrl: './audit-log.component.scss',
 })
-export class AuditLogComponent {
-  readonly dateFilter = signal<string>('7');
+export class AuditLogComponent implements OnInit {
+  private readonly api = inject(AdminUsersApiService);
+
+  readonly loading = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+  readonly total = signal<number>(0);
+
+  readonly dateFilter = signal<string>('all');
   readonly userFilter = signal<string>('all');
   readonly actionFilter = signal<string>('all');
 
-  readonly allEntries = signal<AuditLogEntry[]>([
-    {
-      time: '2026-07-14 14:32',
-      date: '2026-07-14',
-      user: 'n.smith',
-      action: 'READ',
-      targetHtml: 'Patient encounter <strong>#2041</strong> (MRN: <span class="masked">●●●●●●</span>)',
-    },
-    {
-      time: '2026-07-14 14:30',
-      date: '2026-07-14',
-      user: 'd.chen',
-      action: 'SIGN',
-      targetHtml: 'Document <strong>#8812</strong> — Discharge Summary',
-    },
-    {
-      time: '2026-07-14 14:28',
-      date: '2026-07-14',
-      user: 'm.phil',
-      action: 'WRITE',
-      targetHtml: 'Medication reconciliation <strong>#5501</strong> — Alert resolved',
-    },
-    {
-      time: '2026-07-14 14:15',
-      date: '2026-07-14',
-      user: 'c.johnson',
-      action: 'WRITE',
-      targetHtml: 'Bed assignment — Bed <strong>4W-03</strong> assigned to encounter #2045',
-    },
-    {
-      time: '2026-07-14 09:10',
-      date: '2026-07-14',
-      user: 'd.chen',
-      action: 'LOGIN',
-      targetHtml: 'SSO authentication — MFA verified — IP: <span class="masked">●●●.●.●.●</span>',
-    },
-    {
-      time: '2026-07-14 08:55',
-      date: '2026-07-14',
-      user: 'admin',
-      action: 'WRITE',
-      targetHtml: 'User <strong>t.roberts</strong> disabled and sessions revoked',
-    },
-    {
-      time: '2026-07-14 08:32',
-      date: '2026-07-14',
-      user: 'n.smith',
-      action: 'LOGIN',
-      targetHtml: 'SSO authentication — MFA verified — IP: <span class="masked">●●●.●.●.●</span>',
-    },
-    {
-      time: '2026-07-13 19:20',
-      date: '2026-07-13',
-      user: 'm.phil',
-      action: 'READ',
-      targetHtml: 'Patient encounter <strong>#2038</strong> medication history',
-    },
-  ]);
+  readonly actionOptions = signal<string[]>(['all', 'read', 'write', 'create', 'update', 'delete', 'approve', 'resolve', 'reject']);
+  readonly userOptions = signal<string[]>(['all', 'nurse', 'physician', 'pharmacist', 'bed_manager', 'admin', 'system']);
+
+  readonly allEntries = signal<AuditLogViewEntry[]>([]);
 
   readonly filteredEntries = computed(() => {
+    const days = this.dateFilter();
     const user = this.userFilter();
     const action = this.actionFilter();
+
+    const cutoff =
+      days === 'all'
+        ? null
+        : new Date(Date.now() - parseInt(days, 10) * 24 * 60 * 60 * 1000);
+
     return this.allEntries().filter((entry) => {
-      const userMatch = user === 'all' || entry.user === user;
-      const actionMatch = action === 'all' || entry.action === action;
-      return userMatch && actionMatch;
+      const entryDate = new Date(entry.date + 'T00:00:00');
+      const dateMatch = !cutoff || entryDate >= cutoff;
+      const userMatch = user === 'all' || entry.user.toLowerCase() === user.toLowerCase();
+      const actionMatch = action === 'all' || entry.action.toLowerCase() === action.toLowerCase();
+      return dateMatch && userMatch && actionMatch;
     });
   });
 
+  ngOnInit(): void {
+    this.loadAuditLog();
+  }
+
+  loadAuditLog(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.api
+      .getAuditLog()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.total.set(response.total);
+          this.allEntries.set(response.items.map((entry) => this.mapToViewEntry(entry)));
+        },
+        error: () => this.error.set('Failed to load audit log. Please try again.'),
+      });
+  }
+
+  private mapToViewEntry(entry: {
+    id: string;
+    action: string;
+    resource_type: string;
+    resource_id: string;
+    created_at: string;
+    user_id?: string | null;
+    user_role?: string | null;
+    ip_address?: string | null;
+    user_agent?: string | null;
+    endpoint?: string | null;
+  }): AuditLogViewEntry {
+    const createdAt = new Date(entry.created_at);
+    const time = isNaN(createdAt.getTime())
+      ? entry.created_at
+      : createdAt.toLocaleString('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+    const date = time.split(' ')[0] ?? '';
+    const user = entry.user_role ?? 'system';
+    const action = entry.action.toUpperCase();
+    const displayAction = action;
+    const targetHtml = `${entry.resource_type} <strong>${entry.resource_id}</strong>`;
+
+    return { time, date, user, action, displayAction, targetHtml };
+  }
+
   applyFilters(): void {
-    // Filtering is reactive via computed signal; this method exists for UX parity.
+    // Reactive signals already filter the list automatically.
+    // Force a re-evaluation by touching the signals so dependent computed values refresh.
+    this.dateFilter.set(this.dateFilter());
+    this.userFilter.set(this.userFilter());
+    this.actionFilter.set(this.actionFilter());
   }
 
   exportCsv(): void {
@@ -110,17 +131,25 @@ export class AuditLogComponent {
   }
 
   getActionClass(action: string): string {
-    switch (action) {
-      case 'READ':
+    const normalized = action.toLowerCase();
+    switch (normalized) {
+      case 'read':
         return 'read';
-      case 'WRITE':
+      case 'write':
+      case 'update':
+      case 'create':
         return 'write';
-      case 'SIGN':
+      case 'sign':
+      case 'approve':
+      case 'resolve':
+      case 'reject':
         return 'sign';
-      case 'LOGIN':
+      case 'delete':
+        return 'delete';
+      case 'login':
         return 'login';
       default:
-        return '';
+        return 'default';
     }
   }
 }

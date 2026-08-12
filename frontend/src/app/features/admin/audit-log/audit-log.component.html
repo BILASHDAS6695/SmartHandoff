@@ -16,27 +16,23 @@
 
     <div class="card">
       <div class="filter-row">
-        <select id="audit-date" class="filter-select" [(ngModel)]="dateFilter">
-          <option value="7">Date: Last 7 days</option>
-          <option value="30">Last 30 days</option>
+        <select id="audit-date" class="filter-select" [ngModel]="dateFilter()" (ngModelChange)="dateFilter.set($event)">
+          <option value="all">All Dates</option>
           <option value="1">Last 24 hours</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
         </select>
 
-        <select id="audit-user" class="filter-select" [(ngModel)]="userFilter">
-          <option value="all">All Users</option>
-          <option>d.chen</option>
-          <option>n.smith</option>
-          <option>m.phil</option>
-          <option>c.johnson</option>
-          <option>admin</option>
+        <select id="audit-user" class="filter-select" [ngModel]="userFilter()" (ngModelChange)="userFilter.set($event)">
+          @for (option of userOptions(); track option) {
+            <option [value]="option">{{ option === 'all' ? 'All Users' : option }}</option>
+          }
         </select>
 
-        <select id="audit-action" class="filter-select" [(ngModel)]="actionFilter">
-          <option value="all">All Event Types</option>
-          <option>READ</option>
-          <option>WRITE</option>
-          <option>SIGN</option>
-          <option>LOGIN</option>
+        <select id="audit-action" class="filter-select" [ngModel]="actionFilter()" (ngModelChange)="actionFilter.set($event)">
+          @for (option of actionOptions(); track option) {
+            <option [value]="option">{{ option === 'all' ? 'All Event Types' : (option | uppercase) }}</option>
+          }
         </select>
 
         <button class="btn-filter" id="audit-apply" (click)="applyFilters()">Apply Filters</button>
@@ -44,14 +40,27 @@
         <span class="ann" data-id="UXR-014">PHI masked in all log entries</span>
       </div>
 
-      <div class="results-info">Showing {{ filteredEntries().length }} audit events</div>
+      @if (loading()) {
+        <div class="results-info">Loading audit events…</div>
+      }
+
+      @if (error()) {
+        <div class="results-info error">
+          {{ error() }}
+          <button class="btn-sm" (click)="loadAuditLog()">Retry</button>
+        </div>
+      }
+
+      @if (!loading() && !error()) {
+        <div class="results-info">Showing {{ filteredEntries().length }} audit events</div>
+      }
 
       <div class="audit-rows">
-        @for (entry of filteredEntries(); track entry.time + entry.user) {
+        @for (entry of filteredEntries(); track entry.time + entry.user + entry.displayAction) {
           <div class="audit-row">
             <span class="audit-time">{{ entry.time }}</span>
             <span class="audit-user">{{ entry.user }}</span>
-            <span class="audit-action" [class]="getActionClass(entry.action)">{{ entry.action }}</span>
+            <span class="audit-action" [ngClass]="getActionClass(entry.displayAction)">{{ entry.displayAction }}</span>
             <span class="audit-target" [innerHTML]="entry.targetHtml"></span>
           </div>
         }

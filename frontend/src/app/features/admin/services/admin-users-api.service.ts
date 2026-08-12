@@ -42,10 +42,32 @@ export interface UpdateUserRequest {
   unit?: string;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  created_at: string;
+  user_id?: string | null;
+  user_role?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  endpoint?: string | null;
+}
+
+export interface AuditLogPage {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminUsersApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/admin/users`;
+  private readonly auditUrl = `${environment.apiBaseUrl}/api/v1/admin/audit`;
 
   /**
    * Fetch all staff accounts from the backend.
@@ -80,5 +102,14 @@ export class AdminUsersApiService {
    */
   reenableUser(userId: string): Observable<AdminUser> {
     return this.http.post<AdminUser>(`${this.baseUrl}/${userId}/re-enable`, {});
+  }
+
+  /**
+   * Fetch paginated audit log entries from the backend.
+   */
+  getAuditLog(page = 1, pageSize = 50): Observable<AuditLogPage> {
+    return this.http.get<AuditLogPage>(this.auditUrl, {
+      params: { page: page.toString(), page_size: pageSize.toString() },
+    });
   }
 }

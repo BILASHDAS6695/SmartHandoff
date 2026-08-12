@@ -34,12 +34,19 @@ $radius-full: 9999px;
 }
 
 .admin-nav-item {
-  display: block;
-  padding: 10px 14px;
-  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 40px;
+  padding: 10px 17px;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0 $radius-md $radius-md 0;
+  background: transparent;
   font-size: 13px;
   font-weight: 500;
   color: #374151;
+  text-align: left;
   text-decoration: none;
   margin-bottom: 2px;
   white-space: nowrap;
@@ -52,6 +59,7 @@ $radius-full: 9999px;
     background: #eff6ff;
     color: $primary;
     font-weight: 600;
+    border-left-color: $primary;
   }
 }
 
@@ -76,17 +84,21 @@ $radius-full: 9999px;
 }
 
 .btn-export {
-  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 10px 20px;
   background: transparent;
-  color: $text-secondary;
-  border: 1.5px solid $border-color;
+  color: $primary;
+  border: 1.5px solid $primary;
   border-radius: $radius-md;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 
   &:hover {
-    background: #f3f4f6;
+    background: #eff6ff;
   }
 }
 
@@ -124,12 +136,16 @@ $radius-full: 9999px;
 }
 
 .btn-filter {
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 6px 14px;
   background: $primary;
   color: #ffffff;
   border: none;
   border-radius: $radius-md;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 
@@ -197,10 +213,16 @@ $radius-full: 9999px;
 }
 
 .audit-action {
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 4px 10px;
   border-radius: $radius-full;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   background: #f3f4f6;
   color: #374151;
 
@@ -210,8 +232,8 @@ $radius-full: 9999px;
   }
 
   &.write {
-    background: #fef3c7;
-    color: #92400e;
+    background: #fff7ed;
+    color: #c2410c;
   }
 
   &.sign {
@@ -222,6 +244,16 @@ $radius-full: 9999px;
   &.login {
     background: #f3e8ff;
     color: #7c3aed;
+  }
+
+  &.delete {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  &.default {
+    background: #f3f4f6;
+    color: $text-secondary;
   }
 }
 

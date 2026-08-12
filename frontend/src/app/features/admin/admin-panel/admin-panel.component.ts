@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -6,16 +6,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { finalize, firstValueFrom } from 'rxjs';
 
-import { AdminUsersApiService, AdminUser } from '../services/admin-users-api.service';
+import { AdminUsersApiService, AdminUser, AuditLogEntry } from '../services/admin-users-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { UserDialogComponent, UserDialogData } from './user-dialog/user-dialog.component';
-
-interface AuditLogEntry {
-  time: string;
-  user: string;
-  action: string;
-  target: string;
-}
 
 /** Maps backend role strings to UI display labels. */
 const ROLE_DISPLAY_NAMES: Record<string, string> = {
@@ -50,13 +43,36 @@ export class AdminPanelComponent implements OnInit {
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  readonly auditLog = signal<AuditLogEntry[]>([
-    { time: '2026-07-14 14:32', user: 'n.smith', action: 'READ', target: 'Patient encounter #2041 (MRN: ●●●●●●)' },
-    { time: '2026-07-14 14:30', user: 'd.chen', action: 'SIGN', target: 'Document #8812 — Discharge Summary' },
-    { time: '2026-07-14 14:28', user: 'm.phil', action: 'WRITE', target: 'Medication reconciliation #5501 — Alert resolved' },
-    { time: '2026-07-14 14:15', user: 'c.johnson', action: 'WRITE', target: 'Bed assignment — Bed 4W-03 assigned to encounter #2045' },
-    { time: '2026-07-14 09:10', user: 'd.chen', action: 'LOGIN', target: 'SSO authentication — MFA verified — IP: ●●●.●.●.●' },
-  ]);
+  readonly auditLog = signal<AuditLogEntry[]>([]);
+  readonly auditLoading = signal<boolean>(false);
+  readonly auditError = signal<string | null>(null);
+  readonly auditTotal = signal<number>(0);
+
+  // User Management filters
+  readonly userSearch = signal<string>('');
+  readonly userRoleFilter = signal<string>('all');
+  readonly userStatusFilter = signal<string>('all');
+  readonly roleFilters = signal<string[]>(['all', 'nurse', 'physician', 'pharmacist', 'bed_manager', 'admin']);
+  readonly statusFilters = signal<string[]>(['all', 'active', 'inactive']);
+
+  readonly filteredUsers = computed(() => {
+    const search = this.userSearch().trim().toLowerCase();
+    const role = this.userRoleFilter();
+    const status = this.userStatusFilter();
+
+    return this.users().filter((user) => {
+      const matchesSearch =
+        !search ||
+        user.full_name.toLowerCase().includes(search) ||
+        user.email.toLowerCase().includes(search);
+      const matchesRole = role === 'all' || user.role === role;
+      const matchesStatus =
+        status === 'all' ||
+        (status === 'active' && this.isUserActive(user)) ||
+        (status === 'inactive' && !this.isUserActive(user));
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  });
 
   readonly selectedDateFilter = signal<string>('Last 7 days');
   readonly selectedUserFilter = signal<string>('All Users');
@@ -64,10 +80,37 @@ export class AdminPanelComponent implements OnInit {
 
   readonly dateFilters = signal<string[]>(['Last 7 days', 'Last 30 days']);
   readonly userFilters = signal<string[]>(['All Users', 'd.chen', 'n.smith']);
-  readonly eventFilters = signal<string[]>(['All Event Types', 'READ', 'WRITE', 'SIGN', 'LOGIN']);
+  readonly eventFilters = signal<string[]>(['All Event Types', 'read', 'write', 'sign', 'login']);
 
   ngOnInit(): void {
     this.loadUsers();
+  }
+
+  setTab(tab: string): void {
+    const previous = this.activeTab();
+    this.activeTab.set(tab);
+    if (tab === 'Audit Log' && previous !== 'Audit Log') {
+      this.loadAuditLog();
+    }
+    if (tab === 'User Management' && previous !== 'User Management') {
+      this.loadUsers();
+    }
+  }
+
+  loadAuditLog(): void {
+    this.auditLoading.set(true);
+    this.auditError.set(null);
+
+    this.api
+      .getAuditLog()
+      .pipe(finalize(() => this.auditLoading.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.auditLog.set(response.items);
+          this.auditTotal.set(response.total);
+        },
+        error: () => this.auditError.set('Failed to load audit log. Please try again.'),
+      });
   }
 
   loadUsers(): void {
@@ -81,10 +124,6 @@ export class AdminPanelComponent implements OnInit {
         next: (response) => this.users.set(response.users),
         error: () => this.error.set('Failed to load users. Please try again.'),
       });
-  }
-
-  setTab(tab: string): void {
-    this.activeTab.set(tab);
   }
 
   getRoleClass(role: string): string {
