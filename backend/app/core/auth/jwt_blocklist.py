@@ -37,27 +37,26 @@ _BLOCKLIST_KEY_PREFIX = "jwt_blocklist:"
 
 
 @lru_cache(maxsize=1)
-def _get_redis_client() -> redis.Redis:
+def _get_redis_client() -> redis.Redis | None:
     """Return a shared Redis client, lazily initialised.
 
     Connection parameters are read from REDIS_URL (format:
     ``redis://:password@host:port/0``), mounted from Secret Manager by
     Cloud Run. TLS is enabled when the URL scheme is ``rediss://``.
 
-    Raises:
-        RuntimeError: If REDIS_URL is not set.
+    Returns:
+        A configured Redis client, or ``None`` when REDIS_URL is not set.
+        The blocklist is disabled in that case, but signature/expiry checks
+        still protect protected endpoints.
     """
     url = os.environ.get("REDIS_URL", "")
     if not url:
-        # Production fallback: Memorystore for Redis default connection.
-        # This is acceptable for the current single-region deployment; for HA,
-        # mount REDIS_URL from Secret Manager.
-        url = "redis://10.0.0.3:6379/0"
         logger.warning(
-            "REDIS_URL not set; falling back to default Memorystore endpoint %s",
-            url,
-            extra={"event_type": "redis_url_fallback"},
+            "REDIS_URL not set; JWT blocklist is disabled. "
+            "Set REDIS_URL (e.g. from Secret Manager) to enable logout revocation.",
+            extra={"event_type": "redis_disabled"},
         )
+        return None
     client = redis.from_url(
         url,
         decode_responses=True,
@@ -103,8 +102,16 @@ def add_to_blocklist(jti: str, exp: int) -> None:
         )
         return
 
-    key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
     client = _get_redis_client()
+    if client is None:
+        logger.warning(
+            "Cannot blocklist jti=%s: Redis is not configured",
+            jti,
+            extra={"event_type": "blocklist_skip_no_redis"},
+        )
+        return
+
+    key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
     client.setex(key, ttl, "1")
     logger.info(
         "JWT blocklisted: jti=%s ttl=%ds",
@@ -125,27 +132,27 @@ def is_blocklisted(jti: str) -> bool:
 
     Returns:
         True if the token is blocklisted (→ caller raises 401).
-        False if the token is not blocklisted or Redis is unreachable
-        (logged as a warning; tokens remain usable while Redis is down).
+        False if the token is not blocklisted (→ normal flow continues).
+
+    Note:
+        When Redis is not configured (REDIS_URL unset), the blocklist check is
+        skipped and this returns False. Tokens are still validated by signature
+        and expiry. This keeps protected endpoints available until a Redis
+        instance is provisioned for logout revocation.
     """
     # Skip blocklist check for local development (no Redis available)
     if os.environ.get("ALLOW_UNAUTHENTICATED_LOCALHOST") == "true":
         return False
 
-    key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
-    try:
-        client = _get_redis_client()
-        result = client.exists(key)
-        return bool(result)
-    except redis.RedisError as exc:
-        # Graceful degradation: if Redis is not reachable we cannot confirm
-        # the token is revoked, so we allow the request and log loudly.
-        # In a production environment with Redis required, monitor this alert.
-        logger.warning(
-            "Redis unavailable during blocklist check for jti=%s: %s. "
-            "Allowing token through (fail-open).",
+    client = _get_redis_client()
+    if client is None:
+        logger.debug(
+            "Blocklist check skipped for jti=%s: Redis not configured",
             jti,
-            exc,
-            extra={"event_type": "redis_error", "context": "blocklist_check", "jti": jti},
+            extra={"event_type": "blocklist_skip_no_redis"},
         )
         return False
+
+    key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
+    result = client.exists(key)
+    return bool(result)
