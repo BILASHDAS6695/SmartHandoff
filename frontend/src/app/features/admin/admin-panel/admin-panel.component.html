@@ -2,9 +2,24 @@
   <!-- Admin sub-nav -->
   <aside class="admin-sidebar">
     <h2>Admin Sections</h2>
-    <a class="admin-nav-item active" routerLink="/admin">User Management</a>
-    <a class="admin-nav-item" routerLink="/admin/audit-log">Audit Log</a>
-    <a class="admin-nav-item" routerLink="/admin/system-configuration">System Configuration</a>
+    <button
+      class="admin-nav-item"
+      [class.active]="activeTab() === 'User Management'"
+      (click)="setTab('User Management')">
+      User Management
+    </button>
+    <button
+      class="admin-nav-item"
+      [class.active]="activeTab() === 'Audit Log'"
+      (click)="setTab('Audit Log')">
+      Audit Log
+    </button>
+    <button
+      class="admin-nav-item"
+      [class.active]="activeTab() === 'System Configuration'"
+      (click)="setTab('System Configuration')">
+      System Configuration
+    </button>
   </aside>
 
   <!-- Content area -->
@@ -20,10 +35,45 @@
         <div class="card-header">
           <h2>
             Staff Accounts
-            <span class="user-count">24 users</span>
+            <span class="user-count">{{ filteredUsers().length }} users</span>
           </h2>
           <span class="uxr-badge">UXR-013 Role-filtered: Admin sees all roles</span>
         </div>
+
+        <div class="filter-row user-filters">
+          <input
+            type="text"
+            class="filter-input"
+            placeholder="Search by name or email"
+            [(ngModel)]="userSearch"
+            (input)="userSearch.set(userSearch())" />
+          <div class="filter-select">
+            <mat-select [value]="userRoleFilter()" (selectionChange)="userRoleFilter.set($event.value)" aria-label="Role filter">
+              @for (filter of roleFilters(); track filter) {
+                <mat-option [value]="filter">{{ filter === 'all' ? 'All Roles' : displayRole(filter) }}</mat-option>
+              }
+            </mat-select>
+          </div>
+          <div class="filter-select">
+            <mat-select [value]="userStatusFilter()" (selectionChange)="userStatusFilter.set($event.value)" aria-label="Status filter">
+              @for (filter of statusFilters(); track filter) {
+                <mat-option [value]="filter">{{ filter === 'all' ? 'All Statuses' : (filter | titlecase) }}</mat-option>
+              }
+            </mat-select>
+          </div>
+        </div>
+
+        @if (loading()) {
+          <div class="state-message">Loading users…</div>
+        }
+
+        @if (error()) {
+          <div class="state-message error">
+            {{ error() }}
+            <button class="btn-sm edit" (click)="loadUsers()">Retry</button>
+          </div>
+        }
+
         <table>
           <thead>
             <tr>
@@ -31,22 +81,22 @@
               <th>Email</th>
               <th>Role</th>
               <th>Status</th>
-              <th>Last Login</th>
+              <th>Last Updated</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            @for (user of users(); track user.email) {
-              <tr [class.inactive-row]="user.status === 'Inactive'">
-                <td><strong>{{ user.name }}</strong></td>
+            @for (user of filteredUsers(); track user.id) {
+              <tr [class.inactive-row]="!isUserActive(user)">
+                <td><strong>{{ user.full_name }}</strong></td>
                 <td>{{ user.email }}</td>
-                <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ user.role }}</span></td>
-                <td><span class="status-chip" [class]="getStatusClass(user.status)">{{ user.status }}</span></td>
-                <td>{{ user.lastLogin }}</td>
+                <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ displayRole(user.role) }}</span></td>
+                <td><span class="status-chip" [class]="getStatusClass(user)">{{ isUserActive(user) ? 'Active' : 'Inactive' }}</span></td>
+                <td>{{ user.updated_at | date:'yyyy-MM-dd HH:mm' }}</td>
                 <td>
                   <div class="action-row">
                     <button class="btn-sm edit" (click)="editUser(user)">Edit</button>
-                    @if (user.status === 'Active') {
+                    @if (isUserActive(user)) {
                       <button class="btn-sm disable" (click)="toggleUserStatus(user)" title="UXR-025: Confirm — all sessions revoked">Disable</button>
                     } @else {
                       <button class="btn-sm reenable" (click)="toggleUserStatus(user)">Re-enable</button>
@@ -92,12 +142,24 @@
           <button class="btn-filter" (click)="applyAuditFilters()">Apply Filters</button>
           <span class="uxr-badge phi-badge">UXR-014 PHI masked in all log entries</span>
         </div>
-        @for (entry of auditLog(); track entry.time + entry.user) {
+
+        @if (auditLoading()) {
+          <div class="state-message">Loading audit log…</div>
+        }
+
+        @if (auditError()) {
+          <div class="state-message error">
+            {{ auditError() }}
+            <button class="btn-sm edit" (click)="loadAuditLog()">Retry</button>
+          </div>
+        }
+
+        @for (entry of auditLog(); track entry.id) {
           <div class="audit-row">
-            <span class="audit-time">{{ entry.time }}</span>
-            <span class="audit-user">{{ entry.user }}</span>
+            <span class="audit-time">{{ entry.created_at | date:'yyyy-MM-dd HH:mm' }}</span>
+            <span class="audit-user">{{ entry.user_role || 'system' }}</span>
             <span class="audit-action">{{ entry.action }}</span>
-            <span class="audit-target">{{ entry.target }}</span>
+            <span class="audit-target">{{ entry.resource_type }} {{ entry.resource_id }}</span>
           </div>
         }
       </div>
