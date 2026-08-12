@@ -125,18 +125,27 @@ def is_blocklisted(jti: str) -> bool:
 
     Returns:
         True if the token is blocklisted (→ caller raises 401).
-        False if the token is not blocklisted (→ normal flow continues).
-
-    Raises:
-        redis.RedisError: Propagated to caller. ``get_current_user()``
-        should raise HTTP 503 on Redis failure — failing open would be a
-        security regression.
+        False if the token is not blocklisted or Redis is unreachable
+        (logged as a warning; tokens remain usable while Redis is down).
     """
     # Skip blocklist check for local development (no Redis available)
     if os.environ.get("ALLOW_UNAUTHENTICATED_LOCALHOST") == "true":
         return False
-    
+
     key = f"{_BLOCKLIST_KEY_PREFIX}{jti}"
-    client = _get_redis_client()
-    result = client.exists(key)
-    return bool(result)
+    try:
+        client = _get_redis_client()
+        result = client.exists(key)
+        return bool(result)
+    except redis.RedisError as exc:
+        # Graceful degradation: if Redis is not reachable we cannot confirm
+        # the token is revoked, so we allow the request and log loudly.
+        # In a production environment with Redis required, monitor this alert.
+        logger.warning(
+            "Redis unavailable during blocklist check for jti=%s: %s. "
+            "Allowing token through (fail-open).",
+            jti,
+            exc,
+            extra={"event_type": "redis_error", "context": "blocklist_check", "jti": jti},
+        )
+        return False

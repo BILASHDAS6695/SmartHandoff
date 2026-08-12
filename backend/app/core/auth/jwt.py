@@ -312,17 +312,14 @@ async def get_current_user(
                     headers={"WWW-Authenticate": "Bearer"},
                 )
         except _redis.RedisError as exc:
-            # Fail-closed: Redis unavailable means we cannot confirm
-            # the token is not revoked — treat as a service error.
+            # is_blocklisted now fails open and returns False when Redis is
+            # unavailable, so this branch should rarely be hit. Keep a log
+            # here for visibility in case an unexpected Redis error escapes.
             logger.error(
-                "Redis unavailable during blocklist check: %s",
+                "Unexpected Redis error during blocklist check: %s",
                 exc,
                 extra={"event_type": "redis_error", "context": "blocklist_check"},
             )
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Authentication service temporarily unavailable",
-            ) from exc
     else:
         # Token predates jti claim introduction — allow through with warning.
         # Remove this branch after all pre-jti tokens have expired (8 hours
