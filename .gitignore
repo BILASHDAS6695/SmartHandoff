@@ -62,7 +62,8 @@ obj/
 *.exe
 *.pdb
 *.cache
-*.json
+bin/**/*.json
+obj/**/*.json
 *.csproj.nuget.*
 *.user
 *.suo
