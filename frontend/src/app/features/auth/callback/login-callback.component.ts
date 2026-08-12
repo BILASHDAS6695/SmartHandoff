@@ -36,13 +36,14 @@ interface OidcTokenResponse {
     <div class="callback-container" role="main" aria-label="Completing sign-in">
       <p *ngIf="!error">Completing sign-in…</p>
       <p *ngIf="error" role="alert" aria-live="assertive">
-        Sign-in failed. Redirecting to login page…
+        {{ errorMessage }}
       </p>
     </div>
   `,
 })
 export class LoginCallbackComponent implements OnInit {
   error = false;
+  errorMessage = 'Sign-in failed. Redirecting to login page…';
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -64,8 +65,11 @@ export class LoginCallbackComponent implements OnInit {
           rawError: err.error,
         });
         
-        // Log more details about the error
-        if (err.status === 400) {
+        if (err.status === 403) {
+          this.errorMessage =
+            backendDetail ||
+            'You do not have access to this application. Please contact your administrator.';
+        } else if (err.status === 400) {
           console.error('💡 400 Bad Request likely means: Invalid authorization code, expired code, or mismatched redirect_uri');
         } else if (err.status === 401) {
           console.error('💡 401 Unauthorized: Client authentication failed or authorization code is invalid');
@@ -77,7 +81,10 @@ export class LoginCallbackComponent implements OnInit {
       // Clean up PKCE artefacts on failure
       sessionStorage.removeItem('pkce_code_verifier');
       sessionStorage.removeItem('oidc_state');
-      setTimeout(() => this.router.navigate(['/login', { error: 'auth_failed' }]), 2000);
+      setTimeout(
+        () => this.router.navigate(['/login', { error: 'auth_failed', message: this.errorMessage }]),
+        4000
+      );
     }
   }
 

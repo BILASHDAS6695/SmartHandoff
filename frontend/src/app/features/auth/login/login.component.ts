@@ -222,6 +222,10 @@ export class LoginComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     // In dev mode, don't auto-redirect to OAuth
     if (this.isDevMode) {
+      const params = this.route.snapshot.params;
+      if (params['error'] === 'auth_failed' && params['message']) {
+        this.errorMessage = params['message'];
+      }
       return;
     }
     

@@ -24,7 +24,7 @@ import redis
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import update as sa_update
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.jwt import TokenClaims, get_current_user, issue_app_jwt
@@ -65,6 +65,25 @@ async def exchange_token(
     """Exchange an OIDC id_token for a SmartHandoff application JWT."""
 
     oidc_claims = await validate_id_token(body.id_token)
+
+    # Verify the user exists in app_user before issuing a JWT.
+    # This prevents any Google-authenticated user from accessing the app.
+    user_result = await db.execute(
+        select(AppUser).where(AppUser.idp_subject == oidc_claims["sub"])
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        logger.warning(
+            "Unknown user attempted login: sub=%s email=%s",
+            oidc_claims.get("sub"),
+            oidc_claims.get("email"),
+            extra={"event_type": "auth_failure", "reason": "unknown_user"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this application. Please contact your administrator.",
+        )
+
     app_token, jti = issue_app_jwt(oidc_claims)
 
     # Persist the issued jti so deprovisioning can blocklist it (US-059/TASK-004)
@@ -367,6 +386,23 @@ async def exchange_code(
 
         # Step 2: Validate the id_token
         oidc_claims = await validate_id_token(id_token)
+
+        # Step 2.5: Verify the user exists in app_user before issuing a JWT.
+        user_result = await db.execute(
+            select(AppUser).where(AppUser.idp_subject == oidc_claims["sub"])
+        )
+        user = user_result.scalar_one_or_none()
+        if user is None:
+            logger.warning(
+                "Unknown user attempted login: sub=%s email=%s",
+                oidc_claims.get("sub"),
+                oidc_claims.get("email"),
+                extra={"event_type": "auth_failure", "reason": "unknown_user"},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this application. Please contact your administrator.",
+            )
 
         # Step 3: Issue SmartHandoff application JWT
         app_token, jti = issue_app_jwt(oidc_claims)
