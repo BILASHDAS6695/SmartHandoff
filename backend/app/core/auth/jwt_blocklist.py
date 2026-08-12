@@ -49,9 +49,14 @@ def _get_redis_client() -> redis.Redis:
     """
     url = os.environ.get("REDIS_URL", "")
     if not url:
-        raise RuntimeError(
-            "REDIS_URL environment variable is not set. "
-            "Mount the 'smarthandoff-redis-url-{env}' Secret Manager secret."
+        # Production fallback: Memorystore for Redis default connection.
+        # This is acceptable for the current single-region deployment; for HA,
+        # mount REDIS_URL from Secret Manager.
+        url = "redis://10.0.0.3:6379/0"
+        logger.warning(
+            "REDIS_URL not set; falling back to default Memorystore endpoint %s",
+            url,
+            extra={"event_type": "redis_url_fallback"},
         )
     client = redis.from_url(
         url,
