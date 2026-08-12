@@ -4,9 +4,9 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:$SHORT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:latest'
       - '-f'
       - 'frontend/Dockerfile'
       - './frontend'
@@ -15,13 +15,13 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:$SHORT_SHA'
 
   # Push image with latest tag
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -30,7 +30,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'smarthandoff-frontend'
-      - '--image=gcr.io/$PROJECT_ID/smarthandoff-frontend:$SHORT_SHA'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:$SHORT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -42,8 +42,8 @@ steps:
       - '--timeout=60'
 
 images:
-  - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/smarthandoff-frontend:latest'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:$SHORT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/smarthandoff-frontend:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
