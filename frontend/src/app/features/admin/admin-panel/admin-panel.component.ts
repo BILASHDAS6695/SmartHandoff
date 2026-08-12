@@ -6,7 +6,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { finalize, firstValueFrom } from 'rxjs';
 
-import { AdminUsersApiService, AdminUser, AuditLogEntry } from '../services/admin-users-api.service';
+import { AdminUsersApiService, AdminUser, AuditLogEntry, BulkRoleAssignResponse } from '../services/admin-users-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { UserDialogComponent, UserDialogData } from './user-dialog/user-dialog.component';
 
@@ -54,6 +54,11 @@ export class AdminPanelComponent implements OnInit {
   readonly userStatusFilter = signal<string>('all');
   readonly roleFilters = signal<string[]>(['all', 'nurse', 'physician', 'pharmacist', 'bed_manager', 'admin']);
   readonly statusFilters = signal<string[]>(['all', 'active', 'inactive']);
+
+  // Bulk role assignment state
+  readonly selectedUserIds = signal<Set<string>>(new Set());
+  readonly bulkRoleTarget = signal<string>('');
+  readonly bulkAssignLoading = signal<boolean>(false);
 
   readonly filteredUsers = computed(() => {
     const search = this.userSearch().trim().toLowerCase();
@@ -224,6 +229,67 @@ export class AdminPanelComponent implements OnInit {
       next: (response) => this.users.set(response.users),
       error: () => this.toast.error('Failed to refresh user list.'),
     });
+  }
+
+  // ── Bulk role assignment ─────────────────────────────────────────────────
+
+  isSelected(userId: string): boolean {
+    return this.selectedUserIds().has(userId);
+  }
+
+  toggleSelection(userId: string): void {
+    this.selectedUserIds.update((set) => {
+      const next = new Set(set);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  toggleSelectAll(): void {
+    const visibleIds = this.filteredUsers().map((u) => u.id);
+    const allSelected = visibleIds.every((id) => this.selectedUserIds().has(id));
+    this.selectedUserIds.update((set) => {
+      const next = new Set(set);
+      if (allSelected) {
+        visibleIds.forEach((id) => next.delete(id));
+      } else {
+        visibleIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }
+
+  isAllSelected(): boolean {
+    const visibleIds = this.filteredUsers().map((u) => u.id);
+    return visibleIds.length > 0 && visibleIds.every((id) => this.selectedUserIds().has(id));
+  }
+
+  async applyBulkRole(): Promise<void> {
+    const role = this.bulkRoleTarget();
+    const ids = Array.from(this.selectedUserIds());
+    if (!role || ids.length === 0) {
+      this.toast.error('Select at least one user and a target role.');
+      return;
+    }
+
+    this.bulkAssignLoading.set(true);
+    try {
+      const result = await firstValueFrom(
+        this.api.bulkAssignRoles({ user_ids: ids, role })
+      );
+      this.selectedUserIds.set(new Set());
+      this.bulkRoleTarget.set('');
+      this.loadUsers();
+      this.toast.success(`Assigned ${role} to ${result.total_assigned} user(s).`);
+    } catch {
+      this.toast.error('Failed to assign roles.');
+    } finally {
+      this.bulkAssignLoading.set(false);
+    }
   }
 
   applyAuditFilters(): void {

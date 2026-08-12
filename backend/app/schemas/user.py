@@ -73,3 +73,34 @@ class UserListResponse(BaseModel):
 
     users: list[UserResponse]
     total: int
+
+
+class BulkRoleAssignRequest(BaseModel):
+    """Payload for POST /api/v1/admin/users/bulk-assign-roles."""
+
+    user_ids: list[uuid.UUID] = Field(..., min_length=1, description="UUIDs of users to update")
+    role: str = Field(..., min_length=1, max_length=32, description="Target role from RBAC matrix")
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def _normalize_role(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.lower().strip()
+        return value
+
+
+class BulkRoleAssignResult(BaseModel):
+    """Result item for a single user in a bulk role assignment."""
+
+    user_id: uuid.UUID
+    previous_role: str
+    new_role: str
+
+
+class BulkRoleAssignResponse(BaseModel):
+    """Envelope for bulk role assignment response."""
+
+    assigned: list[BulkRoleAssignResult]
+    not_found: list[uuid.UUID]
+    total_requested: int
+    total_assigned: int

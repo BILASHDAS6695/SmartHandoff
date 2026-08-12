@@ -63,6 +63,30 @@
           </div>
         </div>
 
+        <!-- Bulk role assignment toolbar -->
+        <div class="bulk-toolbar">
+          <span class="bulk-count">{{ selectedUserIds().size }} selected</span>
+          <div class="filter-select">
+            <mat-select [value]="bulkRoleTarget()" (selectionChange)="bulkRoleTarget.set($event.value)" aria-label="Bulk assign role" placeholder="Assign role…">
+              @for (role of roleFilters(); track role) {
+                @if (role !== 'all') {
+                  <mat-option [value]="role">{{ displayRole(role) }}</mat-option>
+                }
+              }
+            </mat-select>
+          </div>
+          <button
+            class="btn-sm edit"
+            (click)="applyBulkRole()"
+            [disabled]="bulkAssignLoading() || selectedUserIds().size === 0 || !bulkRoleTarget()">
+            @if (bulkAssignLoading()) {
+              Assigning…
+            } @else {
+              Apply Role
+            }
+          </button>
+        </div>
+
         @if (loading()) {
           <div class="state-message">Loading users…</div>
         }
@@ -77,6 +101,13 @@
         <table>
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  [checked]="isAllSelected()"
+                  (change)="toggleSelectAll()"
+                  aria-label="Select all visible users" />
+              </th>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -88,6 +119,13 @@
           <tbody>
             @for (user of filteredUsers(); track user.id) {
               <tr [class.inactive-row]="!isUserActive(user)">
+                <td>
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(user.id)"
+                    (change)="toggleSelection(user.id)"
+                    [attr.aria-label]="'Select ' + user.full_name" />
+                </td>
                 <td><strong>{{ user.full_name }}</strong></td>
                 <td>{{ user.email }}</td>
                 <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ displayRole(user.role) }}</span></td>

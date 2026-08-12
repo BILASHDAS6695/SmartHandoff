@@ -28,7 +28,15 @@ from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import load_rbac_matrix, require_permission
 from app.db.deps import get_read_db, get_write_db
 from app.models.app_user import AppUser
-from app.schemas.user import UserCreateRequest, UserListResponse, UserResponse, UserUpdateRequest
+from app.schemas.user import (
+    BulkRoleAssignRequest,
+    BulkRoleAssignResponse,
+    BulkRoleAssignResult,
+    UserCreateRequest,
+    UserListResponse,
+    UserResponse,
+    UserUpdateRequest,
+)
 from app.services.deprovision_service import deprovision_user as _deprovision_user
 
 logger = logging.getLogger(__name__)
@@ -335,3 +343,69 @@ async def reenable_user(
         },
     )
     return UserResponse.model_validate(user)
+
+
+# ── POST /api/v1/admin/users/bulk-assign-roles ───────────────────────────────
+
+@router.post(
+    "/bulk-assign-roles",
+    response_model=BulkRoleAssignResponse,
+    summary="Bulk assign a role to multiple users (ADMIN only)",
+)
+async def bulk_assign_roles(
+    payload: BulkRoleAssignRequest,
+    current_user: Annotated[TokenClaims, Depends(require_permission("user", "write"))],
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> BulkRoleAssignResponse:
+    """Assign the same role to many users in one request.
+
+    Reads existing ``app_user`` records from the database, validates the
+    requested role against the RBAC matrix, and updates every matching
+    active or inactive user.  Returns a detailed breakdown of which users
+    were updated and which IDs did not exist.
+    """
+    _raise_for_invalid_role(payload.role)
+
+    result = await db.execute(select(AppUser).where(AppUser.id.in_(payload.user_ids)))
+    users: list[AppUser] = list(result.scalars().all())
+
+    found_ids = {user.id for user in users}
+    not_found = [uid for uid in payload.user_ids if uid not in found_ids]
+
+    assigned: list[BulkRoleAssignResult] = []
+    for user in users:
+        previous_role = user.role
+        user.role = payload.role
+        user.updated_at = datetime.now(timezone.utc)
+        assigned.append(
+            BulkRoleAssignResult(
+                user_id=user.id,
+                previous_role=previous_role,
+                new_role=payload.role,
+            )
+        )
+
+    if assigned:
+        await db.commit()
+        for item in assigned:
+            logger.info(
+                "Bulk role assignment: user_id=%s %s -> %s by admin=%s",
+                item.user_id,
+                item.previous_role,
+                item.new_role,
+                current_user.sub,
+                extra={
+                    "event_type": "user_role_assigned",
+                    "target_user_id": str(item.user_id),
+                    "admin_sub": current_user.sub,
+                    "previous_role": item.previous_role,
+                    "new_role": item.new_role,
+                },
+            )
+
+    return BulkRoleAssignResponse(
+        assigned=assigned,
+        not_found=not_found,
+        total_requested=len(payload.user_ids),
+        total_assigned=len(assigned),
+    )

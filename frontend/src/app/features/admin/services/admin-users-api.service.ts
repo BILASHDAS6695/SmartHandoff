@@ -63,6 +63,24 @@ export interface AuditLogPage {
   pages: number;
 }
 
+export interface BulkRoleAssignRequest {
+  user_ids: string[];
+  role: string;
+}
+
+export interface BulkRoleAssignResult {
+  user_id: string;
+  previous_role: string;
+  new_role: string;
+}
+
+export interface BulkRoleAssignResponse {
+  assigned: BulkRoleAssignResult[];
+  not_found: string[];
+  total_requested: number;
+  total_assigned: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminUsersApiService {
   private readonly http = inject(HttpClient);
@@ -111,5 +129,12 @@ export class AdminUsersApiService {
     return this.http.get<AuditLogPage>(this.auditUrl, {
       params: { page: page.toString(), page_size: pageSize.toString() },
     });
+  }
+
+  /**
+   * Bulk assign a role to multiple users.
+   */
+  bulkAssignRoles(request: BulkRoleAssignRequest): Observable<BulkRoleAssignResponse> {
+    return this.http.post<BulkRoleAssignResponse>(`${this.baseUrl}/bulk-assign-roles`, request);
   }
 }
