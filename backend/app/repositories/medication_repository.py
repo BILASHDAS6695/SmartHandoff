@@ -71,3 +71,27 @@ async def get_reconciliation_completed_at(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_all_medications(
+    session: AsyncSession,
+) -> list[Medication]:
+    """Return all Medication records across all encounters.
+
+    Ordered by encounter_id then drug name for stable presentation.
+
+    Args:
+        session: Active async SQLAlchemy session (read or write).
+
+    Returns:
+        List of Medication ORM instances.
+    """
+    stmt = (
+        select(Medication)
+        .order_by(
+            Medication.encounter_id,
+            Medication.drug_name,
+        )
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())

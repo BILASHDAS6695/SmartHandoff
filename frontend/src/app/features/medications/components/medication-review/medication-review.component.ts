@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MedicationApiService, MedicationReconciliationResponse } from '../../services/medication-api.service';
+import { MedicationApiService, MedicationReconciliationResponse, PharmacistAlert } from '../../services/medication-api.service';
 import { PatientApiService } from '../../../patients/services/patient-api.service';
 import { MedReviewAlert, MedReviewFlag, MedReviewReconciliation, MedReviewRow } from '../../models/med-review.model';
 import { ToastService } from '../../../../core/notifications/toast.service';
@@ -44,7 +44,8 @@ export class MedicationReviewComponent implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly patientName = signal<string>('Loading…');
-  reconciliation = signal<MedReviewReconciliation | null>(null);
+  reconciliation = signal<MedicationReconciliationResponse | null>(null);
+  backendAlerts = signal<PharmacistAlert[]>([]);
   isLoading = signal(true);
   hasError = signal(false);
 
@@ -54,9 +55,9 @@ export class MedicationReviewComponent implements OnInit {
   private readonly flaggedMedIds = signal<Set<string>>(new Set());
   readonly isComplete = signal(false);
 
-  /** Derived view model that reflects resolved/omitted/flagged actions. */
+  /** Derived view model built from backend reconciliation + alerts. */
   readonly viewModel = computed<MedReviewReconciliation | null>(() =>
-    this.buildViewModel(this.reconciliation())
+    this.mapApiResponseToReview(this.reconciliation(), this.backendAlerts())
   );
 
   /** True when reconciliation data loaded but contains no medications. */
@@ -93,25 +94,41 @@ export class MedicationReviewComponent implements OnInit {
   load(): void {
     this.isLoading.set(true);
     this.hasError.set(false);
-    this.medicationApi.getReconciliation(this.patientId).subscribe({
+    this.medicationApi.generateReconciliation(this.patientId).subscribe({
       next: (data) => {
-        this.reconciliation.set(this.mapApiResponseToReview(data));
+        this.isComplete.set(!!data.reconciliation_completed_by);
+        this.reconciliation.set(data);
         this.isLoading.set(false);
       },
-      error: () => {
-        // Wireframe preview fallback when backend is unavailable
-        this.reconciliation.set(this.getMockReconciliation());
-        this.hasError.set(false);
+      error: (err) => {
         this.isLoading.set(false);
+        this.hasError.set(true);
+        console.error('Failed to load medication reconciliation:', err);
+      },
+    });
+
+    this.medicationApi.getEncounterAlerts(this.patientId).subscribe({
+      next: (alerts: PharmacistAlert[]) => {
+        this.backendAlerts.set(alerts);
+      },
+      error: (err: unknown) => {
+        console.error('Failed to load pharmacist alerts:', err);
       },
     });
   }
 
-  /** Maps the backend medication reconciliation response to the SCR-005 review shape. */
-  private mapApiResponseToReview(data: MedicationReconciliationResponse): MedReviewReconciliation {
+  /** Maps the backend medication reconciliation response and alerts to the SCR-005 review shape. */
+  private mapApiResponseToReview(
+    data: MedicationReconciliationResponse | null,
+    alerts: PharmacistAlert[]
+  ): MedReviewReconciliation | null {
+    if (!data) return null;
+
     const mapRow = (row: MedicationReconciliationResponse['medications'][number]): MedReviewRow => {
       let flag: MedReviewFlag = 'OK';
-      if (row.flags?.length) {
+      if (row.interaction_severity === 'HIGH') {
+        flag = 'INTERACT';
+      } else if (row.flags?.length) {
         flag = 'FLAGGED';
       }
       if (row.reconciliation_category === 'STOPPED') {
@@ -127,61 +144,63 @@ export class MedicationReviewComponent implements OnInit {
     };
 
     const medications = data.medications ?? [];
+    const preAdmit = medications.filter((m) => m.pre_admit).map(mapRow);
+    const inpatient = medications.filter((m) => m.inpatient).map(mapRow);
+    const discharge = medications.filter((m) => m.discharge).map(mapRow);
+
+    // Build alerts from backend pharmacist alerts API
+    const activeAlerts: MedReviewAlert[] = alerts
+      .filter((alert) => alert.status === 'ACTIVE')
+      .map((alert) => this.mapBackendAlertToReview(alert));
+
+    // Build missing banners from stopped medications
+    const stopped = medications.filter(
+      (m) => m.reconciliation_category === 'STOPPED' && m.pre_admit && !m.discharge,
+    );
+    for (const med of stopped) {
+      discharge.push({
+        id: `missing-${med.id}`,
+        drugName: '',
+        dose: '',
+        frequency: '',
+        flag: 'MISSING',
+        isMissingBanner: true,
+        missingReason: `${med.name} — Chronic Med`,
+      });
+    }
+
     return {
       encounterId: data.encounter_id ?? this.patientId,
       patientName: this.patientName(),
-      preAdmit: medications.filter((m) => m.pre_admit).map(mapRow),
-      inpatient: medications.filter((m) => m.inpatient).map(mapRow),
-      discharge: medications.filter((m) => m.discharge).map(mapRow),
-      alerts: [],
+      preAdmit,
+      inpatient,
+      discharge,
+      alerts: activeAlerts,
     };
   }
 
-  /** Returns static mock data matching the Hi-Fi wireframe SCR-005. */
-  private getMockReconciliation(): MedReviewReconciliation {
+  /** Maps a backend PharmacistAlert to the SCR-005 review alert shape. */
+  private mapBackendAlertToReview(alert: PharmacistAlert): MedReviewAlert {
+    if (alert.drug_pair && alert.drug_pair.length >= 2) {
+      return {
+        id: alert.id,
+        type: alert.severity === 'HIGH' ? 'critical' : 'warning',
+        title: `MAJOR INTERACTION: ${alert.drug_pair.join(' + ')}`,
+        body: alert.interaction_description ?? '',
+        primaryAction: 'Contact Prescriber',
+        secondaryActions: ['Accept with Monitoring Plan', 'View Evidence'],
+      };
+    }
+
+    const drugName = alert.drug_name ?? 'Medication';
     return {
-      encounterId: this.patientId,
-      patientName: this.patientName(),
-      preAdmit: [
-        { id: 'm1', drugName: 'Warfarin', dose: '5mg', frequency: 'QD' },
-        { id: 'm2', drugName: 'Aspirin', dose: '81mg', frequency: 'QD' },
-        { id: 'm3', drugName: 'Metformin', dose: '500mg', frequency: 'BD' },
-        { id: 'm4', drugName: 'Lisinopril', dose: '10mg', frequency: 'QD' },
-        { id: 'm5', drugName: 'Atorvastatin', dose: '40mg', frequency: 'QD' },
-      ],
-      inpatient: [
-        { id: 'm6', drugName: 'Warfarin', dose: '5mg', frequency: 'QD' },
-        { id: 'm7', drugName: 'Aspirin', dose: '81mg', frequency: 'QD' },
-        { id: 'm8', drugName: 'Metformin', dose: '500mg', frequency: 'BD' },
-        { id: 'm9', drugName: 'Lisinopril', dose: '10mg', frequency: 'QD' },
-        { id: 'm10', drugName: 'Atorvastatin', dose: '40mg', frequency: 'QD' },
-      ],
-      discharge: [
-        { id: 'm11', drugName: 'Warfarin', dose: '5mg', frequency: 'QD', flag: 'OK' },
-        { id: 'm12', drugName: 'Aspirin', dose: '81mg', frequency: 'QD', flag: 'INTERACT' },
-        { id: 'missing-metformin', drugName: '', dose: '', frequency: '', flag: 'MISSING', isMissingBanner: true, missingReason: 'Chronic Med' },
-        { id: 'm13', drugName: 'Lisinopril', dose: '10mg', frequency: 'QD', flag: 'OK' },
-        { id: 'm14', drugName: 'Atorvastatin', dose: '40mg', frequency: 'QD', flag: 'OK' },
-      ],
-      alerts: [
-        {
-          id: 'a1',
-          type: 'critical',
-          title: 'MAJOR INTERACTION: Warfarin + Aspirin',
-          body: 'Severity: Major | Risk: Increased bleeding risk — pharmacodynamic synergy; INR may rise significantly.\nDrug interaction database confidence: 99.2%',
-          primaryAction: 'Contact Prescriber',
-          secondaryActions: ['Accept with Monitoring Plan', 'View Evidence'],
-        },
-        {
-          id: 'a2',
-          type: 'warning',
-          title: 'CHRONIC MED MISSING: Metformin 500mg BD',
-          body: 'Not found on Discharge Rx. Patient has Type 2 Diabetes (ICD-10: E11.9).\nThis medication was continued throughout the inpatient stay.',
-          primaryAction: 'Flag for Physician Review',
-          primaryActionClass: 'info',
-          secondaryActions: ['Mark as Intentional Omission'],
-        },
-      ],
+      id: alert.id,
+      type: alert.severity === 'HIGH' ? 'critical' : 'warning',
+      title: `CHRONIC MED MISSING: ${drugName}`,
+      body: alert.interaction_description ?? '',
+      primaryAction: 'Flag for Physician Review',
+      primaryActionClass: 'info',
+      secondaryActions: ['Mark as Intentional Omission'],
     };
   }
 
@@ -190,103 +209,23 @@ export class MedicationReviewComponent implements OnInit {
     this.router.navigate(['/patients', this.patientId]);
   }
 
-  /** Builds the view model by applying resolved/omitted/flagged state. */
-  private buildViewModel(rec: MedReviewReconciliation | null): MedReviewReconciliation | null {
-    if (!rec) return null;
-
-    const resolved = this.resolvedAlertIds();
-    const omitted = this.omittedMedIds();
-    const flagged = this.flaggedMedIds();
-
-    const mapDischargeRow = (row: MedReviewRow): MedReviewRow => {
-      if (row.isMissingBanner && row.id === 'missing-metformin') {
-        if (omitted.has('metformin')) {
-          return {
-            ...row,
-            isMissingBanner: false,
-            drugName: 'Metformin',
-            dose: '500mg',
-            frequency: 'BD',
-            flag: 'OMITTED',
-            missingReason: undefined,
-          };
-        }
-        if (flagged.has('metformin')) {
-          return {
-            ...row,
-            isMissingBanner: false,
-            drugName: 'Metformin',
-            dose: '500mg',
-            frequency: 'BD',
-            flag: 'FLAGGED',
-            missingReason: undefined,
-          };
-        }
-        return row;
-      }
-
-      if (row.drugName === 'Aspirin' && resolved.has('a1')) {
-        return { ...row, flag: 'RESOLVED' };
-      }
-
-      return row;
-    };
-
-    const mapAlert = (alert: MedReviewAlert): MedReviewAlert => {
-      if (resolved.has(alert.id)) {
-        // Should already be filtered out; return as-is for safety.
-        return alert;
-      }
-
-      // Keep the missing-med alert visible when flagged, but show it as escalated.
-      if (alert.id === 'a2' && flagged.has('metformin') && !omitted.has('metformin')) {
-        return {
-          ...alert,
-          type: 'warning',
-          title: '⚑ FLAGGED FOR PHYSICIAN REVIEW: Metformin 500mg BD',
-          body: 'This medication was flagged for physician review. Awaiting prescriber decision before discharge.',
-          primaryAction: 'Resend to Physician',
-          primaryActionClass: 'info',
-          secondaryActions: ['Mark as Intentional Omission'],
-        };
-      }
-
-      return alert;
-    };
-
-    const remainingAlerts = rec.alerts
-      .filter((alert) => {
-        if (resolved.has(alert.id)) return false;
-        // Remove the missing-med alert only when it is intentionally omitted.
-        if (alert.id === 'a2' && omitted.has('metformin')) return false;
-        return true;
-      })
-      .map(mapAlert);
-
-    return {
-      ...rec,
-      discharge: rec.discharge.map(mapDischargeRow),
-      alerts: remainingAlerts,
-    };
-  }
-
   /** Handles the primary action button on an active alert card. */
   onPrimaryAction(alert: MedReviewAlert): void {
-    if (alert.id === 'a1') {
+    if (alert.type === 'critical' || alert.primaryAction === 'Contact Prescriber') {
       this.openContactPrescriberModal();
-    } else if (alert.id === 'a2') {
+    } else if (alert.primaryAction === 'Flag for Physician Review' || alert.primaryAction === 'Resend to Physician') {
       this.flagForPhysicianReview(alert);
     }
   }
 
   /** Handles secondary action buttons on an active alert card. */
   onSecondaryAction(alert: MedReviewAlert, action: string): void {
-    if (action === 'Accept with Monitoring Plan' && alert.id === 'a1') {
-      this.openAcceptMonitoringModal();
-    } else if (action === 'View Evidence' && alert.id === 'a1') {
+    if (action === 'Accept with Monitoring Plan') {
+      this.acceptWithMonitoringPlan(alert);
+    } else if (action === 'View Evidence') {
       this.openViewEvidenceModal();
-    } else if (action === 'Mark as Intentional Omission' && alert.id === 'a2') {
-      this.markIntentionalOmission();
+    } else if (action === 'Mark as Intentional Omission') {
+      this.markIntentionalOmission(alert);
     }
   }
 
@@ -305,13 +244,19 @@ export class MedicationReviewComponent implements OnInit {
   }
 
   /** Accepts the interaction with a monitoring plan and resolves the alert. */
-  private openAcceptMonitoringModal(): void {
-    const ref = this.matDialog.open(AcceptMonitoringModalComponent, { width: '520px' });
-    ref.afterClosed().subscribe((result: { plan: string } | undefined) => {
-      if (result) {
-        this.resolvedAlertIds.update((set) => new Set([...set, 'a1']));
+  private acceptWithMonitoringPlan(alert: MedReviewAlert): void {
+    this.medicationApi.resolveAlert(alert.id, {
+      resolution_type: 'REVIEWED_ACCEPTABLE',
+      resolution_note: 'Accepted with monitoring plan',
+    }).subscribe({
+      next: () => {
+        this.refreshAlerts();
         this.toast.success('Monitoring plan accepted — alert resolved');
-      }
+      },
+      error: (err: unknown) => {
+        console.error('Failed to resolve alert:', err);
+        this.toast.error('Failed to resolve alert');
+      },
     });
   }
 
@@ -330,22 +275,76 @@ export class MedicationReviewComponent implements OnInit {
     });
   }
 
-  /** Flags the missing Metformin for physician review. */
+  /** Flags the missing medication for physician review. */
   private flagForPhysicianReview(alert: MedReviewAlert): void {
+    const medName = this.extractMedicationName(alert);
     if (alert.primaryAction === 'Resend to Physician') {
       this.toast.info('Physician notification resent');
       return;
     }
-    this.flaggedMedIds.update((set) => new Set([...set, 'metformin']));
-    this.toast.warn('Metformin flagged for physician review');
+
+    this.medicationApi.resolveAlert(alert.id, {
+      resolution_type: 'REVIEWED_ACCEPTABLE',
+      resolution_note: medName ? `Flagged for physician review: ${medName}` : 'Flagged for physician review',
+    }).subscribe({
+      next: () => {
+        this.refreshAlerts();
+        if (medName) {
+          this.flaggedMedIds.update((set) => new Set([...set, medName.toLowerCase()]));
+          this.toast.warn(`${medName} flagged for physician review`);
+        } else {
+          this.toast.warn('Alert flagged for physician review');
+        }
+      },
+      error: (err: unknown) => {
+        console.error('Failed to flag alert:', err);
+        this.toast.error('Failed to flag alert for physician review');
+      },
+    });
   }
 
-  /** Marks the missing Metformin as an intentional omission. */
-  private markIntentionalOmission(): void {
-    if (typeof window !== 'undefined' && window.confirm('Mark Metformin as an intentional omission?')) {
-      this.omittedMedIds.update((set) => new Set([...set, 'metformin']));
-      this.toast.info('Metformin marked as intentional omission');
-    }
+  /** Marks the missing medication as an intentional omission. */
+  private markIntentionalOmission(alert: MedReviewAlert): void {
+    const medName = this.extractMedicationName(alert);
+    if (!medName) return;
+
+    const ref = this.matDialog.open(ConfirmOmissionDialogComponent, {
+      width: '420px',
+      data: { medName },
+    });
+
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+
+      this.medicationApi.resolveAlert(alert.id, {
+        resolution_type: 'DISCONTINUED',
+        resolution_note: `Marked as intentional omission: ${medName}`,
+      }).subscribe({
+        next: () => {
+          this.refreshAlerts();
+          this.omittedMedIds.update((set) => new Set([...set, medName.toLowerCase()]));
+          this.toast.info(`${medName} marked as intentional omission`);
+        },
+        error: (err: unknown) => {
+          console.error('Failed to mark omission:', err);
+          this.toast.error('Failed to mark intentional omission');
+        },
+      });
+    });
+  }
+
+  /** Refreshes the backend alert list for the current encounter. */
+  private refreshAlerts(): void {
+    this.medicationApi.getEncounterAlerts(this.patientId).subscribe({
+      next: (alerts) => this.backendAlerts.set(alerts),
+      error: (err: unknown) => console.error('Failed to refresh alerts:', err),
+    });
+  }
+
+  /** Extracts medication name from a chronic-med-missing alert title. */
+  private extractMedicationName(alert: MedReviewAlert): string | null {
+    const match = alert.title.match(/CHRONIC MED MISSING:\s*([^\d]+)/i);
+    return match ? match[1].trim() : null;
   }
 
   /** Opens the summary preview modal; downloads only when the user confirms. */
@@ -402,18 +401,33 @@ export class MedicationReviewComponent implements OnInit {
   /** Completes the reconciliation workflow after confirmation. */
   completeReconciliation(): void {
     const vm = this.viewModel();
-    if (vm && vm.alerts.length > 0) {
-      this.toast.warn('Resolve all active alerts before completing reconciliation');
-      return;
-    }
+    const hasAlerts = vm ? vm.alerts.length > 0 : false;
 
-    if (typeof window !== 'undefined' && window.confirm('Mark medication reconciliation as complete?')) {
-      this.isComplete.set(true);
-      this.toast.success('Medication reconciliation completed — discharge unblocked');
-    }
+    const ref = this.matDialog.open(CompleteReconciliationDialogComponent, {
+      width: '480px',
+      data: { hasAlerts },
+    });
+
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (confirmed) {
+        this.medicationApi.completeReconciliation(this.patientId).subscribe({
+          next: (data) => {
+            this.isComplete.set(!!data.reconciliation_completed_by);
+            this.toast.success('Medication reconciliation completed — discharge unblocked');
+          },
+          error: (err: unknown) => {
+            console.error('Failed to complete reconciliation:', err);
+            this.toast.error('Failed to complete reconciliation');
+          },
+        });
+      }
+    });
   }
 }
 
+/**
+ * Interaction evidence dialog data.
+ */
 export interface ViewEvidenceData {
   drugPair: string;
   mechanism: string;
@@ -446,4 +460,47 @@ export interface ViewEvidenceData {
 })
 class ViewEvidenceDialogComponent {
   constructor(@Inject(MAT_DIALOG_DATA) readonly data: ViewEvidenceData) {}
+}
+
+@Component({
+  selector: 'app-complete-reconciliation-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>Complete Reconciliation</h2>
+    <mat-dialog-content>
+      <p>Mark medication reconciliation as complete?</p>
+      <ng-container *ngIf="data.hasAlerts">
+        <p style="color:#d97706;margin-top:8px;">
+          ⚠ There are still active alerts. Completing with unresolved alerts may block safe discharge.
+        </p>
+      </ng-container>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-button color="primary" [mat-dialog-close]="true">Complete Reconciliation</button>
+    </mat-dialog-actions>
+  `,
+})
+class CompleteReconciliationDialogComponent {
+  constructor(@Inject(MAT_DIALOG_DATA) readonly data: { hasAlerts: boolean }) {}
+}
+
+@Component({
+  selector: 'app-confirm-omission-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>Mark as Intentional Omission</h2>
+    <mat-dialog-content>
+      <p>Mark <strong>{{ data.medName }}</strong> as an intentional omission?</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-button color="warn" [mat-dialog-close]="true">Mark as Omission</button>
+    </mat-dialog-actions>
+  `,
+})
+class ConfirmOmissionDialogComponent {
+  constructor(@Inject(MAT_DIALOG_DATA) readonly data: { medName: string }) {}
 }

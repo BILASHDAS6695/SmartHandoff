@@ -164,7 +164,7 @@ async def approve_document(
     Sets:
       - Document.status           = APPROVED
       - Document.approved_at      = UTC now
-      - Document.reviewed_by_user_id = current_user.user_id
+      - Document.reviewed_by_user_id = sub_to_uuid(current_user.sub)
       - Document.ai_assisted_label remains True (permanent provenance — must NOT be reset)
 
     RBAC: restricted to `PHYSICIAN` and `ADVANCED_PRACTICE` JWT roles (US-029 DoD).

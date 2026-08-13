@@ -262,7 +262,7 @@ def require_role(allowed_roles: list[str]):
                     "event_type": "rbac_failure",
                     "user_role": user.role,
                     "allowed_roles": allowed_roles,
-                    "user_id": user.user_id,
+                    "user_id": user.sub,
                 },
             )
             raise HTTPException(

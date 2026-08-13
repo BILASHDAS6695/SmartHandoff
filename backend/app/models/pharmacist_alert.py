@@ -108,7 +108,7 @@ class PharmacistAlert(Base):
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by_user_id: Mapped[_uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("app_user.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

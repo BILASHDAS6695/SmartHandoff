@@ -1,0 +1,102 @@
+<div class="medications-list-container">
+  <div class="page-header">
+    <h1>Medications</h1>
+    <span class="ann" data-id="UXR-007">AI-Assisted — Review Required</span>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state" aria-busy="true">
+      <mat-spinner diameter="40"></mat-spinner>
+      <span>Loading medications…</span>
+    </div>
+  }
+
+  @if (hasError() && !isLoading()) {
+    <div class="error-state" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>Failed to load medications.</span>
+      <button mat-stroked-button color="warn" (click)="loadMedications()">Retry</button>
+    </div>
+  }
+
+  @if (!isLoading() && !hasError()) {
+    <table mat-table [dataSource]="medications()" class="medications-table" aria-label="Medications list">
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+      </ng-container>
+
+      <!-- Dose Column -->
+      <ng-container matColumnDef="dose">
+        <th mat-header-cell *matHeaderCellDef>Dose</th>
+        <td mat-cell *matCellDef="let row">{{ row.dose }}</td>
+      </ng-container>
+
+      <!-- Route Column -->
+      <ng-container matColumnDef="route">
+        <th mat-header-cell *matHeaderCellDef>Route</th>
+        <td mat-cell *matCellDef="let row">{{ row.route }}</td>
+      </ng-container>
+
+      <!-- Frequency Column -->
+      <ng-container matColumnDef="frequency">
+        <th mat-header-cell *matHeaderCellDef>Frequency</th>
+        <td mat-cell *matCellDef="let row">{{ row.frequency }}</td>
+      </ng-container>
+
+      <!-- Category Column -->
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Category</th>
+        <td mat-cell *matCellDef="let row">
+          <span class="category-chip" [class]="'category-' + (row.reconciliation_category | lowercase)">
+            {{ row.reconciliation_category }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Sources Column -->
+      <ng-container matColumnDef="sources">
+        <th mat-header-cell *matHeaderCellDef>Sources</th>
+        <td mat-cell *matCellDef="let row">
+          @for (source of getSources(row); track source) {
+            <span class="source-chip">{{ source }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <!-- Flags Column -->
+      <ng-container matColumnDef="flags">
+        <th mat-header-cell *matHeaderCellDef>Flags</th>
+        <td mat-cell *matCellDef="let row">
+          @for (flag of row.flags; track flag) {
+            <span class="flag-chip">{{ flag }}</span>
+          }
+          @if (row.flags.length === 0) {
+            <span class="no-flags">—</span>
+          }
+        </td>
+      </ng-container>
+
+      <!-- Severity Column -->
+      <ng-container matColumnDef="severity">
+        <th mat-header-cell *matHeaderCellDef>Interaction Severity</th>
+        <td mat-cell *matCellDef="let row">
+          <span class="severity-badge" [class]="getSeverityClass(row.interaction_severity)">
+            {{ row.interaction_severity ?? 'None' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+
+      <!-- No data row -->
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+          No medications found.
+        </td>
+      </tr>
+    </table>
+  }
+</div>
