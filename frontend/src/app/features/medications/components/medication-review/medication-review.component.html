@@ -34,14 +34,14 @@
   </div>
 
   <!-- Empty state when reconciliation has not run for this encounter -->
-  <div *ngIf="isEmpty() && !isLoading()" class="med-review__empty" role="status">
+  <div *ngIf="isEmpty() && !isLoading() && !hasError()" class="med-review__empty" role="status">
     <mat-icon>hourglass_empty</mat-icon>
     <span>Reconciliation results are not yet available for this encounter.</span>
   </div>
 
   <!-- Three-panel reconciliation table -->
   <ng-container *ngIf="viewModel() as rec">
-    @if (!isEmpty()) {
+    @if (!isEmpty() && !isLoading() && !hasError()) {
       <div class="med-review__grid">
         <!-- Pre-Admission -->
         <section class="med-review__col" aria-labelledby="pre-admit-heading">
@@ -141,8 +141,8 @@
       </button>
       <button
         class="med-review__btn med-review__btn--success"
-        [class.med-review__btn--disabled]="rec.alerts.length > 0 || isComplete()"
-        [disabled]="rec.alerts.length > 0 || isComplete()"
+        [class.med-review__btn--disabled]="isComplete()"
+        [disabled]="isComplete()"
         (click)="completeReconciliation()"
       >
         {{ isComplete() ? 'Completed ✓' : 'Complete Reconciliation ✓' }}

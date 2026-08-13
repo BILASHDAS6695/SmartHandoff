@@ -27,11 +27,12 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth.jwt import TokenClaims
+from app.core.auth.jwt import TokenClaims, sub_to_uuid
 from app.core.auth.rbac import require_permission
-from app.db.deps import get_write_db
+from app.db.deps import get_read_db, get_write_db
 from app.models.pharmacist_alert import PharmacistAlert
 from app.schemas.pharmacist_alert import (
     AlertRead,
@@ -194,7 +195,7 @@ async def resolve_alert(
     alert.status = "RESOLVED"
     alert.resolution_type = payload.resolution_type
     alert.resolution_note = payload.resolution_note
-    alert.resolved_by_user_id = current_user.user_id
+    alert.resolved_by_user_id = sub_to_uuid(current_user.sub)
     alert.resolved_at = now_utc
 
     db.add(alert)
@@ -209,7 +210,7 @@ async def resolve_alert(
         "alert_id": str(alert.id),
         "alert_type": alert.alert_type,
         "encounter_id": str(alert.encounter_id),
-        "resolved_by_user_id": str(current_user.user_id),
+        "resolved_by_user_id": str(sub_to_uuid(current_user.sub)),
         "resolved_at": now_utc.isoformat(),
         "priority": "STANDARD",
     }
@@ -217,8 +218,73 @@ async def resolve_alert(
         "Published ALERT_RESOLVED alert_id=%s encounter_id=%s resolved_by=%s message=%s",
         alert.id,
         alert.encounter_id,
-        current_user.user_id,
+        sub_to_uuid(current_user.sub),
         json.dumps(message),
     )
 
     return AlertRead.model_validate(alert)
+
+
+@router.get("/encounters/{encounter_id}")
+async def list_alerts_by_encounter(
+    encounter_id: uuid.UUID,
+    current_user: Annotated[TokenClaims, Depends(require_permission("alert", "list"))],
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+) -> dict:
+    """List alerts for a specific encounter — requires alert:list permission.
+
+    Args:
+        encounter_id: UUID of the encounter to filter alerts by.
+        current_user: Validated JWT claims with alert:list permission.
+        db: Async read session (Cloud SQL replica).
+
+    Returns:
+        Dictionary with a list of alerts for the specified encounter.
+
+    Raises:
+        HTTPException 404: If the encounter has no associated alerts.
+    """
+    # Query alerts for the given encounter ID
+    result = await db.execute(
+        select(PharmacistAlert).where(PharmacistAlert.encounter_id == encounter_id)
+    )
+    alerts = result.scalars().all()
+
+    if not alerts:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No alerts found for encounter {encounter_id}.",
+        )
+
+    return {"alerts": [AlertRead.model_validate(alert) for alert in alerts]}
+
+
+@router.get(
+    "/encounters/{encounter_id}/alerts",
+    response_model=list[AlertRead],
+    summary="List alerts for an encounter",
+    description="Returns all active and resolved pharmacist alerts for the given encounter.",
+)
+async def list_encounter_alerts(
+    encounter_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+    current_user: Annotated[TokenClaims, Depends(require_permission("alert", "list"))],
+) -> list[AlertRead]:
+    """Retrieve all pharmacist alerts for a specific encounter.
+
+    Args:
+        encounter_id: UUID of the encounter.
+        db: Async read session.
+        current_user: Authenticated user with alert:list permission.
+
+    Returns:
+        List of AlertRead schemas for the encounter.
+    """
+    stmt = (
+        select(PharmacistAlert)
+        .where(PharmacistAlert.encounter_id == encounter_id)
+        .order_by(PharmacistAlert.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    alerts = result.scalars().all()
+    return [AlertRead.model_validate(a) for a in alerts]

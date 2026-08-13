@@ -176,6 +176,14 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
         lazy="select",
     )
 
+    # US-030: Medication reconciliation completion tracking
+    reconciliation_completed_by: Mapped[uuid.UUID | None] = mapped_column(
+        sa.UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="User who completed medication reconciliation (US-030)",
+    )
+
     __table_args__ = (
         # DR-004: Composite indexes for dashboard query performance
         # ix_encounter_patient_admit removed - admit_date will be added via Alembic migration

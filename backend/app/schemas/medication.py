@@ -111,6 +111,11 @@ class MedicationReconciliationResponse(BaseModel):
         default=None,
         description="ISO 8601 timestamp when reconciliation was completed",
     )
+
+    reconciliation_completed_by: Optional[str] = Field(
+        default=None,
+        description="User ID who completed the reconciliation",
+    )
     
     medications: list[MedicationReconciliationResult] = Field(
         default_factory=list,
