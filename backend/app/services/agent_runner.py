@@ -31,7 +31,13 @@ from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.agents.bed_management.scoring import (
+    BedRecommendation,
+    BedScoringAlgorithm,
+    PatientAdmissionProfile,
+)
 from app.db import session as db_session
+from app.models.adt_event import AdtEvent
 from app.models.agent_task import (
     AGENT_TASK_TERMINAL_STATUSES,
     AgentTask,
@@ -229,7 +235,11 @@ class AgentRunner:
 
             try:
                 await self._execute(db, task)
-                await self._transition.transition(db, task, AgentTaskStatus.COMPLETED)
+                # Agents may leave the task in an intermediate state (e.g.
+                # PENDING_APPROVAL for bed-management suggestions). Only auto-
+                # complete when the status is still IN_PROGRESS.
+                if task.status == AgentTaskStatus.IN_PROGRESS.value:
+                    await self._transition.transition(db, task, AgentTaskStatus.COMPLETED)
             except Exception:
                 logger.exception(
                     "Agent %s execution failed for task %s encounter %s",
@@ -403,58 +413,200 @@ class AgentRunner:
         }
 
     async def _run_bed_management(self, db: AsyncSession, task: AgentTask) -> None:
-        """Assign an available bed to the encounter and persist the result."""
-        encounter = await self._load_encounter(db, task.encounter_id)
+        """Score vacant beds and publish ranked suggestion(s) for bed manager review.
 
-        # Prefer beds in the encounter's unit, but fall back to any available bed.
-        order_clause = (
-            case((Bed.unit == task.unit_id, 0), else_=1)
-            if task.unit_id
-            else Bed.created_at
-        )
+        The Bed Management Agent no longer auto-assigns beds. Instead it computes
+        the best-matching vacant beds using the BedScoringAlgorithm and leaves the
+        task in PENDING_APPROVAL so a bed manager can confirm or decline the
+        recommendation. This supports the ED boarding alert workflow.
+        """
+        encounter = await self._load_encounter_with_adt(db, task.encounter_id)
+        patient = encounter.patient
 
+        # Build a profile from encounter + latest ADT event. Unknown values are
+        # represented with neutral defaults so scoring remains deterministic.
+        profile = self._build_patient_admission_profile(encounter)
+
+        # Fetch all currently vacant beds from the primary DB (not the mat view).
         result = await db.execute(
-            select(Bed)
-            .where(Bed.status.in_(("available", "cleaning")))
-            .order_by(order_clause, Bed.created_at.asc())
-            .limit(1)
+            select(Bed).where(Bed.status.in_(("available", "cleaning", "vacant")))
         )
-        bed = result.scalar_one_or_none()
+        vacant_beds = result.scalars().all()
 
-        if bed is None:
+        if not vacant_beds:
             task.output = {
-                "action": "bed_assignment",
-                "assigned": False,
+                "action": "bed_suggestion",
+                "suggested": False,
                 "reason": "No available beds in inventory",
             }
             raise RuntimeError(
                 f"No available bed for encounter {task.encounter_id} (unit {task.unit_id})"
             )
 
-        previous_status = bed.status
-        bed.status = "occupied"
-        bed.current_encounter_id = task.encounter_id
+        bed_dicts = [
+            {
+                "bed_id": str(bed.id),
+                "unit": bed.unit,
+                "room": getattr(bed, "room", None) or getattr(bed, "ward", None) or bed.unit,
+                "bed_number": bed.bed_number,
+                "bed_type": self._normalize_bed_type(bed.unit),
+                "isolation_capable": False,
+                "gender_designation": "any",
+                "care_type": self._normalize_bed_type(bed.unit),
+            }
+            for bed in vacant_beds
+        ]
 
-        if encounter.unit is None:
-            encounter.unit = bed.unit
+        algorithm = BedScoringAlgorithm()
+        recommendations: list[BedRecommendation] = algorithm.score_and_rank(
+            profile, bed_dicts
+        )
+
+        if not recommendations:
+            task.output = {
+                "action": "bed_suggestion",
+                "suggested": False,
+                "reason": "No suitable beds matched patient profile",
+            }
+            raise RuntimeError(
+                f"No suitable bed for encounter {task.encounter_id} (unit {task.unit_id})"
+            )
+
+        # Compute waiting time for ED boarding context when applicable.
+        minutes_waiting = self._estimate_minutes_waiting(encounter)
+        acuity_label = profile.acuity_level or "Unknown"
 
         task.output = {
-            "action": "bed_assignment",
-            "assigned": True,
-            "bed_id": str(bed.id),
-            "bed_number": bed.bed_number,
-            "unit": bed.unit,
-            "room": getattr(bed, "room", None) or getattr(bed, "ward", None) or bed.unit,
-            "previous_status": previous_status,
-            "new_status": "occupied",
+            "action": "bed_suggestion",
+            "suggested": True,
+            "encounter_id": str(encounter.id),
+            "patient_name": (
+                f"{patient.first_name or ''} {patient.last_name or ''}".strip()
+                if patient
+                else "Unknown"
+            ),
+            "patient_id": str(patient.id) if patient else None,
+            "current_unit": encounter.unit,
+            "acuity": acuity_label,
+            "minutes_waiting": minutes_waiting,
+            "suggestions": [self._bed_recommendation_to_dict(r) for r in recommendations],
+            "best_bed_id": recommendations[0].bed_id,
+            "best_bed_number": recommendations[0].bed_number,
+            "best_bed_unit": recommendations[0].unit,
         }
 
+        # Leave task in PENDING_APPROVAL for bed manager review.
+        await self._transition.transition(db, task, AgentTaskStatus.PENDING_APPROVAL)
+
         logger.info(
-            "Bed %s assigned to encounter %s (%s → occupied)",
-            bed.bed_number,
+            "Bed suggestion generated for encounter %s: best=%s score=%.4f",
             task.encounter_id,
-            previous_status,
+            recommendations[0].bed_number,
+            recommendations[0].score,
         )
+
+    def _bed_recommendation_to_dict(self, rec: BedRecommendation) -> dict:
+        """Serialize BedRecommendation to a JSON-safe dict."""
+        return {
+            "bed_id": rec.bed_id,
+            "bed_number": rec.bed_number,
+            "unit": rec.unit,
+            "room": rec.room,
+            "score": rec.score,
+            "score_breakdown": {
+                "acuity_match": rec.score_breakdown.acuity_match,
+                "care_type_match": rec.score_breakdown.care_type_match,
+                "isolation_match": rec.score_breakdown.isolation_match,
+                "gender_match": rec.score_breakdown.gender_match,
+            },
+        }
+
+    def _normalize_bed_type(self, unit: str | None) -> str:
+        """Derive a coarse bed type from unit name for scoring."""
+        if not unit:
+            return "MED-SURG"
+        u = unit.upper()
+        if "ICU" in u:
+            return "ICU"
+        if "STEP" in u or "SDU" in u:
+            return "ICU-step-down"
+        if "OBS" in u or "ED" in u:
+            return "OBS"
+        return "MED-SURG"
+
+    def _build_patient_admission_profile(
+        self, encounter: Encounter
+    ) -> PatientAdmissionProfile:
+        """Map encounter + patient to the scoring profile."""
+        acuity = "MED-SURG"
+        care_type = "GENERAL"
+        isolation = False
+        gender = "unknown"
+
+        # Derive a sensible default acuity from the encounter unit.
+        if encounter.unit:
+            unit_upper = encounter.unit.upper()
+            if "ICU" in unit_upper:
+                acuity = "ICU"
+            elif "STEP" in unit_upper or "SDU" in unit_upper:
+                acuity = "ICU-step-down"
+            elif "OBS" in unit_upper or "ED" in unit_upper:
+                acuity = "OBS"
+
+        # Use risk tier as a rough proxy for acuity when unit is generic.
+        if acuity == "MED-SURG" and encounter.risk_tier:
+            risk = encounter.risk_tier.upper()
+            if risk == "HIGH":
+                acuity = "ICU-step-down"
+            elif risk == "MEDIUM":
+                acuity = "MED-SURG"
+            else:
+                acuity = "OBS"
+
+        return PatientAdmissionProfile(
+            acuity_level=acuity,
+            admit_type=care_type,
+            isolation_required=isolation,
+            gender=gender,
+        )
+
+    def _latest_adt_event(self, encounter: Encounter) -> AdtEvent | None:
+        """Return the most recent ADT event for the encounter, if any."""
+        if not encounter.adt_events:
+            return None
+        return max(
+            encounter.adt_events,
+            key=lambda e: e.created_at or e.event_timestamp,
+            default=None,
+        )
+
+    def _estimate_minutes_waiting(self, encounter: Encounter) -> int | None:
+        """Estimate how long the patient has been waiting for a bed."""
+        from datetime import UTC, datetime
+
+        arrival = encounter.created_at
+        if arrival is None:
+            return None
+        # created_at is timezone-aware; use UTC now for comparison
+        delta = datetime.now(UTC) - arrival
+        return max(0, int(delta.total_seconds() // 60))
+
+    async def _load_encounter_with_adt(
+        self, db: AsyncSession, encounter_id: UUID
+    ) -> Encounter:
+        """Load an encounter with patient and ADT event relationships."""
+        result = await db.execute(
+            select(Encounter)
+            .where(Encounter.id == encounter_id)
+            .options(
+                selectinload(Encounter.patient),
+                selectinload(Encounter.adt_events),
+            )
+        )
+        encounter = result.scalar_one_or_none()
+        if encounter is None:
+            raise RuntimeError(f"Encounter {encounter_id} not found")
+        return encounter
 
     async def _run_documentation(self, db: AsyncSession, task: AgentTask) -> None:
         """Generate a template discharge summary document for the encounter."""

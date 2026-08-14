@@ -70,7 +70,7 @@ roles:
     patient:    [list, read]
     encounter:  [list, read]
     document:   []
-    medication: []
+    medication: [read]
     alert:      [list, read]
     bed:        [list, read, write]
     analytics:  [list, read]

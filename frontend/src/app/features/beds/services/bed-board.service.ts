@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { BedDto, BedItem, BedStatus } from '../models/bed.model';
+import { BedDetailDto, BedDto, BedItem, BedStatus, BedSuggestion } from '../models/bed.model';
 import { environment } from '@environments/environment';
 
 /** Raw mv_bed_board row shape returned by GET /api/v1/beds (snake_case). */
@@ -44,6 +44,49 @@ export class BedBoardService {
     return this.http.get<RawBedItem[]>(this.apiBase, { params }).pipe(
       map(items => items.map(item => this.mapBedItemToDto(item)))
     );
+  }
+
+  /**
+   * Fetches detailed information for a single bed, including the current
+   * occupant (when occupied) and patients waiting for bed allocation.
+   * @param bedId Bed UUID or human-readable bed_number.
+   */
+  getBedDetails(bedId: string): Observable<BedDetailDto> {
+    return this.http.get<BedDetailDto>(`${this.apiBase}/${encodeURIComponent(bedId)}/details`);
+  }
+
+  /**
+   * Fetches pending bed-management suggestions with ranked beds.
+   * @returns Observable of pending bed suggestions for the bed manager.
+   */
+  getSuggestions(): Observable<BedSuggestion[]> {
+    return this.http.get<BedSuggestion[]>(`${this.apiBase}/suggestions`);
+  }
+
+  /**
+   * Approves a bed suggestion and assigns the selected bed.
+   * @param taskId Bed management AgentTask id.
+   * @param payload Assignment details including bed_id and reason.
+   */
+  assignSuggestion(
+    taskId: string,
+    payload: {
+      bed_id: string;
+      reason: string;
+      isolation_confirmed?: boolean;
+      notes?: string;
+    }
+  ): Observable<{ task_id: string; encounter_id: string; bed_id: string; bed_number: string; unit: string; status: BedStatus; previous_status: BedStatus }> {
+    return this.http.post<any>(`${this.apiBase}/suggestions/${taskId}/assign`, payload);
+  }
+
+  /**
+   * Declines a bed suggestion.
+   * @param taskId Bed management AgentTask id.
+   * @param reason Reason for declining.
+   */
+  declineSuggestion(taskId: string, reason: string): Observable<{ task_id: string; encounter_id: string; status: string }> {
+    return this.http.post<any>(`${this.apiBase}/suggestions/${taskId}/decline`, { reason });
   }
 
   /**

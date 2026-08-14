@@ -178,7 +178,8 @@ class BoardingAlertPublisher:
                 .values(boarding_alert_sent_at=now_utc)
                 .returning(Encounter.id)
             )
-            if result.rowcount == 0:
+            updated_id = result.scalar_one_or_none()
+            if updated_id is None:
                 # Another instance already wrote boarding_alert_sent_at — safe to ignore
                 logger.info(
                     "boarding_alert_sent_at already set by concurrent instance for encounter %s.",

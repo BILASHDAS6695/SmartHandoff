@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field
 
 
 # Matches the AgentTask status enum from US-020/US-021.
-AgentTaskStatus = Literal["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED", "ESCALATED"]
+AgentTaskStatus = Literal[
+    "PENDING", "IN_PROGRESS", "COMPLETED", "FAILED", "ESCALATED", "PENDING_APPROVAL", "CANCELLED"
+]
 
 
 class TaskUpdatedPayload(BaseModel):
@@ -31,6 +33,21 @@ class TaskUpdatedPayload(BaseModel):
     previous_status: AgentTaskStatus
     new_status: AgentTaskStatus
     updated_at: datetime = Field(..., description="Timestamp of DB write — used for latency tracking")
+
+
+class BedStatusChangedPayload(BaseModel):
+    """Payload sent when a bed's status is manually updated.
+
+    Emitted by PATCH /api/v1/beds/{id}/status and by the bed-suggestion
+    assignment flow so the bed board refreshes in real time.
+    """
+
+    bed_id: str = Field(..., description="UUID of the bed record")
+    bed_number: str = Field(..., description="Human-readable bed identifier")
+    patient_unit: str = Field(..., description="Unit the bed belongs to")
+    status: str = Field(..., description="New bed status")
+    encounter_id: str | None = Field(None, description="Assigned encounter UUID if any")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
 class BroadcastRequest(BaseModel):

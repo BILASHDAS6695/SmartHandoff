@@ -8,39 +8,127 @@
   @if (bed) {
     <header class="bed-detail-panel__header">
       <h2>Bed {{ bed.bedId }}</h2>
-      <button mat-icon-button aria-label="Close panel" (click)="close()">
+      <button
+        type="button"
+        class="close-btn"
+        aria-label="Close panel"
+        (click)="close()">
         <mat-icon>close</mat-icon>
       </button>
     </header>
 
     <div class="bed-detail-panel__body">
-      <p class="bed-detail-panel__status">
-        Status: <strong>{{ bed.status }}</strong>
-      </p>
+      @if (loading) {
+        <div class="bed-detail-panel__loader" role="status" aria-live="polite">
+          <mat-spinner diameter="40" aria-label="Loading bed details"></mat-spinner>
+          <p>Loading bed details…</p>
+        </div>
+      }
 
-      @if (bed.status === 'OCCUPIED') {
-        <p class="bed-detail-panel__patient">
-          Patient: <strong>{{ patientDisplayName ?? '—' }}</strong>
+      <div class="bed-detail-panel__meta" [class.bed-detail-panel__meta--dimmed]="loading">
+        <p class="bed-detail-panel__status">
+          Status: <strong>{{ bed.status }}</strong>
         </p>
+        <p class="bed-detail-panel__type">
+          Type: <strong>{{ bedDetail?.bed_type ?? '—' }}</strong>
+          &nbsp;|&nbsp; Isolation: <strong>{{ bedDetail?.isolation_required ? 'Yes' : 'No' }}</strong>
+          &nbsp;|&nbsp; Gender: <strong>{{ bedDetail?.gender_designation ?? '—' }}</strong>
+        </p>
+      </div>
 
-        @if (bed.riskTier) {
-          <mat-chip [class]="riskChipClass" disableRipple>
-            {{ bed.riskTier }} RISK
-          </mat-chip>
+      @if (!loading && (bed.status === 'OCCUPIED' || bed.status === 'RESERVED')) {
+        @if (bedDetail?.occupant) {
+          <div class="occupant-card" [class.occupant-card--dimmed]="loading">
+            <h3>Current Patient</h3>
+            <p class="occupant-name">
+              {{ bedDetail!.occupant!.first_name }} {{ bedDetail!.occupant!.last_name }}
+            </p>
+            <p class="occupant-mrn">MRN: {{ bedDetail!.occupant!.mrn_masked }}</p>
+            <p class="occupant-dob">
+              DOB: {{ bedDetail!.occupant!.date_of_birth ?? '—' }}
+            </p>
+            <p class="occupant-unit">
+              Encounter: <strong>{{ bedDetail!.occupant!.encounter_status }}</strong>
+              &nbsp;|&nbsp; Unit: <strong>{{ bedDetail!.occupant!.unit ?? '—' }}</strong>
+            </p>
+            @if (bedDetail!.occupant!.risk_tier && bedDetail!.occupant!.risk_tier !== 'UNKNOWN') {
+              <mat-chip [class]="occupantRiskChipClass" disableRipple>
+                {{ bedDetail!.occupant!.risk_tier }} RISK
+              </mat-chip>
+            }
+            <p class="occupant-admission">
+              Admission: {{ bedDetail!.occupant!.admission_date ? (bedDetail!.occupant!.admission_date | date:'short') : '—' }}
+            </p>
+            <p class="occupant-discharge">
+              Predicted discharge:
+              <strong>
+                {{ bedDetail?.predicted_discharge_time
+                   ? (bedDetail!.predicted_discharge_time | date:'short')
+                   : '—' }}
+              </strong>
+            </p>
+
+            <!-- AI Medication-based prediction -->
+            <div class="prediction-card">
+              <h4>🤖 AI Prediction (medications)</h4>
+              @if (bedDetail?.medication_analysis; as analysis) {
+                <div class="prediction-summary">
+                  <p>{{ analysis.summary }}</p>
+                  <mat-chip [class]="readmissionRiskChipClass" disableRipple>
+                    {{ analysis.readmission_risk }} READMISSION RISK
+                  </mat-chip>
+                  <p class="prediction-score">
+                    Safety score: <strong>{{ analysis.safety_score }}/100</strong>
+                    &nbsp;|&nbsp; Confidence: <strong>{{ analysis.confidence }}</strong>
+                  </p>
+                  @if (analysis.risks.length > 0) {
+                    <div class="prediction-section">
+                      <h5>Risks</h5>
+                      <ul>
+                        @for (risk of analysis.risks; track $index) {
+                          <li>{{ risk }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                  @if (analysis.recommendations.length > 0) {
+                    <div class="prediction-section">
+                      <h5>Recommendations</h5>
+                      <ul>
+                        @for (rec of analysis.recommendations; track $index) {
+                          <li>{{ rec }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <p class="bed-detail-panel__patient">
+            Patient: <strong>{{ patientDisplayName ?? '—' }}</strong>
+          </p>
+
+          @if (bed.riskTier) {
+            <mat-chip [class]="riskChipClass" disableRipple>
+              {{ bed.riskTier }} RISK
+            </mat-chip>
+          }
+
+          <p class="bed-detail-panel__discharge">
+            Predicted discharge:
+            <strong>
+              {{ bed.predictedDischargeTime
+                 ? (bed.predictedDischargeTime | date:'short')
+                 : '—' }}
+            </strong>
+          </p>
+
+          <p class="bed-detail-panel__nurse">
+            Assigned nurse: <strong>{{ bed.assignedNurse ?? '—' }}</strong>
+          </p>
         }
-
-        <p class="bed-detail-panel__discharge">
-          Predicted discharge:
-          <strong>
-            {{ bed.predictedDischargeTime
-               ? (bed.predictedDischargeTime | date:'short')
-               : '—' }}
-          </strong>
-        </p>
-
-        <p class="bed-detail-panel__nurse">
-          Assigned nurse: <strong>{{ bed.assignedNurse ?? '—' }}</strong>
-        </p>
       }
 
       @if (bed.status === 'VACANT') {
@@ -52,6 +140,34 @@
           [attr.aria-label]="'Assign bed ' + bed.bedId">
           Assign Bed
         </button>
+
+        @if ((bedDetail?.waiting_patients ?? []).length > 0) {
+          <div class="waiting-patients">
+            <h3>Patients waiting for a bed</h3>
+            <p class="hint">Select a patient to assign to this bed.</p>
+            <ul class="waiting-list">
+              @for (waiting of bedDetail!.waiting_patients; track waiting.task_id) {
+                <li class="waiting-item">
+                  <div class="waiting-info">
+                    <strong>{{ waiting.patient_name }}</strong>
+                    <span>Acuity: {{ waiting.acuity }}</span>
+                    <span>Waiting: {{ formatWaitingTime(waiting.minutes_waiting) }}</span>
+                    <span>Best match: {{ waiting.best_bed_number }} ({{ waiting.best_bed_unit }})</span>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    color="primary"
+                    (click)="onAssignWaitingPatient(waiting)"
+                    [attr.aria-label]="'Assign ' + waiting.patient_name + ' to bed ' + bed.bedId">
+                    Assign
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        } @else {
+          <p class="no-waiting">No patients are currently waiting for bed allocation.</p>
+        }
       }
     </div>
   }

@@ -24,6 +24,7 @@ from urllib.parse import quote
 
 import httpx
 from app.signalr.schemas import BroadcastRequest, TaskUpdatedPayload
+from app.signalr.schemas import BedStatusChangedPayload
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +217,19 @@ class SignalRBroadcaster:
         for group in groups:
             await self._send_to_group(group, "task_updated", arguments)
 
+    async def broadcast_bed_status_changed(self, payload: BedStatusChangedPayload) -> None:
+        """Broadcast bed_status_changed event to unit and encounter groups.
+
+        Used by the bed-suggestion assignment flow and manual bed overrides
+        so the Angular bed board refreshes without a page reload.
+        """
+        groups = [f"unit-{payload.patient_unit}"]
+        if payload.encounter_id:
+            groups.append(f"encounter-{payload.encounter_id}")
+        arguments = [payload.model_dump(mode="json")]
+        for group in groups:
+            await self._send_to_group(group, "bed_status_changed", arguments)
+
     async def broadcast_adt_event(self, payload: dict) -> None:
         """Broadcast adt_event_received to a unit group.
 
@@ -266,6 +280,14 @@ class SignalRBroadcasterStub:
             payload.task_id,
             payload.previous_status,
             payload.new_status,
+        )
+
+    async def broadcast_bed_status_changed(self, payload: BedStatusChangedPayload) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug(
+            "SignalR stub: bed_status_changed bed_id=%s status=%s",
+            payload.bed_id,
+            payload.status,
         )
 
     async def broadcast_adt_event(self, payload: dict) -> None:

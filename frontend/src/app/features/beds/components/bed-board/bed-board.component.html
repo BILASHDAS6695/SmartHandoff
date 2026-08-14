@@ -37,36 +37,59 @@
     </div>
   </div>
 
-  <!-- ED Boarding Alert -->
-  @if (edAlert()) {
-    <div class="ed-alert" role="alert">
-      <div class="ed-alert-icon">🚨</div>
-      <div class="ed-alert-body">
-        <div class="ed-alert-title">
-          ED BOARDING ALERT
-          <span class="uxr-badge">UXR-006 Interrupt on 2-hour threshold</span>
-        </div>
-        <div class="ed-alert-meta">
-          Patient: {{ edAlert()?.patientName }} &nbsp;|&nbsp;
-          Pending inpatient bed since {{ edAlert()?.waitingSince }} &nbsp;|&nbsp;
-          <strong class="waiting-time">Waiting: {{ edAlert()?.waitingTime }}</strong> &nbsp;|&nbsp;
-          Acuity: {{ edAlert()?.acuity }}
-        </div>
-        <div class="ed-alert-recs">
-          <strong>Recommended beds (ranked by acuity match):</strong>
-          @for (bed of edAlert()?.recommendedBeds; track bed.bedId) {
-            <span class="rec-bed" [class.secondary]="!bed.bestMatch">
-              @if (bed.bestMatch) { ✓ } {{ bed.bedId }} @if (bed.bestMatch) { — Best match }
-            </span>
-          }
-        </div>
-        <div class="ed-alert-actions">
-          <button class="btn-assign" (click)="assignBed('4W-03')">Assign 4W-03 →</button>
-          <button class="btn-ghost-small">View All Available</button>
-          <button class="btn-ghost-small" (click)="dismissAlert()">Dismiss ✗</button>
+  <!-- Pending Bed Suggestions -->
+  @if (canManageSuggestions()) {
+    @for (suggestion of suggestions(); track suggestion.task_id) {
+      <div class="ed-alert" role="alert">
+        <div class="ed-alert-icon">🚨</div>
+        <div class="ed-alert-body">
+          <div class="ed-alert-title">
+            ED BOARDING ALERT — Bed Suggestion
+            <span class="uxr-badge">Agent recommendation awaiting review</span>
+          </div>
+          <div class="ed-alert-meta">
+            Patient: {{ suggestion.patient_name }} &nbsp;|&nbsp;
+            Current unit: {{ suggestion.current_unit ?? '—' }} &nbsp;|&nbsp;
+            <strong class="waiting-time">Waiting: {{ formatWaitingTime(suggestion.minutes_waiting) }}</strong> &nbsp;|&nbsp;
+            Acuity: {{ suggestion.acuity }}
+          </div>
+          <div class="ed-alert-recs">
+            <strong>Recommended beds (ranked by acuity match):</strong>
+            @for (bed of suggestion.suggestions; track bed.bed_id) {
+              <button
+                type="button"
+                class="rec-bed"
+                [class.secondary]="bed.bed_id !== suggestion.best_bed_id"
+                [class.selected]="bed.bed_id === suggestion.best_bed_id"
+                (click)="openAssignDialog(suggestion, bed.bed_id)"
+                [attr.aria-label]="'Assign ' + bed.bed_number + ' to ' + suggestion.patient_name">
+                @if (bed.bed_id === suggestion.best_bed_id) { ✓ } {{ bed.bed_number }} ({{ bed.unit }}) @if (bed.bed_id === suggestion.best_bed_id) { — Best match }
+              </button>
+            }
+          </div>
+          <div class="ed-alert-actions">
+            <button class="btn-assign" (click)="openAssignDialog(suggestion)">Assign Best Bed →</button>
+            <button class="btn-ghost-small" (click)="declineSuggestion(suggestion)">Decline ✗</button>
+          </div>
         </div>
       </div>
-    </div>
+    }
+    @if (suggestions().length === 0 && !suggestionsLoading()) {
+      <div class="ed-alert ed-alert--resolved" role="status">
+        <div class="ed-alert-icon">✅</div>
+        <div class="ed-alert-body">
+          <div class="ed-alert-title">No pending ED boarding alerts</div>
+          <div class="ed-alert-meta">All bed suggestions have been actioned.</div>
+        </div>
+      </div>
+    }
+    @if (suggestionsLoading()) {
+      <div class="ed-alert" role="status">
+        <div class="ed-alert-body">
+          <div class="ed-alert-meta">Loading bed suggestions…</div>
+        </div>
+      </div>
+    }
   }
 
   <!-- Loading state -->
@@ -92,7 +115,7 @@
           <div
             class="bed-tile"
             [class]="getBedClass(bed.status)"
-            [class.clickable]="bed.status === 'OCCUPIED'"
+            [class.clickable]="true"
             (click)="onBedClick(bed)"
             (keydown.enter)="onBedClick(bed)"
             tabindex="0"
@@ -140,7 +163,11 @@
   @if (selectedBed()) {
     <app-bed-detail-panel
       [bed]="selectedBed()"
-      (closed)="onPanelClosed()">
+      [bedDetail]="selectedBedDetail()"
+      [loading]="selectedBedDetailLoading()"
+      (closed)="onPanelClosed()"
+      (assignBed)="onAssignBed($event)"
+      (assignWaitingPatient)="onAssignWaitingPatient($event.bed, $event.waiting)">
     </app-bed-detail-panel>
   }
 </div>

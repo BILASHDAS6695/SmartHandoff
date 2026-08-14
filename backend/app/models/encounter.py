@@ -136,8 +136,23 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
     # discharge_prediction_interval_hours removed to prevent INSERT errors
 
     # US-038: ED boarding alert tracking
-    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
-    # boarding_alert_sent_at, boarding_alert_resolved_at removed to prevent INSERT errors
+    boarding_alert_sent_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment=(
+            "UTC timestamp when the ED boarding alert was first published. "
+            "NULL means no alert has been sent yet. Used as idempotency guard."
+        ),
+    )
+    boarding_alert_resolved_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=True,
+        comment=(
+            "UTC timestamp when the boarding alert was resolved (patient "
+            "assigned to a bed). NULL means still active or not triggered."
+        ),
+    )
 
     # External identifiers
     # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)

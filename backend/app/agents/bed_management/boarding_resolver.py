@@ -71,7 +71,8 @@ async def resolve_boarding_alert(
         .returning(Encounter.id)
     )
 
-    resolved = result.rowcount > 0
+    resolved_row = result.scalar_one_or_none()
+    resolved = resolved_row is not None
     if resolved:
         logger.info(
             "Boarding alert resolved for encounter %s at %s.",

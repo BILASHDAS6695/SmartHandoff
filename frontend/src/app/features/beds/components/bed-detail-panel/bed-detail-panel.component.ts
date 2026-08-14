@@ -5,8 +5,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
-import { BedDto } from '../../models/bed.model';
+import { MatIconModule } from '@angular/material/icon';import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';import { BedDetailDto, BedDto, WaitingPatientForBed, MedicationAnalysisSnapshot } from '../../models/bed.model';
 import { MaskNamePipe } from '@shared/pipes/mask-name.pipe';
 
 /**
@@ -26,15 +25,18 @@ import { MaskNamePipe } from '@shared/pipes/mask-name.pipe';
 @Component({
   selector: 'app-bed-detail-panel',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatChipsModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatChipsModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './bed-detail-panel.component.html',
   styleUrl: './bed-detail-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BedDetailPanelComponent {
   @Input() bed: BedDto | null = null;
+  @Input() bedDetail: BedDetailDto | null = null;
+  @Input() loading = false;
   @Output() closed = new EventEmitter<void>();
   @Output() assignBed = new EventEmitter<BedDto>();
+  @Output() assignWaitingPatient = new EventEmitter<{ bed: BedDto; waiting: WaitingPatientForBed }>();
 
   get isOpen(): boolean { return this.bed !== null; }
 
@@ -62,10 +64,46 @@ export class BedDetailPanelComponent {
     return this.bed?.riskTier ? (map[this.bed.riskTier] ?? '') : '';
   }
 
+  get occupantRiskChipClass(): string {
+    const map: Record<string, string> = {
+      HIGH: 'risk-chip--high',
+      MEDIUM: 'risk-chip--medium',
+      LOW: 'risk-chip--low',
+    };
+    return this.bedDetail?.occupant?.risk_tier ? (map[this.bedDetail.occupant.risk_tier] ?? '') : '';
+  }
+
+  get readmissionRiskChipClass(): string {
+    const map: Record<string, string> = {
+      HIGH: 'risk-chip--high',
+      MEDIUM: 'risk-chip--medium',
+      LOW: 'risk-chip--low',
+    };
+    return this.bedDetail?.medication_analysis?.readmission_risk
+      ? (map[this.bedDetail.medication_analysis.readmission_risk] ?? '')
+      : '';
+  }
+
+  get medicationAnalysisResult(): MedicationAnalysisSnapshot | null {
+    return this.bedDetail?.medication_analysis ?? null;
+  }
+
+  formatWaitingTime(minutes: number | null): string {
+    if (minutes === null || minutes < 0) return 'Unknown';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h === 0) return `${m}m`;
+    return `${h}h ${m}m`;
+  }
+
   close(): void { this.closed.emit(); }
 
   onAssignBed(): void {
     if (this.bed) this.assignBed.emit(this.bed);
+  }
+
+  onAssignWaitingPatient(waiting: WaitingPatientForBed): void {
+    if (this.bed) this.assignWaitingPatient.emit({ bed: this.bed, waiting });
   }
 
   @HostListener('document:keydown.escape')
