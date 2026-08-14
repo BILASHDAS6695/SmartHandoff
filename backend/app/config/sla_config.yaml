@@ -5,6 +5,7 @@
 #                           BED_MANAGEMENT: 15, FOLLOW_UP_CARE: 120,
 #                           PATIENT_COMMUNICATION: 30}
 sla_thresholds:
+  COORDINATOR: 30
   DOCUMENTATION: 30
   MEDICATION_RECONCILIATION: 60
   BED_MANAGEMENT: 15

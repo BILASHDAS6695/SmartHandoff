@@ -122,7 +122,7 @@ async def list_beds(
         params["unit"] = unit
     if status is not None:
         query += " AND status = :status"
-        params["status"] = status.value
+        params["status"] = status.value.lower()
     if bed_type is not None:
         query += " AND bed_type = :bed_type"
         params["bed_type"] = bed_type
@@ -187,9 +187,9 @@ async def patch_bed_status(
 
     previous_status = BedStatus(bed.status)
 
-    # Update bed status in primary DB
+    # Update bed status in primary DB (store lowercase to match bed.status schema)
     await write_db.execute(
-        update(Bed).where(Bed.id == bed_id).values(status=body.status.value)
+        update(Bed).where(Bed.id == bed_id).values(status=body.status.value.lower())
     )
 
     # US-038: Resolve boarding alert when bed is RESERVED

@@ -29,10 +29,13 @@ export class TaskUpdateHandlerService implements OnDestroy {
 
   constructor() {
     this.sub = this.signalR.taskUpdated$.subscribe((update) => {
+      const taskId = update.task_id ?? update.taskId;
+      if (!taskId) return;
+
       this._taskStatusMap.update((map) => {
         // Replace the entry — creates a new Map to trigger signal reactivity
         const next = new Map(map);
-        next.set(update.taskId, update);
+        next.set(taskId, update);
         return next;
       });
     });

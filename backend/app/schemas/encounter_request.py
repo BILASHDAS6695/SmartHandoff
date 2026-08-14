@@ -18,6 +18,19 @@ class EncounterStatusEnum(str, Enum):
     DISCHARGED = "DISCHARGED"
 
 
+class AdtEventType(str, Enum):
+    """HL7 ADT event types that can trigger agent workflows."""
+
+    A01 = "A01"  # Admit
+    A02 = "A02"  # Transfer
+    A03 = "A03"  # Discharge
+    A04 = "A04"  # Registration
+    A08 = "A08"  # Update
+    A11 = "A11"  # Cancel admit
+    A12 = "A12"  # Cancel transfer
+    A13 = "A13"  # Cancel discharge
+
+
 class EncounterCreateRequest(BaseModel):
     """Request body for creating a new encounter."""
 
@@ -25,6 +38,10 @@ class EncounterCreateRequest(BaseModel):
     status: EncounterStatusEnum = Field(default=EncounterStatusEnum.REGISTERED)
     unit: str | None = Field(default=None, description="Current unit assignment")
     risk_tier: str = Field(default="UNKNOWN")
+    event_type: AdtEventType | None = Field(
+        default=None,
+        description="HL7 ADT event type that triggered this encounter creation; drives agent task orchestration",
+    )
 
 
 class EncounterUpdateRequest(BaseModel):
@@ -33,6 +50,10 @@ class EncounterUpdateRequest(BaseModel):
     status: EncounterStatusEnum | None = Field(default=None)
     unit: str | None = Field(default=None)
     risk_tier: str | None = Field(default=None)
+    event_type: AdtEventType | None = Field(
+        default=None,
+        description="HL7 ADT event type that triggered this encounter update; drives agent task orchestration",
+    )
 
 
 class EncounterWriteResponse(BaseModel):

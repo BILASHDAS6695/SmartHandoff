@@ -250,3 +250,28 @@ class SignalRBroadcaster:
                 "SignalR broadcast to all request error",
                 extra={"target": "adt_event_received", "error": str(exc)},
             )
+
+
+class SignalRBroadcasterStub:
+    """No-op broadcaster used when Azure SignalR is not configured.
+
+    Keeps TaskStatusTransitionService and AgentRunner working in local dev
+    or test environments without a real SignalR connection string.
+    """
+
+    async def broadcast_task_updated(self, payload: TaskUpdatedPayload) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug(
+            "SignalR stub: task_updated task_id=%s status=%s → %s",
+            payload.task_id,
+            payload.previous_status,
+            payload.new_status,
+        )
+
+    async def broadcast_adt_event(self, payload: dict) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug("SignalR stub: adt_event_received unit=%s", payload.get("patientUnit"))
+
+    async def broadcast_adt_event_to_all(self, payload: dict) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug("SignalR stub: adt_event_received to all")

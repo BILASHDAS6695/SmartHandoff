@@ -7,7 +7,16 @@ at boot rather than silently writing unencrypted PHI.
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
+
+# Load local .env before any app imports that resolve settings (e.g. config).
+from dotenv import load_dotenv
+
+load_dotenv(
+    dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"),
+    override=False,
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

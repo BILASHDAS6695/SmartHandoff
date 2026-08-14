@@ -449,6 +449,105 @@
   }
 }
 
+.medication-table {
+  width: 100%;
+
+  th {
+    font-weight: 600;
+    color: #4b5563;
+    background: #f9fafb;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .med-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .med-flag {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .phase-pill {
+    display: inline-flex;
+    padding: 2px 6px;
+    border-radius: 9999px;
+    background: #f3f4f6;
+    color: #9ca3af;
+    font-size: 9px;
+    font-weight: 700;
+    margin-right: 4px;
+
+    &.active {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+  }
+
+  .severity-badge {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+
+    &.high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    &.medium {
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    &.low {
+      background: #f0fdf4;
+      color: #166534;
+    }
+  }
+}
+
+.med-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .med-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .med-completed {
+    font-size: 11px;
+    color: #6b7280;
+  }
+}
+
+.document-row {
+  .btn-review:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+}
+
 .risk-big {
   font-size: 32px;
   font-weight: 700;
@@ -618,4 +717,228 @@
   font-size: 12px;
   color: #4b5563;
   margin-top: 2px;
+}
+
+.agent-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.agent-error {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.agent-tasks-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+
+  &.has-detail {
+    grid-template-columns: 1.4fr 0.6fr;
+  }
+}
+
+.agent-tasks-card {
+  .card-header {
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}
+
+.agent-task-table {
+  width: 100%;
+
+  th {
+    font-weight: 600;
+    color: #4b5563;
+    background: #f9fafb;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  tr.selected {
+    background: #eff6ff;
+  }
+
+  tr:hover {
+    background: #f3f4f6;
+    cursor: pointer;
+  }
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-in-progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-blocked {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.status-unknown {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.agent-task-detail {
+  max-height: calc(100vh - 200px);
+  position: sticky;
+  top: 24px;
+  overflow: auto;
+
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 14px 18px;
+    border-bottom: 1px solid #e5e7eb;
+
+    h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+  }
+
+  h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4b5563;
+    margin: 16px 0 10px;
+  }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+
+  dt {
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  dd {
+    margin: 0;
+    color: #111827;
+    font-size: 12px;
+  }
+
+  .sla-breached {
+    color: #dc2626;
+    font-weight: 700;
+  }
+
+  .error-text {
+    color: #dc2626;
+  }
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.output-json {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 300px;
+}
+
+.empty-output {
+  color: #6b7280;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px;
+  color: #6b7280;
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .agent-tasks-layout.has-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-task-detail {
+    position: static;
+    max-height: none;
+  }
 }

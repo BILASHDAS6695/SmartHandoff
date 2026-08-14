@@ -1,0 +1,279 @@
+.task-monitor {
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+
+  h1 {
+    margin: 0;
+    font-size: 1.75rem;
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    color: #64748b;
+  }
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.connection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: #e2e8f0;
+  color: #334155;
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &.state-connected {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  &.state-reconnecting {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &.state-disconnected {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-dismiss {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.filter-bar {
+  margin-bottom: 16px;
+
+  .count {
+    margin-left: 4px;
+    opacity: 0.8;
+  }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px;
+  color: #64748b;
+}
+
+.monitor-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+
+  &.has-detail {
+    grid-template-columns: 1.4fr 0.6fr;
+  }
+}
+
+.task-table-card,
+.task-detail-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.task-table {
+  width: 100%;
+
+  th {
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
+  }
+
+  tr.selected {
+    background: #eff6ff;
+  }
+
+  tr:hover {
+    background: #f1f5f9;
+    cursor: pointer;
+  }
+}
+
+.agent-name {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-in-progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-blocked {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.status-unknown {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px;
+  color: #64748b;
+}
+
+.task-detail-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
+  position: sticky;
+  top: 24px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+  }
+}
+
+.detail-body {
+  padding: 20px;
+  overflow: auto;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+
+  dt {
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  dd {
+    margin: 0;
+    color: #1e293b;
+  }
+
+  .sla-breached {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  .error-text {
+    color: #dc2626;
+  }
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.output-json {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  max-height: 400px;
+}
+
+.empty-output {
+  color: #64748b;
+  font-style: italic;
+}
+
+@media (max-width: 1024px) {
+  .monitor-layout.has-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .task-detail-card {
+    position: static;
+    max-height: none;
+  }
+}

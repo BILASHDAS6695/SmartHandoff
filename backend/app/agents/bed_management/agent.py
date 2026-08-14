@@ -175,7 +175,7 @@ class BedManagementAgent(BaseAgent):
         await session.execute(
             update(Bed)
             .where(Bed.id == uuid.UUID(bed_id))
-            .values(status=target_status.value)
+            .values(status=target_status.value.lower())
         )
 
         return BedStatusUpdateResult(
@@ -200,13 +200,13 @@ class BedManagementAgent(BaseAgent):
         await session.execute(
             update(Bed)
             .where(Bed.id == uuid.UUID(previous_bed_id))
-            .values(status=BedStatus.DIRTY.value)
+            .values(status=BedStatus.DIRTY.value.lower())
         )
         # New bed → OCCUPIED
         await session.execute(
             update(Bed)
             .where(Bed.id == uuid.UUID(new_bed_id))
-            .values(status=BedStatus.OCCUPIED.value)
+            .values(status=BedStatus.OCCUPIED.value.lower())
         )
 
         return BedStatusUpdateResult(

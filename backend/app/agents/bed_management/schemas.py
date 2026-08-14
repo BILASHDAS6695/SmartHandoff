@@ -14,13 +14,28 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class BedStatus(str, Enum):
-    """Bed occupancy status values."""
+    """Bed occupancy status values.
 
-    VACANT = "VACANT"
+    Accepts both uppercase and lowercase input so DB rows stored in either
+    case can be parsed without error.
+    """
+
+    AVAILABLE = "AVAILABLE"
+    VACANT = "VACANT"  # mv_bed_board legacy value
     OCCUPIED = "OCCUPIED"
     DIRTY = "DIRTY"
+    CLEANING = "CLEANING"
     MAINTENANCE = "MAINTENANCE"
     RESERVED = "RESERVED"
+    BLOCKED = "BLOCKED"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "BedStatus | None":
+        if isinstance(value, str):
+            normalized = value.upper()
+            if normalized in cls._value2member_map_:
+                return cls._value2member_map_[normalized]
+        return None
 
 
 class BedStatusUpdateResult(BaseModel):

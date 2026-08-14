@@ -1,8 +1,12 @@
-import { Component, signal, inject, computed, OnInit } from '@angular/core';
+import { Component, signal, inject, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTableModule } from '@angular/material/table';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Subscription } from 'rxjs';
 import {
   AlertActionDialogComponent,
   AlertActionDialogData,
@@ -16,8 +20,15 @@ import {
   DocumentApprovalDialogData,
 } from './document-approval-dialog.component';
 import { ToastService } from '@core/notifications/toast.service';
+import { EncounterTasksApiService } from '@core/api';
+import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, TaskStatus } from '@core/models';
 import { PatientApiService } from '../../services/patient-api.service';
-import { PatientDetail } from '../../models/patient.model';
+import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
+import {
+  MedicationApiService,
+  MedicationReconciliationResponse,
+  PharmacistAlert,
+} from '@features/medications/services/medication-api.service';
 
 interface PatientDetailViewModel {
   name: string;
@@ -43,7 +54,7 @@ interface AlertItem {
   dialog: AlertActionDialogData;
 }
 
-interface AgentTask {
+interface AgentTaskView {
   name: string;
   status: 'ok' | 'warn' | 'pending';
   label: string;
@@ -75,16 +86,29 @@ interface TimelineEvent {
 @Component({
   selector: 'app-patient-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatDialogModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTableModule,
+    MatProgressSpinnerModule,
+    MatDialogModule,
+  ],
   templateUrl: './patient-detail.component.html',
   styleUrl: './patient-detail.component.scss',
 })
-export class PatientDetailComponent implements OnInit {
+export class PatientDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly toast = inject(ToastService);
   private readonly patientApi = inject(PatientApiService);
+  private readonly tasksApi = inject(EncounterTasksApiService);
+  private readonly documentApi = inject(DocumentApiService);
+  private readonly medicationApi = inject(MedicationApiService);
+
+  private taskUpdateSub?: Subscription;
 
   readonly activeTab = signal<string>('Overview');
   readonly tabs = signal<string[]>(['Overview', 'Medications', 'Documents', 'Tasks', 'Timeline']);
@@ -107,68 +131,95 @@ export class PatientDetailComponent implements OnInit {
     riskLevel: 'LOW',
   });
 
-  readonly agentTasks = computed<AgentTask[]>(() => {
-    const alertCount = this.activeAlertCount();
-    return [
-      { name: 'Transition Coordinator', status: 'ok', label: 'Complete' },
-      { name: 'Documentation Agent', status: 'ok', label: 'Draft ready' },
-      {
-        name: 'Medication Reconciliation',
-        status: alertCount > 0 ? 'warn' : 'ok',
-        label: alertCount > 0 ? `⚠ ${alertCount} alert${alertCount === 1 ? '' : 's'}` : 'Complete',
-      },
-      { name: 'Bed Management', status: 'ok', label: 'Assigned' },
-      { name: 'Follow-up Care', status: 'pending', label: '● Pending' },
-      { name: 'Patient Communications', status: 'ok', label: 'Active' },
-    ];
+  readonly agentTaskResponses = signal<AgentTaskResponse[]>([]);
+  readonly isLoadingAgentTasks = signal<boolean>(false);
+  readonly agentTaskError = signal<string | null>(null);
+  readonly selectedAgentTaskId = signal<string | null>(null);
+
+  readonly agentTasks = computed<AgentTaskView[]>(() => {
+    const tasks = this.agentTaskResponses();
+    if (tasks.length === 0) {
+      const alertCount = this.activeAlertCount();
+      return [
+        { name: 'Transition Coordinator', status: 'ok', label: 'Complete' },
+        { name: 'Documentation Agent', status: 'ok', label: 'Draft ready' },
+        {
+          name: 'Medication Reconciliation',
+          status: alertCount > 0 ? 'warn' : 'ok',
+          label: alertCount > 0 ? `⚠ ${alertCount} alert${alertCount === 1 ? '' : 's'}` : 'Complete',
+        },
+        { name: 'Bed Management', status: 'ok', label: 'Assigned' },
+        { name: 'Follow-up Care', status: 'pending', label: '● Pending' },
+        { name: 'Patient Communications', status: 'ok', label: 'Active' },
+      ];
+    }
+
+    return tasks.map((task) => {
+      const status = task.status?.toUpperCase();
+      let viewStatus: AgentTaskView['status'] = 'pending';
+      let label = task.status ?? 'Pending';
+
+      if (status === TaskStatus.COMPLETED) {
+        viewStatus = 'ok';
+        label = 'Complete';
+      } else if (status === TaskStatus.FAILED || status === TaskStatus.BLOCKED) {
+        viewStatus = 'warn';
+        label = task.status ?? 'Failed';
+      } else if (status === TaskStatus.IN_PROGRESS) {
+        viewStatus = 'pending';
+        label = 'In Progress';
+      } else if (status === TaskStatus.PENDING) {
+        viewStatus = 'pending';
+        label = 'Pending';
+      }
+
+      return {
+        name: this.agentDisplayName(task.agent_type),
+        status: viewStatus,
+        label,
+      };
+    });
   });
 
-  readonly pendingApprovals = signal<DocumentApprovalDialogData[]>([
-    { title: 'Discharge Summary — Draft', meta: 'Generated 14:32 · Documentation Agent · 30 seconds', aiAssisted: true },
-  ]);
+  readonly selectedAgentTask = computed<AgentTaskResponse | null>(() => {
+    const id = this.selectedAgentTaskId();
+    if (!id) {
+      return null;
+    }
+    return this.agentTaskResponses().find((t) => t.id === id) ?? null;
+  });
+
+  readonly agentTaskColumns = [
+    'agentType',
+    'status',
+    'startedAt',
+    'completedAt',
+    'actions',
+  ];
+
+  readonly documents = signal<BackendDocument[]>([]);
+  readonly isLoadingDocuments = signal<boolean>(false);
+  readonly documentError = signal<string | null>(null);
+
+  readonly medications = signal<MedicationReconciliationResponse | null>(null);
+  readonly isLoadingMedications = signal<boolean>(false);
+  readonly medicationError = signal<string | null>(null);
+
+  readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
+  readonly isLoadingAlerts = signal<boolean>(false);
+  readonly alertError = signal<string | null>(null);
+
+  readonly pendingApprovals = computed(() => {
+    return this.documents().filter((d) => d.status === 'PENDING_REVIEW');
+  });
 
   readonly pendingApprovalCount = computed(() => this.pendingApprovals().length);
 
-  readonly alerts = signal<AlertItem[]>([
-    {
-      id: 'alert-interaction',
-      type: 'critical',
-      title: 'Major Drug Interaction',
-      text: 'Warfarin + Aspirin — increased bleeding risk. Review before discharge.',
-      link: 'Resolve →',
-      dialog: {
-        title: 'Resolve Drug Interaction: Warfarin + Aspirin',
-        severity: 'Major',
-        risk: 'Increased bleeding — pharmacodynamic synergy',
-        description:
-          'Warfarin + Aspirin increases bleeding risk. Confirm management plan before discharge.',
-        checklist: [
-          'Monitor INR within 48 hours of discharge',
-          'Consider dose adjustment per prescriber',
-          'Patient education on bleeding precautions',
-        ],
-        confirmLabel: 'Mark Resolved',
-      },
-    },
-    {
-      id: 'alert-missing',
-      type: 'warning',
-      title: 'Chronic Medication Missing',
-      text: 'Metformin 500mg BD not on discharge Rx. Patient has Type 2 Diabetes.',
-      link: 'Review →',
-      dialog: {
-        title: 'Review Chronic Medication Missing: Metformin',
-        description:
-          'Metformin 500mg BD is not on the Discharge Rx. Patient has Type 2 Diabetes (ICD-10: E11.9).',
-        checklist: [
-          'Confirm intentional omission with prescriber',
-          'Add Metformin to Discharge Rx if continuing',
-          'Document reason in reconciliation notes',
-        ],
-        confirmLabel: 'Flag for Review',
-      },
-    },
-  ]);
+  readonly alerts = computed<AlertItem[]>(() => {
+    return this.pharmacistAlerts()
+      .filter((alert) => alert.status === 'ACTIVE')
+      .map((alert) => this.mapAlertToItem(alert));
+  });
 
   readonly activeAlertCount = computed(() => this.alerts().length);
 
@@ -177,11 +228,6 @@ export class PatientDetailComponent implements OnInit {
     { text: 'No primary care follow-up scheduled' },
     { text: 'Complex medication regimen (8+ meds)' },
     { text: 'Social determinants: transportation barrier' },
-  ]);
-
-  readonly documents = signal<{ title: string; status: string; aiAssisted: boolean }[]>([
-    { title: 'Discharge Summary', status: 'Pending Review', aiAssisted: true },
-    { title: 'After-Visit Instructions', status: 'Approved', aiAssisted: true },
   ]);
 
   readonly openTasks = signal<OpenTask[]>([
@@ -207,6 +253,10 @@ export class PatientDetailComponent implements OnInit {
     if (patientId) {
       this.patientId.set(patientId);
       this.loadPatient(patientId);
+      this.loadAgentTasks(patientId);
+      this.loadDocuments(patientId);
+      this.loadMedications(patientId);
+      this.loadPharmacistAlerts(patientId);
     }
 
     // Restore the tab requested by a returning child view (e.g. document review).
@@ -226,6 +276,10 @@ export class PatientDetailComponent implements OnInit {
     } else if (lastSegment === 'documents') {
       this.activeTab.set('Documents');
     }
+  }
+
+  ngOnDestroy(): void {
+    this.taskUpdateSub?.unsubscribe();
   }
 
   private loadPatient(encounterId: string): void {
@@ -264,22 +318,159 @@ export class PatientDetailComponent implements OnInit {
     return age;
   }
 
+  private loadAgentTasks(encounterId: string): void {
+    this.isLoadingAgentTasks.set(true);
+    this.agentTaskError.set(null);
+    this.tasksApi.getTasksForEncounter(encounterId).subscribe({
+      next: (response) => {
+        const tasks = Array.isArray(response) ? response : (response as any)?.tasks ?? [];
+        this.agentTaskResponses.set(tasks);
+        this.isLoadingAgentTasks.set(false);
+      },
+      error: (err: Error) => {
+        this.agentTaskError.set(err.message);
+        this.isLoadingAgentTasks.set(false);
+      },
+    });
+  }
+
+  private loadDocuments(encounterId: string): void {
+    this.isLoadingDocuments.set(true);
+    this.documentError.set(null);
+    this.documentApi.getDocumentsByEncounter(encounterId).subscribe({
+      next: (docs) => {
+        this.documents.set(docs);
+        this.isLoadingDocuments.set(false);
+      },
+      error: (err: Error) => {
+        this.documentError.set(err.message);
+        this.isLoadingDocuments.set(false);
+      },
+    });
+  }
+
+  private loadMedications(encounterId: string): void {
+    this.isLoadingMedications.set(true);
+    this.medicationError.set(null);
+    this.medicationApi.getReconciliation(encounterId).subscribe({
+      next: (data) => {
+        this.medications.set(data);
+        this.isLoadingMedications.set(false);
+      },
+      error: (err: Error) => {
+        this.medicationError.set(err.message);
+        this.isLoadingMedications.set(false);
+      },
+    });
+  }
+
+  private loadPharmacistAlerts(encounterId: string): void {
+    this.isLoadingAlerts.set(true);
+    this.alertError.set(null);
+    this.medicationApi.getEncounterAlerts(encounterId).subscribe({
+      next: (alerts) => {
+        this.pharmacistAlerts.set(alerts);
+        this.isLoadingAlerts.set(false);
+      },
+      error: (err: Error) => {
+        this.alertError.set(err.message);
+        this.isLoadingAlerts.set(false);
+      },
+    });
+  }
+
+  private mapAlertToItem(alert: PharmacistAlert): AlertItem {
+    const title = alert.drug_pair?.length
+      ? `Major Drug Interaction: ${alert.drug_pair.join(' + ')}`
+      : alert.alert_type === 'CHRONIC_MEDICATION_MISSING'
+        ? 'Chronic Medication Missing'
+        : 'Pharmacist Alert';
+
+    const text = alert.interaction_description ?? 'Review before discharge.';
+
+    return {
+      id: alert.id,
+      type: alert.severity === 'HIGH' ? 'critical' : 'warning',
+      title,
+      text,
+      link: 'Resolve →',
+      dialog: {
+        title: `Resolve ${title}`,
+        severity: alert.severity,
+        risk: alert.interaction_description ?? '',
+        description: text,
+        checklist: [
+          'Review clinical context and patient history',
+          'Confirm management plan with prescriber if needed',
+          'Document resolution reason',
+        ],
+        confirmLabel: 'Mark Resolved',
+      },
+    };
+  }
+
+  documentDisplayTitle(doc: BackendDocument): string {
+    const type = doc.document_type;
+    return type
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  documentStatusLabel(status: string): string {
+    switch (status) {
+      case 'PENDING_REVIEW':
+        return 'Pending Review';
+      case 'APPROVED':
+        return 'Approved';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'DRAFT':
+        return 'Draft';
+      default:
+        return status;
+    }
+  }
+
+  agentDisplayName(agentType: string | null): string {
+    if (!agentType) {
+      return 'Unknown';
+    }
+    return AGENT_TYPE_DISPLAY_NAME[agentType.toLowerCase()] ?? agentType;
+  }
+
+  agentStatusClass(status: string | null): string {
+    if (!status) {
+      return 'status-unknown';
+    }
+    switch (status.toUpperCase()) {
+      case TaskStatus.COMPLETED:
+        return 'status-completed';
+      case TaskStatus.IN_PROGRESS:
+        return 'status-in-progress';
+      case TaskStatus.PENDING:
+        return 'status-pending';
+      case TaskStatus.FAILED:
+        return 'status-failed';
+      case TaskStatus.BLOCKED:
+        return 'status-blocked';
+      default:
+        return 'status-unknown';
+    }
+  }
+
+  selectAgentTask(task: AgentTaskResponse): void {
+    this.selectedAgentTaskId.set(task.id);
+  }
+
   setTab(tab: string): void {
     this.activeTab.set(tab);
 
-    // Per wireframe SCR-004, Medications navigates to SCR-005 and Documents
-    // navigates to SCR-006. Overview, Tasks, and Timeline remain in-place.
-    if (tab === 'Medications') {
-      this.router.navigate(['/patients', this.patientId(), 'medications']);
-    } else if (tab === 'Documents') {
-      this.router.navigate(['/patients', this.patientId(), 'documents']);
-    } else if (tab === 'Overview') {
-      this.router.navigate(['/patients', this.patientId()]);
-    } else {
-      this.router.navigate(['/patients', this.patientId()], {
-        queryParams: { tab: tab.toLowerCase() },
-      });
-    }
+    // All tabs now render in-place within the patient detail page while
+    // preserving the patient header. Only the active tab query param is kept.
+    this.router.navigate(['/patients', this.patientId()], {
+      queryParams: { tab: tab.toLowerCase() },
+    });
   }
 
   onAlertClick(alert: AlertItem): void {
@@ -291,10 +482,27 @@ export class PatientDetailComponent implements OnInit {
 
     ref.afterClosed().subscribe((result) => {
       if (result?.confirmed) {
-        this.alerts.update((items) => items.filter((a) => a.id !== alert.id));
-        this.toast.success(`${alert.title} ${alert.link.replace(' →', '')}`);
+        this.resolvePharmacistAlert(alert.id);
       }
     });
+  }
+
+  private resolvePharmacistAlert(alertId: string): void {
+    this.medicationApi
+      .resolveAlert(alertId, { resolution_type: 'REVIEWED_ACCEPTABLE' })
+      .subscribe({
+        next: () => {
+          this.pharmacistAlerts.update((items) =>
+            items.map((a) =>
+              a.id === alertId ? { ...a, status: 'RESOLVED' as const } : a
+            )
+          );
+          this.toast.success('Alert resolved');
+        },
+        error: (err: Error) => {
+          this.toast.error(`Failed to resolve alert: ${err.message}`);
+        },
+      });
   }
 
   readonly carePlanSections: CarePlanSection[] = [
@@ -343,21 +551,32 @@ export class PatientDetailComponent implements OnInit {
     });
   }
 
-  onReviewApproval(approval: DocumentApprovalDialogData): void {
+  onReviewApproval(doc: BackendDocument): void {
+    const generatedAt = doc.created_at
+      ? new Date(doc.created_at).toLocaleString()
+      : '—';
     const ref = this.dialog.open(DocumentApprovalDialogComponent, {
       width: '640px',
-      data: approval,
+      data: {
+        title: `${this.documentDisplayTitle(doc)} — Draft`,
+        meta: `Generated ${generatedAt} · ${doc.generation_type ?? 'AI'}`,
+        aiAssisted: doc.ai_assisted_label,
+      },
       ariaLabelledBy: 'doc-approval-title',
     });
 
     ref.afterClosed().subscribe((result) => {
       if (result?.action === 'approve') {
-        this.pendingApprovals.update((items) =>
-          items.filter((a) => a.title !== approval.title),
+        this.documents.update((items) =>
+          items.map((d) =>
+            d.id === doc.id
+              ? { ...d, status: 'APPROVED' as const, approved_at: new Date().toISOString() }
+              : d
+          )
         );
-        this.toast.success(`${approval.title} approved`);
+        this.toast.success(`${this.documentDisplayTitle(doc)} approved`);
       } else if (result?.action === 'reject') {
-        this.toast.error(`${approval.title} rejected`);
+        this.toast.error(`${this.documentDisplayTitle(doc)} rejected`);
       }
     });
   }
@@ -413,10 +632,56 @@ export class PatientDetailComponent implements OnInit {
     const patientId = this.route.snapshot.paramMap.get('patientId');
     if (patientId) {
       this.loadPatient(patientId);
+      this.loadAgentTasks(patientId);
+      this.loadDocuments(patientId);
+      this.loadMedications(patientId);
+      this.loadPharmacistAlerts(patientId);
+    }
+  }
+
+  refreshAll(): void {
+    const patientId = this.patientId();
+    if (!patientId) {
+      return;
+    }
+    this.loadPatient(patientId);
+    this.loadAgentTasks(patientId);
+    this.loadDocuments(patientId);
+    this.loadMedications(patientId);
+    this.loadPharmacistAlerts(patientId);
+  }
+
+  refreshAgentTasks(): void {
+    const patientId = this.patientId();
+    if (patientId) {
+      this.loadAgentTasks(patientId);
+    }
+  }
+
+  refreshDocuments(): void {
+    const patientId = this.patientId();
+    if (patientId) {
+      this.loadDocuments(patientId);
+    }
+  }
+
+  refreshMedications(): void {
+    const patientId = this.patientId();
+    if (patientId) {
+      this.loadMedications(patientId);
+    }
+  }
+
+  refreshAlerts(): void {
+    const patientId = this.patientId();
+    if (patientId) {
+      this.loadPharmacistAlerts(patientId);
     }
   }
 
   goBack(): void {
     this.router.navigate(['/patients']);
   }
+
+  // Encounter registration
 }

@@ -43,6 +43,11 @@ def get_signalr_broadcaster() -> SignalRBroadcaster:
     return _broadcaster_instance
 
 
+def get_signalr_broadcaster_optional() -> SignalRBroadcaster | None:
+    """FastAPI dependency: returns broadcaster or None when not configured."""
+    return _broadcaster_instance
+
+
 def set_signalr_broadcaster(broadcaster: SignalRBroadcaster) -> None:
     """Set the global broadcaster instance. Called by main.py lifespan."""
     global _broadcaster_instance

@@ -121,7 +121,7 @@ class DocumentResponse(BaseModel):
     id: UUID = Field(description="Document primary key")
     encounter_id: UUID = Field(description="Foreign key to encounter")
     document_type: str = Field(description="One of: discharge_summary, patient_instructions, etc.")
-    content: dict = Field(description="Document structured content (decrypted)")
+    content: dict | str = Field(description="Document structured content (decrypted) or raw text")
     language_code: str = Field(default="en", description="Document language (en, es, fr, zh, pt)")
     status: str = Field(description="Document status (draft, pending_approval, approved, rejected)")
     generation_type: str = Field(description="LLM or TEMPLATE")
@@ -152,7 +152,10 @@ class DocumentResponse(BaseModel):
     @field_validator("content", mode="before")
     @classmethod
     def _parse_json_content(cls, value: Any) -> Any:
-        """Decrypting the ORM returns a JSON string; normalise to a dict."""
+        """Decrypting the ORM may return a JSON string or plain text; normalise when possible."""
         if isinstance(value, str):
-            return json.loads(value)
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
         return value

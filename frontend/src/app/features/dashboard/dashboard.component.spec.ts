@@ -15,7 +15,7 @@ import { ActivatedRoute } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 
 import { DashboardComponent } from './dashboard.component';
-import { SignalRService, TaskUpdatedEvent } from '../../core/signalr';
+import { SignalRService, TaskUpdatedPayload } from '../../core/signalr';
 import { EncounterTasksApiService } from '../../core/api';
 import { AgentTaskResponse, TaskStatus } from '../../core/models';
 
@@ -25,7 +25,7 @@ describe('DashboardComponent', () => {
   let mockSignalRService: any;
   let mockTasksApiService: any;
   let mockActivatedRoute: any;
-  let taskUpdatedSubject: Subject<TaskUpdatedEvent>;
+  let taskUpdatedSubject: Subject<TaskUpdatedPayload>;
 
   const mockTask: AgentTaskResponse = {
     id: 'task-123',
@@ -36,16 +36,17 @@ describe('DashboardComponent', () => {
     status: TaskStatus.IN_PROGRESS,
     start_time: '2026-07-25T10:00:00Z',
     completed_time: null,
+    started_at: null,
     payload: null,
     output: null,
   };
 
   beforeEach(async () => {
-    taskUpdatedSubject = new Subject<TaskUpdatedEvent>();
+    taskUpdatedSubject = new Subject<TaskUpdatedPayload>();
 
     mockSignalRService = {
-      startConnection: jest.fn().mockResolvedValue(undefined),
-      stopConnection: jest.fn().mockResolvedValue(undefined),
+      connect: jest.fn().mockResolvedValue(undefined),
+      disconnect: jest.fn().mockResolvedValue(undefined),
       taskUpdated$: taskUpdatedSubject.asObservable(),
     };
 
@@ -88,23 +89,24 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(mockSignalRService.startConnection).toHaveBeenCalledWith('enc-001');
+    expect(mockSignalRService.connect).toHaveBeenCalled();
+    const callArg = mockSignalRService.connect.mock.calls[0][0];
+    expect(callArg.roles).toBeDefined();
+    expect(callArg.units).toBeDefined();
   });
 
   it('should update task when task_updated event is received', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const updateEvent: TaskUpdatedEvent = {
-      task_id: 'task-123',
-      encounter_id: 'enc-001',
-      unit_id: '3A',
-      role_name: 'nurse',
-      agent_type: 'DOCUMENTATION',
-      previous_status: TaskStatus.IN_PROGRESS,
-      new_status: TaskStatus.COMPLETED,
-      updated_at: '2026-07-25T11:00:00Z',
-    };
+    const updateEvent: TaskUpdatedPayload = {
+      taskId: 'task-123',
+      encounterId: 'enc-001',
+      taskName: 'Documentation Agent',
+      previousStatus: TaskStatus.IN_PROGRESS,
+      newStatus: TaskStatus.COMPLETED,
+      completedAt: '2026-07-25T11:00:00Z',
+    } as TaskUpdatedPayload;
 
     taskUpdatedSubject.next(updateEvent);
     fixture.detectChanges();
@@ -155,6 +157,99 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
     component.ngOnDestroy();
 
-    expect(mockSignalRService.stopConnection).toHaveBeenCalled();
+    expect(mockSignalRService.disconnect).toHaveBeenCalled();
+  });
+
+  it('should mark agents as Inactive when no tasks exist', () => {
+    component.tasks.set([]);
+    const statuses = component.agentStatusList();
+
+    expect(statuses.every(s => s.status === 'Inactive')).toBe(true);
+    expect(statuses.map(s => s.name)).toEqual([
+      'Transition Coordinator',
+      'Documentation',
+      'Medication Reconciliation',
+      'Bed Management',
+      'Follow-up Care',
+      'Patient Communications',
+    ]);
+  });
+
+  it('should derive Degraded status when an agent has failed/blocked tasks', () => {
+    component.tasks.set([
+      {
+        ...mockTask,
+        id: 'task-med-1',
+        agent_type: 'medication_reconciliation',
+        status: 'failed',
+      },
+      {
+        ...mockTask,
+        id: 'task-med-2',
+        agent_type: 'medication_reconciliation',
+        status: 'blocked',
+        blocked_reason: 'Patient identity unresolved',
+      },
+    ]);
+
+    const medRecon = component.agentStatusList().find(
+      s => s.name === 'Medication Reconciliation',
+    );
+    expect(medRecon?.status).toBe('Degraded');
+    expect(medRecon?.alerts).toBe(2);
+  });
+
+  it('should derive Active status when latest task is completed and no issues', () => {
+    component.tasks.set([
+      {
+        ...mockTask,
+        id: 'task-doc-1',
+        agent_type: 'documentation',
+        status: 'completed',
+        completed_time: '2026-07-25T11:00:00Z',
+      },
+    ]);
+
+    const documentation = component.agentStatusList().find(
+      s => s.name === 'Documentation',
+    );
+    expect(documentation?.status).toBe('Active');
+    expect(documentation?.alerts).toBeUndefined();
+  });
+
+  it('should update agent status live when a SignalR task update arrives', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    component.tasks.set([
+      {
+        ...mockTask,
+        id: 'task-med-1',
+        agent_type: 'medication_reconciliation',
+        status: 'running',
+      },
+    ]);
+
+    expect(
+      component.agentStatusList().find(s => s.name === 'Medication Reconciliation')
+        ?.status,
+    ).toBe('Active');
+
+    const updateEvent: TaskUpdatedPayload = {
+      task_id: 'task-med-1',
+      encounter_id: 'enc-001',
+      agent_type: 'medication_reconciliation',
+      previous_status: 'running',
+      new_status: 'failed',
+      updated_at: '2026-07-25T12:00:00Z',
+    } as unknown as TaskUpdatedPayload;
+
+    taskUpdatedSubject.next(updateEvent);
+
+    const medRecon = component.agentStatusList().find(
+      s => s.name === 'Medication Reconciliation',
+    );
+    expect(medRecon?.status).toBe('Degraded');
+    expect(medRecon?.alerts).toBe(1);
   });
 });

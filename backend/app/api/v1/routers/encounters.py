@@ -19,11 +19,16 @@ from app.schemas.encounter_request import (
     EncounterUpdateRequest,
     EncounterWriteResponse,
 )
+from app.api.v1.routers.signalr_hub import get_signalr_broadcaster_optional
 from app.services.adt_event_publisher import AdtEventPublisher
+from app.services.agent_runner import run_agent_task
 from app.services.cancellation_service import CancellationService
 from app.services.cancellation_dispatcher import CancellationDispatcher
+from app.services.encounter_orchestrator import EncounterOrchestratorService
 from app.services.patient_notification_publisher import PatientNotificationPublisher
 from app.signalr import SignalRHub
+from app.signalr.broadcaster import SignalRBroadcaster
+
 
 router = APIRouter(prefix="/encounters", tags=["encounters"])
 
@@ -82,12 +87,15 @@ async def get_encounter(
 @router.post("", response_model=EncounterWriteResponse)
 async def create_encounter(
     body: EncounterCreateRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[TokenClaims, Depends(require_permission("encounter", "write"))],
     db: AsyncSession = Depends(get_write_db),
+    broadcaster: SignalRBroadcaster | None = Depends(get_signalr_broadcaster_optional),
 ) -> Encounter:
     """Create an encounter — requires encounter:write permission.
 
-    Also records an ADT event and broadcasts it to the unit's SignalR group.
+    Also records an ADT event, broadcasts it to the unit's SignalR group,
+    and creates the initial set of agent tasks for the ADT event type.
     """
     patient = await db.get(Patient, body.patient_id)
     if patient is None:
@@ -107,6 +115,18 @@ async def create_encounter(
 
     await db.commit()
     await db.refresh(encounter)
+
+    # Create agent tasks driven by the ADT event type (or encounter status fallback).
+    orchestrator = EncounterOrchestratorService(broadcaster=broadcaster)
+    tasks = await orchestrator.create_tasks_for_adt_event(
+        db=db,
+        encounter=encounter,
+        event_type=body.event_type.value if body.event_type else None,
+    )
+
+    # Run each new agent task asynchronously after the response is sent.
+    for task in tasks:
+        background_tasks.add_task(run_agent_task, task.id, broadcaster)
 
     # Notify patient of admission (US-064)
     if encounter.status == EncounterStatus.ADMITTED.value and not patient.notification_opt_out:
@@ -129,12 +149,15 @@ async def create_encounter(
 async def update_encounter(
     encounter_id: uuid.UUID,
     body: EncounterUpdateRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[TokenClaims, Depends(require_permission("encounter", "write"))],
     db: AsyncSession = Depends(get_write_db),
+    broadcaster: SignalRBroadcaster | None = Depends(get_signalr_broadcaster_optional),
 ) -> Encounter:
     """Update an encounter — requires encounter:write permission.
 
     Records an ADT event and broadcasts it when the status or unit changes.
+    Also creates any additional agent tasks implied by the new encounter state.
     """
     encounter = await db.get(Encounter, encounter_id)
     if encounter is None:
@@ -164,6 +187,19 @@ async def update_encounter(
 
     await db.commit()
     await db.refresh(encounter)
+
+    # Create/update agent tasks when the encounter changed.
+    if status_changed or unit_changed:
+        orchestrator = EncounterOrchestratorService(broadcaster=broadcaster)
+        tasks = await orchestrator.create_tasks_for_adt_event(
+            db=db,
+            encounter=encounter,
+            event_type=body.event_type.value if body.event_type else None,
+        )
+
+        # Run newly created agent tasks asynchronously after the response is sent.
+        for task in tasks:
+            background_tasks.add_task(run_agent_task, task.id, broadcaster)
 
     # Notify patient of discharge (US-064)
     if discharged and not patient.notification_opt_out:

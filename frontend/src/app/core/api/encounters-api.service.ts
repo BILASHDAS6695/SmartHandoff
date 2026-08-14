@@ -16,6 +16,26 @@ export interface RecentEventsResponse {
   latestEventTime: string;
 }
 
+/** Encounter create request payload. */
+export interface EncounterCreateRequest {
+  patient_id: string;
+  status: 'REGISTERED' | 'PRE_ADMISSION' | 'ADMITTED' | 'TRANSFERRED' | 'DISCHARGED';
+  unit: string;
+  risk_tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  event_type?: 'A01' | 'A02' | 'A03' | 'A04' | 'A08' | null;
+}
+
+/** Encounter write response payload. */
+export interface EncounterWriteResponse {
+  id: string;
+  patient_id: string;
+  status: string;
+  unit: string | null;
+  risk_tier: string;
+  created_at: string;
+  updated_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EncountersApiService {
   private readonly http = inject(HttpClient);
@@ -33,5 +53,13 @@ export class EncountersApiService {
     return this.http.get<RecentEventsResponse>(`${this.baseUrl}/recent-events`, {
       params,
     });
+  }
+
+  /**
+   * Creates a new encounter for a patient.
+   * POST /api/v1/encounters
+   */
+  createEncounter(payload: EncounterCreateRequest): Observable<EncounterWriteResponse> {
+    return this.http.post<EncounterWriteResponse>(this.baseUrl, payload);
   }
 }

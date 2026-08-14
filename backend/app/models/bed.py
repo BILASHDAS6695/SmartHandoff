@@ -42,6 +42,11 @@ class Bed(Base, TimestampMixin):
 
     ward: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
 
+    @property
+    def room(self) -> str | None:
+        """Alias for ward; keeps bed coordinate vocabulary consistent."""
+        return self.ward
+
     status: Mapped[str] = mapped_column(
         sa.String(32),
         nullable=False,

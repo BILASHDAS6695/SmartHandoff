@@ -24,6 +24,7 @@ _CONFIG_PATH = Path(__file__).parent / "sla_config.yaml"
 # provides a threshold for every agent type before the monitor starts.
 KNOWN_AGENT_TYPES: frozenset[str] = frozenset(
     {
+        "COORDINATOR",
         "DOCUMENTATION",
         "MEDICATION_RECONCILIATION",
         "BED_MANAGEMENT",
@@ -84,13 +85,14 @@ class SLAConfig(BaseModel):
         Falls back to a conservative 30-minute default for unknown agent types
         introduced after the YAML was last updated, and logs a warning.
         """
-        if agent_type not in self.sla_thresholds:
+        normalized = (agent_type or "").upper()
+        if normalized not in self.sla_thresholds:
             logger.warning(
                 "No SLA threshold configured for agent_type=%r; defaulting to 30 minutes",
                 agent_type,
             )
             return 30
-        return self.sla_thresholds[agent_type]
+        return self.sla_thresholds[normalized]
 
 
 @lru_cache(maxsize=1)

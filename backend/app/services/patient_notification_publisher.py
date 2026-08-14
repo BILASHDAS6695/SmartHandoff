@@ -30,11 +30,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from google.api_core import exceptions as gapi_exceptions
 from google.cloud import pubsub_v1
+from google.auth import exceptions as auth_exceptions
 
 from app.core.config import get_settings
 
@@ -45,11 +48,21 @@ class PatientNotificationPublisher:
     """Publish patient-facing SMS/EMAIL notifications to notification-requests."""
 
     def __init__(self, project_id: str | None = None) -> None:
-        settings = get_settings()
-        self._project_id = project_id or settings.GCP_PROJECT_ID
-        self._topic_id = getattr(settings, "NOTIFICATION_TOPIC_ID", "notification-requests")
-        self._client = pubsub_v1.PublisherClient()
-        self._topic_path = self._client.topic_path(self._project_id, self._topic_id)
+        self._client: pubsub_v1.PublisherClient | None = None
+        self._topic_path: str | None = None
+        try:
+            settings = get_settings()
+            self._project_id = project_id or settings.GCP_PROJECT_ID
+            self._topic_id = getattr(settings, "NOTIFICATION_TOPIC_ID", "notification-requests")
+            self._client = pubsub_v1.PublisherClient()
+            self._topic_path = self._client.topic_path(self._project_id, self._topic_id)
+        except Exception as exc:
+            self._project_id = project_id or os.environ.get("GCP_PROJECT_ID", "")
+            self._topic_id = "notification-requests"
+            logger.warning(
+                "GCP Pub/Sub unavailable; patient notifications will be logged, not published. error=%s",
+                exc,
+            )
 
     async def _publish(
         self,
@@ -83,6 +96,20 @@ class PatientNotificationPublisher:
             payload["email"] = email
 
         data = json.dumps(payload, default=str).encode("utf-8")
+
+        # Local/dev fallback when GCP credentials are unavailable.
+        if self._client is None or self._topic_path is None:
+            logger.info(
+                "patient_notification_skipped (no Pub/Sub client)",
+                extra={
+                    "channel": notification_type,
+                    "patient_id": patient_id,
+                    "idempotency_key": idempotency_key,
+                    "payload": payload,
+                },
+            )
+            return "skipped-no-gcp-credentials"
+
         future = self._client.publish(
             self._topic_path,
             data=data,

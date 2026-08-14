@@ -47,6 +47,8 @@ export class SidebarComponent {
       items: [
         { icon: 'dashboard', label: 'Dashboard', route: '/dashboard' },
         { icon: 'people', label: 'Patients', route: '/patients', badge: () => 142 },
+        { icon: 'assignment_add', label: 'Register Encounter', route: '/patients/register' },
+        { icon: 'assignment', label: 'Task Monitor', route: '/tasks' },
       ],
     },
     {

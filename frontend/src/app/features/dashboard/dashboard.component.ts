@@ -25,7 +25,7 @@ import { Subscription, forkJoin, interval } from 'rxjs';
 
 import { SignalRService, TaskUpdatedPayload, JoinGroupsRequest } from '../../core/signalr';
 import { EncounterTasksApiService } from '../../core/api';
-import { AgentTaskResponse, TaskStatus } from '../../core/models';
+import { AgentTaskResponse, DASHBOARD_AGENTS, TaskStatus } from '../../core/models';
 import { AuthService } from '../../core/auth/auth.service';
 import { PatientApiService } from '../patients/services/patient-api.service';
 import { PatientSummary } from '../patients/models/patient.model';
@@ -78,14 +78,45 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Live data signals
   readonly patients = signal<PatientSummary[]>([]);
-  readonly agentStatusList = signal<AgentStatus[]>([
-    { name: 'Transition Coordinator', status: 'Active' },
-    { name: 'Documentation', status: 'Active' },
-    { name: 'Medication Reconciliation', status: 'Degraded', alerts: 2 },
-    { name: 'Bed Management', status: 'Active' },
-    { name: 'Follow-up Care', status: 'Active' },
-    { name: 'Patient Communications', status: 'Active' },
-  ]);
+  /** Live agent health derived from the current task list. */
+  readonly agentStatusList = computed<AgentStatus[]>(() => {
+    const tasks = this.tasks();
+    return DASHBOARD_AGENTS.map(({ name, agentType }) => {
+      const agentTasks = tasks.filter(
+        t => t.agent_type?.toLowerCase() === agentType,
+      );
+      if (agentTasks.length === 0) {
+        return { name, status: 'Inactive' as const };
+      }
+
+      const issueCount = agentTasks.filter(t => {
+        const status = t.status?.toUpperCase();
+        return (
+          status === TaskStatus.FAILED ||
+          status === TaskStatus.BLOCKED ||
+          t.sla_breached === true
+        );
+      }).length;
+
+      // Active if at least one task is in progress/running and there are no issues.
+      const hasActiveTask = agentTasks.some(t => {
+        const status = t.status?.toUpperCase();
+        return (
+          status === TaskStatus.IN_PROGRESS ||
+          status === 'RUNNING' ||
+          status === TaskStatus.PENDING
+        );
+      });
+
+      if (issueCount > 0) {
+        return { name, status: 'Degraded' as const, alerts: issueCount };
+      }
+      if (hasActiveTask) {
+        return { name, status: 'Active' as const };
+      }
+      return { name, status: 'Inactive' as const };
+    });
+  });
 
   readonly taskPriority = signal<Record<string, 'urgent' | 'critical' | 'normal'>>({
     'medication_reconciliation': 'urgent',
@@ -285,28 +316,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private _applyTaskUpdate(event: TaskUpdatedPayload): void {
+    // Backend broadcasts snake_case fields (task_id, new_status, updated_at);
+    // some older client code uses camelCase aliases. Normalize both.
+    const taskId = event.task_id ?? event.taskId;
+    const newStatus = event.new_status ?? event.newStatus;
+    const completedAt =
+      event.completed_at ?? event.completedAt ?? event.updated_at ?? event.updatedAt;
+
+    if (!taskId || !newStatus) {
+      console.warn('Received malformed task update event; ignoring.', event);
+      return;
+    }
+
     const currentTasks = this.tasks();
-    const taskIndex = currentTasks.findIndex(t => t.id === event.taskId);
+    const taskIndex = currentTasks.findIndex(t => t.id === taskId);
 
     if (taskIndex >= 0) {
       // Update existing task
       const updatedTasks = [...currentTasks];
       updatedTasks[taskIndex] = {
         ...updatedTasks[taskIndex],
-        status: event.newStatus,
-        completed_time: event.newStatus === 'COMPLETED' 
-          ? event.completedAt || new Date().toISOString()
-          : updatedTasks[taskIndex].completed_time,
+        status: newStatus,
+        completed_time:
+          newStatus.toUpperCase() === 'COMPLETED'
+            ? completedAt || new Date().toISOString()
+            : updatedTasks[taskIndex].completed_time,
       };
       this.tasks.set(updatedTasks);
     } else {
       // New task arrived — fetch full details from API
-      this.tasksApi.getTaskById(event.taskId).subscribe({
+      this.tasksApi.getTaskById(taskId).subscribe({
         next: task => {
           this.tasks.set([...this.tasks(), task]);
         },
         error: error => {
-          console.error(`Failed to fetch new task ${event.taskId}:`, error);
+          console.error(`Failed to fetch new task ${taskId}:`, error);
         }
       });
     }
