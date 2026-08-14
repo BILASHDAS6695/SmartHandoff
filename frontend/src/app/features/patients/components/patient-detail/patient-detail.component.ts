@@ -25,6 +25,7 @@ import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, TaskStatus } from '@core/mo
 import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
 import {
+  MedicationAnalysisResponse,
   MedicationApiService,
   MedicationHistoryEncounter,
   MedicationHistoryResponse,
@@ -221,6 +222,9 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   readonly medicationHistory = signal<MedicationHistoryResponse | null>(null);
   readonly isLoadingHistory = signal<boolean>(false);
   readonly historyError = signal<string | null>(null);
+  readonly aiAnalysis = signal<MedicationAnalysisResponse | null>(null);
+  readonly isLoadingAiAnalysis = signal<boolean>(false);
+  readonly aiAnalysisError = signal<string | null>(null);
 
   readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
   readonly isLoadingAlerts = signal<boolean>(false);
@@ -444,6 +448,30 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
 
   toggleMedDetail(med: MedicationReconciliationResult): void {
     this.expandedMedId.update((id) => (id === med.id ? null : med.id));
+  }
+
+  showDetailRow = (_index: number, _row: MedicationReconciliationResult): boolean => true;
+
+  analyzeMedicationChanges(): void {
+    const encounterId = this.patientId();
+    if (!encounterId) {
+      return;
+    }
+
+    this.isLoadingAiAnalysis.set(true);
+    this.aiAnalysisError.set(null);
+    this.aiAnalysis.set(null);
+
+    this.medicationApi.analyzeMedications(encounterId).subscribe({
+      next: (analysis) => {
+        this.aiAnalysis.set(analysis);
+        this.isLoadingAiAnalysis.set(false);
+      },
+      error: (err: Error) => {
+        this.aiAnalysisError.set(err.message ?? 'Failed to generate AI analysis');
+        this.isLoadingAiAnalysis.set(false);
+      },
+    });
   }
 
   medicationCategoryClass(category: string | null | undefined): string {

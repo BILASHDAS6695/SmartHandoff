@@ -51,6 +51,18 @@ export interface MedicationHistoryResponse {
   history: MedicationHistoryEncounter[];
 }
 
+/** Backend AI medication analysis response shape. */
+export interface MedicationAnalysisResponse {
+  encounter_id: string;
+  summary: string;
+  readmission_risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  safety_score: number;
+  risks: string[];
+  recommendations: string[];
+  predicted_issues: string[];
+}
+
 /** Backend pharmacist alert shape. */
 export interface PharmacistAlert {
   id: string;
@@ -136,6 +148,16 @@ export class MedicationApiService {
   getEncounterAlerts(encounterId: string): Observable<PharmacistAlert[]> {
     return this.http.get<PharmacistAlert[]>(
       `${this.alertsBase}/encounters/${encounterId}/alerts`
+    );
+  }
+
+  /**
+   * Generates an AI-powered medication change analysis and readmission prediction.
+   * GET /api/v1/encounters/{encounterId}/medications/analysis
+   */
+  analyzeMedications(encounterId: string): Observable<MedicationAnalysisResponse> {
+    return this.http.get<MedicationAnalysisResponse>(
+      `${this.base}/${encounterId}/medications/analysis`
     );
   }
 

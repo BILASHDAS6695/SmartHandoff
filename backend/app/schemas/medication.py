@@ -176,3 +176,51 @@ class MedicationHistoryResponse(BaseModel):
     )
 
     model_config = {"from_attributes": True}
+
+
+class MedicationAnalysisResponse(BaseModel):
+    """AI-powered medication change analysis and readmission prediction."""
+
+    encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID analysed",
+    )
+
+    summary: str = Field(
+        ...,
+        description="Plain-language summary of medication-related risks",
+    )
+
+    readmission_risk: str = Field(
+        ...,
+        description="Predicted 30-day readmission risk: HIGH | MEDIUM | LOW",
+    )
+
+    confidence: str = Field(
+        ...,
+        description="Confidence in the prediction: HIGH | MEDIUM | LOW",
+    )
+
+    safety_score: int = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Medication safety score where higher is safer (0-100)",
+    )
+
+    risks: list[str] = Field(
+        default_factory=list,
+        description="Identified medication risks",
+    )
+
+    recommendations: list[str] = Field(
+        default_factory=list,
+        description="Clinical recommendations based on the analysis",
+    )
+
+    predicted_issues: list[str] = Field(
+        default_factory=list,
+        description="Predicted adverse events or issues within 30 days",
+    )
+
+    model_config = {"from_attributes": True}

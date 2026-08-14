@@ -242,6 +242,13 @@
         <div class="header-actions">
           <button
             mat-stroked-button
+            (click)="analyzeMedicationChanges()"
+            aria-label="Analyze medication changes with AI">
+            <mat-icon>psychology</mat-icon>
+            AI Analysis
+          </button>
+          <button
+            mat-stroked-button
             [class.active]="showHistory()"
             (click)="toggleShowHistory()"
             aria-label="Compare with medication history">
@@ -281,7 +288,7 @@
             </div>
 
             @if (medData.medications.length > 0) {
-              <table class="medication-table" mat-table [dataSource]="medData.medications">
+              <table class="medication-table" mat-table [dataSource]="medData.medications" multiTemplateDataRows>
                 <ng-container matColumnDef="name">
                   <th mat-header-cell *matHeaderCellDef>Medication</th>
                   <td mat-cell *matCellDef="let med">
@@ -340,6 +347,73 @@
                   </td>
                 </ng-container>
 
+                <ng-container matColumnDef="expandedDetail">
+                  <td mat-cell *matCellDef="let med" [attr.colspan]="medicationDisplayedColumns.length">
+                    <div class="med-detail-panel">
+                      <div class="med-detail-header">
+                        <h4>{{ med.name }} details</h4>
+                        <button mat-icon-button (click)="expandedMedId.set(null)" aria-label="Hide details">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                      <div class="med-detail-grid">
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">RxNorm CUI</span>
+                          <span class="med-detail-value mono">{{ med.rxnorm_cui ?? '—' }}</span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Dose</span>
+                          <span class="med-detail-value">{{ med.dose ?? '—' }}</span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Route</span>
+                          <span class="med-detail-value">{{ med.route ?? '—' }}</span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Frequency</span>
+                          <span class="med-detail-value">{{ med.frequency ?? '—' }}</span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Category</span>
+                          <span class="med-detail-value" [ngClass]="medicationCategoryClass(med.reconciliation_category)">
+                            {{ med.reconciliation_category ?? '—' }}
+                          </span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Sources</span>
+                          <span class="med-detail-value">
+                            @if (med.pre_admit) { <span class="source-pill pre">Pre-admit</span> }
+                            @if (med.inpatient) { <span class="source-pill in">Inpatient</span> }
+                            @if (med.discharge) { <span class="source-pill dis">Discharge</span> }
+                          </span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Flags</span>
+                          <span class="med-detail-value">
+                            @if (med.flags?.length) {
+                              @for (flag of med.flags; track flag) {
+                                <span class="med-flag">{{ flag }}</span>
+                              }
+                            } @else {
+                              <span class="empty-output">None</span>
+                            }
+                          </span>
+                        </div>
+                        <div class="med-detail-item">
+                          <span class="med-detail-label">Interaction severity</span>
+                          <span class="med-detail-value">
+                            @if (med.interaction_severity) {
+                              <span class="severity-badge" [class]="med.interaction_severity.toLowerCase()">{{ med.interaction_severity }}</span>
+                            } @else {
+                              <span class="empty-output">None</span>
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </ng-container>
+
                 <tr mat-header-row *matHeaderRowDef="medicationDisplayedColumns"></tr>
                 <tr
                   mat-row
@@ -348,70 +422,98 @@
                   [class.expanded]="expandedMedId() === row.id"
                   (click)="toggleMedDetail(row)">
                 </tr>
+                <tr
+                  mat-row
+                  *matRowDef="let row; columns: ['expandedDetail']; when: showDetailRow"
+                  class="detail-row"
+                  [class.expanded]="expandedMedId() === row.id">
+                </tr>
               </table>
 
-              @if (selectedMedication(); as med) {
-                <div class="med-detail-panel">
-                  <div class="med-detail-header">
-                    <h4>{{ med.name }} details</h4>
-                    <button mat-icon-button (click)="expandedMedId.set(null)" aria-label="Hide details">
+              @if (isLoadingAiAnalysis()) {
+                <div class="ai-analysis-panel loading">
+                  <div class="ai-analysis-header">
+                    <div class="ai-title">
+                      <mat-spinner diameter="20"></mat-spinner>
+                      <h4>Analysing medications…</h4>
+                    </div>
+                  </div>
+                  <p class="ai-summary">Realtime prediction engine is evaluating interactions, changes, and readmission risk.</p>
+                </div>
+              }
+
+              @if (aiAnalysisError()) {
+                <div class="ai-analysis-panel error">
+                  <div class="ai-analysis-header">
+                    <div class="ai-title">
+                      <mat-icon>error_outline</mat-icon>
+                      <h4>Analysis unavailable</h4>
+                    </div>
+                    <button mat-icon-button (click)="aiAnalysisError.set(null)" aria-label="Dismiss error">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
-                  <div class="med-detail-grid">
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">RxNorm CUI</span>
-                      <span class="med-detail-value mono">{{ med.rxnorm_cui ?? '—' }}</span>
+                  <p class="ai-summary">{{ aiAnalysisError() }}</p>
+                </div>
+              }
+
+              @if (aiAnalysis(); as analysis) {
+                <div class="ai-analysis-panel">
+                  <div class="ai-analysis-header">
+                    <div class="ai-title">
+                      <mat-icon>psychology</mat-icon>
+                      <h4>AI Medication Insights</h4>
                     </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Dose</span>
-                      <span class="med-detail-value">{{ med.dose ?? '—' }}</span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Route</span>
-                      <span class="med-detail-value">{{ med.route ?? '—' }}</span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Frequency</span>
-                      <span class="med-detail-value">{{ med.frequency ?? '—' }}</span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Category</span>
-                      <span class="med-detail-value" [ngClass]="medicationCategoryClass(med.reconciliation_category)">
-                        {{ med.reconciliation_category ?? '—' }}
+                    <div class="ai-meta">
+                      <span class="risk-chip" [class]="'risk-' + analysis.readmission_risk.toLowerCase()">
+                        {{ analysis.readmission_risk }} RISK
                       </span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Sources</span>
-                      <span class="med-detail-value">
-                        @if (med.pre_admit) { <span class="source-pill pre">Pre-admit</span> }
-                        @if (med.inpatient) { <span class="source-pill in">Inpatient</span> }
-                        @if (med.discharge) { <span class="source-pill dis">Discharge</span> }
-                      </span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Flags</span>
-                      <span class="med-detail-value">
-                        @if (med.flags?.length) {
-                          @for (flag of med.flags; track flag) {
-                            <span class="med-flag">{{ flag }}</span>
-                          }
-                        } @else {
-                          <span class="empty-output">None</span>
-                        }
-                      </span>
-                    </div>
-                    <div class="med-detail-item">
-                      <span class="med-detail-label">Interaction severity</span>
-                      <span class="med-detail-value">
-                        @if (med.interaction_severity) {
-                          <span class="severity-badge" [class]="med.interaction_severity.toLowerCase()">{{ med.interaction_severity }}</span>
-                        } @else {
-                          <span class="empty-output">None</span>
-                        }
-                      </span>
+                      <span class="confidence-chip">{{ analysis.confidence }} confidence</span>
+                      <button mat-icon-button (click)="aiAnalysis.set(null)" aria-label="Close AI analysis">
+                        <mat-icon>close</mat-icon>
+                      </button>
                     </div>
                   </div>
+                  <div class="ai-score-bar">
+                    <div class="ai-score-label">
+                      <span>Safety score</span>
+                      <strong>{{ analysis.safety_score }}/100</strong>
+                    </div>
+                    <div class="ai-score-track">
+                      <div class="ai-score-fill" [style.width.%]="analysis.safety_score"></div>
+                    </div>
+                  </div>
+                  <p class="ai-summary">{{ analysis.summary }}</p>
+                  @if (analysis.predicted_issues.length > 0) {
+                    <div class="ai-section">
+                      <h5>Predicted issues</h5>
+                      <ul>
+                        @for (issue of analysis.predicted_issues; track issue) {
+                          <li>{{ issue }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                  @if (analysis.risks.length > 0) {
+                    <div class="ai-section">
+                      <h5>Identified risks</h5>
+                      <ul>
+                        @for (risk of analysis.risks; track risk) {
+                          <li>{{ risk }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                  @if (analysis.recommendations.length > 0) {
+                    <div class="ai-section">
+                      <h5>Recommendations</h5>
+                      <ul>
+                        @for (rec of analysis.recommendations; track rec) {
+                          <li>{{ rec }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
                 </div>
               }
             } @else {
@@ -482,7 +584,7 @@
                           <tr>
                             <td>
                               <strong>{{ med.name }}</strong>
-                              @if (med.flags?.length) {
+                              @if (med.flags.length) {
                                 <div class="med-flags">
                                   @for (flag of med.flags; track flag) {
                                     <span class="med-flag">{{ flag }}</span>

@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import case, select
@@ -46,6 +47,10 @@ from app.models.scheduled_notification import (
     NotificationChannel,
     NotificationType,
     ScheduledNotification,
+)
+from app.services.medication_generator import (
+    generate_alerts_for_reconciliation,
+    generate_medications_for_encounter,
 )
 from app.services.task_status_service import TaskStatusTransitionService
 from app.signalr.broadcaster import SignalRBroadcaster, SignalRBroadcasterStub
@@ -326,7 +331,16 @@ class AgentRunner:
     async def _run_medication_reconciliation(
         self, db: AsyncSession, task: AgentTask
     ) -> None:
-        """Run the real medication reconciliation agent when possible."""
+        """Run the real medication reconciliation agent when possible.
+
+        If the FHIR-backed agent is unavailable or returns no medications, fall
+        back to generating deterministic reconciliation data so the encounter
+        always has usable medication records and pharmacist alerts.
+        """
+        medications: list[Any] = []
+        fhir_available = False
+        fhir_error: str | None = None
+
         try:
             from app.agents.medication_reconciliation.agent import (
                 MedicationReconciliationAgent,
@@ -348,29 +362,45 @@ class AgentRunner:
                     session=db,
                 )
                 medications = await agent.run(str(task.encounter_id))
-                task.output = {
-                    "source": "FHIR",
-                    "medications_reconciled": len(medications),
-                    "interactions_checked": True,
-                    "fallback": False,
-                }
+                fhir_available = True
             finally:
                 await fhir_client.close()
 
         except Exception as exc:
+            fhir_error = str(exc)
             logger.warning(
-                "MedicationReconciliationAgent failed for task %s (falling back to stub): %s",
+                "MedicationReconciliationAgent FHIR path failed for task %s: %s",
                 task.id,
                 exc,
             )
-            await self._run_stub_agent("medication_reconciliation", str(task.encounter_id))
-            task.output = {
-                "source": "stub",
-                "medications_reconciled": 0,
-                "interactions_checked": False,
-                "fallback": True,
-                "reason": str(exc),
-            }
+
+        # Fallback: generate deterministic demo meds when FHIR is unavailable
+        # or returned nothing, so the UI and downstream alerts always have data.
+        used_fallback = not medications
+        if used_fallback:
+            encounter = await self._load_encounter(db, task.encounter_id)
+            generated = generate_medications_for_encounter(
+                task.encounter_id,
+                encounter.risk_tier.value if encounter.risk_tier else "UNKNOWN",
+            )
+            for med in generated:
+                db.add(med)
+            generate_alerts_for_reconciliation(db, task.encounter_id, generated)
+            medications = generated
+            logger.info(
+                "Generated fallback medications for encounter %s (task %s): %d meds",
+                task.encounter_id,
+                task.id,
+                len(medications),
+            )
+
+        task.output = {
+            "source": "FHIR" if (fhir_available and not used_fallback) else "fallback_generator",
+            "medications_reconciled": len(medications),
+            "interactions_checked": fhir_available and not used_fallback,
+            "fallback": used_fallback,
+            "reason": fhir_error,
+        }
 
     async def _run_bed_management(self, db: AsyncSession, task: AgentTask) -> None:
         """Assign an available bed to the encounter and persist the result."""
