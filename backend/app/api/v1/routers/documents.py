@@ -16,8 +16,16 @@ from app.db.deps import get_read_db, get_write_db
 from app.models.document import Document, DocumentStatus
 from app.models.encounter import Encounter
 from app.models.patient import Patient
-from app.schemas.document_schemas import DocumentResponse
+from app.schemas.document_schemas import (
+    DocumentRejectRequest,
+    DocumentResponse,
+    GenerateDocumentRequest,
+)
 from app.services.audit_service import write_audit_log
+from app.services.document_generation_service import (
+    AGENT_ROLE_DOCUMENT_MAP,
+    DocumentGenerationService,
+)
 from app.services.patient_notification_publisher import PatientNotificationPublisher
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -142,6 +150,110 @@ async def list_encounter_documents(
     return responses
 
 
+@encounters_documents_router.post(
+    "/{encounter_id}/documents/generate",
+    response_model=DocumentResponse,
+    summary="Generate a role-based clinical document",
+    description=(
+        "Generates a Document record for the encounter based on the requested agent role. "
+        "Content is built from patient demographics, encounter details, medications, and "
+        "pharmacist alerts. The generated document is returned with status PENDING_APPROVAL."
+    ),
+    responses={
+        200: {"description": "Document generated successfully"},
+        400: {"description": "Unsupported agent role"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Encounter not found"},
+    },
+)
+async def generate_encounter_document(
+    encounter_id: uuid.UUID,
+    request: GenerateDocumentRequest,
+    current_user: Annotated[
+        TokenClaims, Depends(require_permission("document", "write"))
+    ],
+    db: AsyncSession = Depends(get_write_db),
+) -> DocumentResponse:
+    """Generate a clinical document for an encounter from the selected agent role.
+
+    Args:
+        encounter_id: UUID of the encounter.
+        request: Contains the agent_role that determines document type and content.
+        current_user: JWT claims from authenticated user.
+        db: Database session.
+
+    Returns:
+        DocumentResponse for the newly generated document.
+
+    Raises:
+        400: Unsupported agent role.
+        404: Encounter not found.
+        403: User lacks document:write permission.
+    """
+    encounter = await db.get(Encounter, encounter_id)
+    if encounter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Encounter not found",
+        )
+
+    agent_role = request.agent_role.lower()
+    if agent_role not in AGENT_ROLE_DOCUMENT_MAP:
+        supported = ", ".join(AGENT_ROLE_DOCUMENT_MAP)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported agent role '{request.agent_role}'. Use: {supported}",
+        )
+
+    target_document_type = AGENT_ROLE_DOCUMENT_MAP[agent_role]["document_type"]
+
+    # Guard against duplicate / unauthorized generation workflows:
+    #   - A plain generate cannot create another copy if any document of this type
+    #     already exists (draft/pending/rejected). The user must Regenerate.
+    #   - Regenerate is not allowed once a document of this type is approved.
+    existing_result = await db.execute(
+        select(Document)
+        .where(Document.encounter_id == encounter_id)
+        .where(Document.document_type == target_document_type)
+        .order_by(Document.created_at.desc())
+    )
+    existing_docs = list(existing_result.scalars().all())
+
+    if request.regenerate:
+        if any(d.status == DocumentStatus.APPROVED.value for d in existing_docs):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An approved document of this type already exists. Approved documents cannot be regenerated.",
+            )
+    else:
+        if existing_docs:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A document of this type already exists. Use Regenerate to create a new version with latest data.",
+            )
+
+    service = DocumentGenerationService(db)
+    document = await service.generate(
+        encounter_id, agent_role, regenerate=request.regenerate
+    )
+
+    await write_audit_log(
+        db=db,
+        action="DOCUMENT_GENERATED",
+        resource_type="Document",
+        resource_id=document.id,
+        performed_by=sub_to_uuid(current_user.sub),
+        metadata={
+            "document_type": document.document_type,
+            "encounter_id": str(encounter_id),
+            "agent_role": agent_role,
+            "generation_type": document.generation_type,
+        },
+    )
+
+    return DocumentResponse.model_validate(document)
+
+
 @router.post("")
 async def create_document(
     current_user: Annotated[TokenClaims, Depends(require_permission("document", "write"))],
@@ -227,6 +339,83 @@ async def approve_document(
     await _notify_patient_on_document_approved(db, doc)
 
     # Build response with resolved display name
+    response = DocumentResponse.model_validate(doc)
+    if doc.reviewed_by_user:
+        response.reviewed_by_display_name = doc.reviewed_by_user.full_name
+
+    return response
+
+
+@router.patch("/{document_id}/reject")
+async def reject_document(
+    document_id: uuid.UUID,
+    request: DocumentRejectRequest,
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+    current_user: Annotated[TokenClaims, Depends(require_role(["PHYSICIAN", "ADVANCED_PRACTICE"]))],
+) -> DocumentResponse:
+    """
+    Reject a document — physician or advanced_practice role only.
+
+    Transition document status to REJECTED and record reviewer metadata.
+    The rejection reason is stored in the document metadata for audit.
+
+    Sets:
+      - Document.status           = REJECTED
+      - Document.reviewed_by_user_id = sub_to_uuid(current_user.sub)
+      - Document.metadata['rejection_reason'] = request.rejection_reason
+
+    RBAC: restricted to `PHYSICIAN` and `ADVANCED_PRACTICE` JWT roles.
+    Returns 403 for all other roles.
+    Returns 404 if document not found.
+    Returns 409 if document is already APPROVED or REJECTED.
+
+    A HIPAA audit log entry is written unconditionally on success.
+    """
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc: Document | None = result.scalar_one_or_none()
+
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    if doc.status == DocumentStatus.APPROVED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approved documents cannot be rejected.",
+        )
+    if doc.status == DocumentStatus.REJECTED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is already rejected.",
+        )
+
+    doc.status = DocumentStatus.REJECTED.value
+    doc.reviewed_by_user_id = sub_to_uuid(current_user.sub)
+
+    meta = doc.document_metadata or {}
+    meta["rejection_reason"] = request.rejection_reason
+    meta["rejected_at"] = datetime.now(tz=timezone.utc).isoformat()
+    doc.document_metadata = meta
+
+    await write_audit_log(
+        db=db,
+        action="DOCUMENT_REJECTED",
+        resource_type="Document",
+        resource_id=document_id,
+        performed_by=sub_to_uuid(current_user.sub),
+        metadata={
+            "document_type": doc.document_type,
+            "encounter_id": str(doc.encounter_id),
+            "ai_assisted_label": doc.ai_assisted_label,
+            "rejection_reason": request.rejection_reason,
+        },
+    )
+
+    await db.commit()
+    await db.refresh(doc)
+
     response = DocumentResponse.model_validate(doc)
     if doc.reviewed_by_user:
         response.reviewed_by_display_name = doc.reviewed_by_user.full_name

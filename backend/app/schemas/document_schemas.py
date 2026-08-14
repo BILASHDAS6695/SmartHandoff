@@ -99,6 +99,27 @@ class DocumentRejectRequest(BaseModel):
     )
 
 
+class GenerateDocumentRequest(BaseModel):
+    """Request body for POST /api/v1/encounters/{id}/documents/generate."""
+
+    agent_role: str = Field(
+        ...,
+        description=(
+            "Agent role that determines document type and content. "
+            "One of: documentation, medication_reconciliation, follow_up_care, "
+            "patient_communication, bed_management, coordinator."
+        ),
+    )
+    regenerate: bool = Field(
+        default=False,
+        description=(
+            "When true, generates a fresh version of the document for the selected "
+            "agent role using the latest encounter data. A new document record is "
+            "created and returned."
+        ),
+    )
+
+
 class ChangeLogEntryResponse(BaseModel):
     """Serialised ChangeLogEntry for API responses (change log timeline)."""
 

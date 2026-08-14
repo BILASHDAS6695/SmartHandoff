@@ -187,15 +187,53 @@
 
   <!-- Documents content -->
   @if (activeTab() === 'Documents') {
-    <div class="card">
-      <div class="card-header">
-        <h3>Documents</h3>
-        <button mat-stroked-button (click)="refreshDocuments()">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
+    <div class="card documents-card">
+      <div class="card-header documents-header">
+        <div class="documents-header-title">
+          <mat-icon class="header-icon">description</mat-icon>
+          <div>
+            <h3>Documents</h3>
+            <p class="header-subtitle">AI-assisted documentation requires review before approval</p>
+          </div>
+        </div>
+        <div class="header-actions document-controls">
+          <div class="agent-select-wrap">
+            <mat-icon class="select-icon">psychology</mat-icon>
+            <select
+              class="agent-role-select"
+              [value]="selectedAgentRole()"
+              (change)="selectedAgentRole.set($any($event.target).value)"
+              [disabled]="isGeneratingDocument()"
+              aria-label="Select agent role for document generation">
+              @for (role of agentRoleOptions; track role.value) {
+                <option [value]="role.value">{{ role.label }} — {{ role.documentType }}</option>
+              }
+            </select>
+          </div>
+          <button
+            mat-raised-button
+            color="primary"
+            class="btn-generate"
+            (click)="generateDocument()"
+            [disabled]="isGeneratingDocument() || !canGenerateDocumentForRole(selectedAgentRole())"
+            [title]="!canGenerateDocumentForRole(selectedAgentRole()) ? 'A document of this type already exists. Use Regenerate to refresh it with latest data.' : ''"
+            aria-label="Generate document from selected agent role">
+            <mat-icon>auto_fix_high</mat-icon>
+            @if (isGeneratingDocument()) {
+              <span>Generating…</span>
+            } @else {
+              <span>Generate</span>
+            }
+          </button>
+          <button mat-icon-button class="btn-refresh" (click)="refreshDocuments()" aria-label="Refresh documents">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </div>
       </div>
-      <div class="card-body">
+      <div class="card-body documents-body">
+        @if (documentGenerationError()) {
+          <div class="agent-error">{{ documentGenerationError() }}</div>
+        }
         @if (isLoadingDocuments()) {
           <div class="agent-loading">
             <mat-spinner diameter="32"></mat-spinner>
@@ -204,31 +242,71 @@
         } @else if (documentError()) {
           <div class="agent-error">{{ documentError() }}</div>
         } @else {
-          @for (doc of documents(); track doc.id) {
-            <div class="document-row">
-              <div class="doc-info">
-                <strong>{{ documentDisplayTitle(doc) }}</strong>
-                @if (doc.ai_assisted_label) {
-                  <span class="ai-badge-small">AI</span>
-                }
+          <div class="documents-table">
+            <div class="documents-table-header">
+              <span class="col-title">Document</span>
+              <span class="col-type">Type</span>
+              <span class="col-status">Status</span>
+              <span class="col-date">Generated</span>
+              <span class="col-actions">Actions</span>
+            </div>
+            @for (doc of documents(); track doc.id) {
+              <div class="document-row" [class.is-approved]="isDocumentApproved(doc)" [class.is-rejected]="isDocumentRejected(doc)">
+                <div class="col-title doc-title-cell">
+                  <div class="doc-icon">
+                    <mat-icon>assignment</mat-icon>
+                  </div>
+                  <div class="doc-title-content">
+                    <strong>{{ documentDisplayTitle(doc) }}</strong>
+                    @if (doc.ai_assisted_label) {
+                      <span class="ai-badge-small">
+                        <mat-icon>auto_awesome</mat-icon>
+                        AI-assisted
+                      </span>
+                    }
+                  </div>
+                </div>
+                <span class="col-type doc-type-label">{{ documentDisplayTitle(doc) }}</span>
+                <span class="col-status">
+                  <span class="doc-status" [class.approved]="isDocumentApproved(doc)" [class.rejected]="isDocumentRejected(doc)">
+                    {{ documentStatusLabel(doc.status) }}
+                  </span>
+                </span>
+                <span class="col-date doc-date">{{ doc.created_at ? (doc.created_at | date:'MMM d, y, h:mm a') : '—' }}</span>
+                <div class="col-actions doc-actions">
+                  @if (canRegenerateDocument(doc)) {
+                    <button
+                      mat-stroked-button
+                      class="btn-regenerate"
+                      (click)="regenerateDocument(doc, $event)"
+                      [disabled]="isGeneratingDocument()"
+                      aria-label="Regenerate document using latest patient data">
+                      <mat-icon>autorenew</mat-icon>
+                      Regenerate
+                    </button>
+                  }
+                  <button
+                    mat-raised-button
+                    class="btn-review"
+                    [class.view-only]="!isDocumentReviewable(doc)"
+                    (click)="onReviewApproval(doc)"
+                    [disabled]="isGeneratingDocument()">
+                    {{ isDocumentReviewable(doc) ? 'Review' : 'View' }}
+                  </button>
+                </div>
               </div>
-              <span class="doc-status" [class.approved]="doc.status === 'APPROVED'">
-                {{ documentStatusLabel(doc.status) }}
-              </span>
-              <button
-                class="btn-review"
-                (click)="doc.status === 'APPROVED' ? null : onReviewApproval(doc)"
-                [disabled]="doc.status === 'APPROVED'">
-                {{ doc.status === 'APPROVED' ? 'View' : 'Review' }}
-              </button>
-            </div>
-          }
-          @if (documents().length === 0) {
-            <div class="empty-state">
-              <mat-icon>description</mat-icon>
-              <p>No documents found for this encounter.</p>
-            </div>
-          }
+            }
+            @if (documents().length === 0) {
+              <div class="empty-state">
+                <mat-icon>description</mat-icon>
+                <p>No documents found for this encounter.</p>
+                <button mat-stroked-button (click)="generateDocument()">
+                  <mat-icon>auto_fix_high</mat-icon>
+                  Generate your first document
+                </button>
+              </div>
+            }
+          </div>
         }
       </div>
     </div>

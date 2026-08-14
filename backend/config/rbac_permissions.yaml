@@ -33,7 +33,7 @@ roles:
   PHYSICIAN:
     patient:    [list, read]
     encounter:  [list, read]
-    document:   [list, read, approve]
+    document:   [list, read, write, approve]
     medication: [list, read]
     alert:      [list, read]
     bed:        []

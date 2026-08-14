@@ -24,6 +24,7 @@ import { EncounterTasksApiService } from '@core/api';
 import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, TaskStatus } from '@core/models';
 import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
+import { DocumentService } from '@features/documents/services/document.service';
 import {
   MedicationAnalysisResponse,
   MedicationApiService,
@@ -110,6 +111,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   private readonly patientApi = inject(PatientApiService);
   private readonly tasksApi = inject(EncounterTasksApiService);
   private readonly documentApi = inject(DocumentApiService);
+  private readonly documentService = inject(DocumentService);
   private readonly medicationApi = inject(MedicationApiService);
 
   private taskUpdateSub?: Subscription;
@@ -212,6 +214,18 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   readonly documents = signal<BackendDocument[]>([]);
   readonly isLoadingDocuments = signal<boolean>(false);
   readonly documentError = signal<string | null>(null);
+  readonly selectedAgentRole = signal<string>('documentation');
+  readonly isGeneratingDocument = signal<boolean>(false);
+  readonly documentGenerationError = signal<string | null>(null);
+
+  readonly agentRoleOptions = [
+    { value: 'documentation', label: 'Documentation Agent', documentType: 'Discharge Summary' },
+    { value: 'medication_reconciliation', label: 'Medication Reconciliation Agent', documentType: 'Medication Reconciliation Report' },
+    { value: 'follow_up_care', label: 'Follow-up Care Agent', documentType: 'Follow-up Care Plan' },
+    { value: 'patient_communication', label: 'Patient Communication Agent', documentType: 'Patient Instructions' },
+    { value: 'bed_management', label: 'Bed Management Agent', documentType: 'Transfer Summary' },
+    { value: 'coordinator', label: 'Transition Coordinator Agent', documentType: 'Care Transition Summary' },
+  ];
 
   readonly medications = signal<MedicationReconciliationResponse | null>(null);
   readonly isLoadingMedications = signal<boolean>(false);
@@ -589,8 +603,9 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   }
 
   documentStatusLabel(status: string): string {
-    switch (status) {
+    switch (status?.toUpperCase()) {
       case 'PENDING_REVIEW':
+      case 'PENDING_APPROVAL':
         return 'Pending Review';
       case 'APPROVED':
         return 'Approved';
@@ -601,6 +616,46 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       default:
         return status;
     }
+  }
+
+  isDocumentApproved(doc: BackendDocument): boolean {
+    return doc.status?.toUpperCase() === 'APPROVED';
+  }
+
+  isDocumentRejected(doc: BackendDocument): boolean {
+    return doc.status?.toUpperCase() === 'REJECTED';
+  }
+
+  isDocumentReviewable(doc: BackendDocument): boolean {
+    const s = doc.status?.toUpperCase();
+    return s === 'DRAFT' || s === 'PENDING_APPROVAL' || s === 'PENDING_REVIEW';
+  }
+
+  canRegenerateDocument(doc: BackendDocument): boolean {
+    return !this.isDocumentApproved(doc);
+  }
+
+  canGenerateDocumentForRole(agentRole: string): boolean {
+    const targetType = this.documentTypeForAgentRole(agentRole);
+    if (!targetType) {
+      return true;
+    }
+    // Block Generate when any document of this type already exists.
+    // Existing drafts/pending/rejected documents must use Regenerate;
+    // approved documents cannot be regenerated.
+    return !this.documents().some((d) => d.document_type === targetType);
+  }
+
+  private documentTypeForAgentRole(agentRole: string): string | null {
+    const map: Record<string, string> = {
+      documentation: 'discharge_summary',
+      medication_reconciliation: 'medication_reconciliation',
+      follow_up_care: 'follow_up_plan',
+      patient_communication: 'patient_instructions',
+      bed_management: 'transfer_summary',
+      coordinator: 'care_transition_summary',
+    };
+    return map[agentRole] ?? null;
   }
 
   agentDisplayName(agentType: string | null): string {
@@ -726,18 +781,31 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     const generatedAt = doc.created_at
       ? new Date(doc.created_at).toLocaleString()
       : '—';
+    const mode = this.isDocumentReviewable(doc) ? 'review' : 'view';
     const ref = this.dialog.open(DocumentApprovalDialogComponent, {
-      width: '640px',
+      width: '720px',
+      maxHeight: '90vh',
       data: {
-        title: `${this.documentDisplayTitle(doc)} — Draft`,
+        doc,
+        title: `${this.documentDisplayTitle(doc)} — ${this.documentStatusLabel(doc.status)}`,
         meta: `Generated ${generatedAt} · ${doc.generation_type ?? 'AI'}`,
-        aiAssisted: doc.ai_assisted_label,
+        mode,
       },
       ariaLabelledBy: 'doc-approval-title',
     });
 
     ref.afterClosed().subscribe((result) => {
       if (result?.action === 'approve') {
+        this.approveDocument(doc);
+      } else if (result?.action === 'reject') {
+        this.rejectDocument(doc, result.rejection_reason ?? '');
+      }
+    });
+  }
+
+  private approveDocument(doc: BackendDocument): void {
+    this.documentService.approveDocument(doc.id, { notes: 'Approved via patient detail review.' }).subscribe({
+      next: () => {
         this.documents.update((items) =>
           items.map((d) =>
             d.id === doc.id
@@ -746,10 +814,79 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
           )
         );
         this.toast.success(`${this.documentDisplayTitle(doc)} approved`);
-      } else if (result?.action === 'reject') {
-        this.toast.error(`${this.documentDisplayTitle(doc)} rejected`);
-      }
+      },
+      error: (err: Error) => {
+        this.toast.error(`Failed to approve document: ${err.message}`);
+      },
     });
+  }
+
+  private rejectDocument(doc: BackendDocument, rejectionReason: string): void {
+    if (!rejectionReason || rejectionReason.length < 10) {
+      this.toast.error('Rejection reason must be at least 10 characters');
+      return;
+    }
+    this.documentService.rejectDocument(doc.id, { rejection_reason: rejectionReason }).subscribe({
+      next: () => {
+        this.documents.update((items) =>
+          items.map((d) =>
+            d.id === doc.id
+              ? { ...d, status: 'REJECTED' as const }
+              : d
+          )
+        );
+        this.toast.success(`${this.documentDisplayTitle(doc)} rejected`);
+      },
+      error: (err: Error) => {
+        this.toast.error(`Failed to reject document: ${err.message}`);
+      },
+    });
+  }
+
+  regenerateDocument(doc: BackendDocument, event: MouseEvent): void {
+    event.stopPropagation();
+    const encounterId = this.patientId();
+    if (!encounterId) {
+      return;
+    }
+
+    if (this.isDocumentApproved(doc)) {
+      this.toast.error('Approved documents cannot be regenerated');
+      return;
+    }
+
+    const agentRole = this.agentRoleForDocumentType(doc.document_type);
+    if (!agentRole) {
+      this.toast.error(`Cannot regenerate ${this.documentDisplayTitle(doc)}`);
+      return;
+    }
+
+    this.isGeneratingDocument.set(true);
+    this.documentGenerationError.set(null);
+    this.documentApi.generateDocument(encounterId, agentRole, true).subscribe({
+      next: (newDoc) => {
+        this.documents.update((items) => [newDoc, ...items]);
+        this.isGeneratingDocument.set(false);
+        this.toast.success(`Regenerated ${this.documentDisplayTitle(doc)}`);
+      },
+      error: (err: Error) => {
+        this.documentGenerationError.set(err.message ?? 'Failed to regenerate document');
+        this.isGeneratingDocument.set(false);
+        this.toast.error(err.message ?? 'Failed to regenerate document');
+      },
+    });
+  }
+
+  private agentRoleForDocumentType(documentType: string): string | null {
+    const map: Record<string, string> = {
+      discharge_summary: 'documentation',
+      medication_reconciliation: 'medication_reconciliation',
+      follow_up_plan: 'follow_up_care',
+      patient_instructions: 'patient_communication',
+      transfer_summary: 'bed_management',
+      care_transition_summary: 'coordinator',
+    };
+    return map[documentType] ?? null;
   }
 
   getMrnDisplay(): string {
@@ -834,6 +971,29 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     if (patientId) {
       this.loadDocuments(patientId);
     }
+  }
+
+  generateDocument(): void {
+    const encounterId = this.patientId();
+    const agentRole = this.selectedAgentRole();
+    if (!encounterId) {
+      return;
+    }
+    this.isGeneratingDocument.set(true);
+    this.documentGenerationError.set(null);
+    this.documentApi.generateDocument(encounterId, agentRole).subscribe({
+      next: (doc) => {
+        this.documents.update((items) => [doc, ...items]);
+        this.isGeneratingDocument.set(false);
+        const label = this.agentRoleOptions.find((o) => o.value === agentRole)?.documentType ?? agentRole;
+        this.toast.success(`Generated ${label}`);
+      },
+      error: (err: Error) => {
+        this.documentGenerationError.set(err.message ?? 'Failed to generate document');
+        this.isGeneratingDocument.set(false);
+        this.toast.error(err.message ?? 'Failed to generate document');
+      },
+    });
   }
 
   refreshMedications(): void {

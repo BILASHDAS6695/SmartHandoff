@@ -36,7 +36,7 @@ export interface BackendDocument {
   id: string;
   encounter_id: string;
   document_type: string;
-  content: DocumentContent;
+  content: DocumentContent | Record<string, any> | string;
   language_code: string;
   status: string;
   generation_type: string;
@@ -101,5 +101,20 @@ export class DocumentApiService {
    */
   getDocument(documentId: string): Observable<BackendDocument> {
     return this.http.get<BackendDocument>(`${this.base}/${documentId}`);
+  }
+
+  /**
+   * Generates a role-based clinical document for an encounter.
+   * POST /api/v1/encounters/{encounterId}/documents/generate
+   */
+  generateDocument(
+    encounterId: string,
+    agentRole: string,
+    regenerate = false
+  ): Observable<BackendDocument> {
+    return this.http.post<BackendDocument>(
+      `${this.encountersBase}/${encounterId}/documents/generate`,
+      { agent_role: agentRole, regenerate }
+    );
   }
 }
