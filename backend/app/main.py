@@ -37,6 +37,7 @@ from app.api.v1.routers.patients import router as patients_router
 # from app.api.v1.routers.debug_schema import router as debug_schema_router  # REMOVED - file does not exist
 from app.api.v1.routers.encounters import router as encounters_router
 from app.api.v1.routers.encounter_tasks import router as encounter_tasks_router
+from app.api.v1.routers.timeline import router as timeline_router
 from app.api.v1.routers.documents import (
     router as documents_router,
     encounters_documents_router,
@@ -215,6 +216,7 @@ app.include_router(patients_router, prefix="/api/v1")
 # app.include_router(debug_schema_router)  # REMOVED - file does not exist
 app.include_router(encounters_router, prefix="/api/v1")
 app.include_router(encounter_tasks_router, prefix="/api/v1")
+app.include_router(timeline_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(encounters_documents_router, prefix="/api/v1")  # US-028/US-029: encounter documents
 app.include_router(medications_router, prefix="/api/v1")

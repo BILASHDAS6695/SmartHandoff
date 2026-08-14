@@ -25,6 +25,7 @@ import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, TaskStatus } from '@core/mo
 import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
 import { DocumentService } from '@features/documents/services/document.service';
+import { TimelineApiService, TimelineEvent as BackendTimelineEvent } from '../../services/timeline-api.service';
 import {
   MedicationAnalysisResponse,
   MedicationApiService,
@@ -83,6 +84,12 @@ interface TimelineEvent {
   title: string;
   desc: string;
   type: string;
+  rawTimestamp: string | null;
+  eventType: string;
+  status: string | null;
+  resourceType: string | null;
+  resourceId: string | null;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -113,6 +120,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   private readonly documentApi = inject(DocumentApiService);
   private readonly documentService = inject(DocumentService);
   private readonly medicationApi = inject(MedicationApiService);
+  private readonly timelineApi = inject(TimelineApiService);
 
   private taskUpdateSub?: Subscription;
 
@@ -276,12 +284,9 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     { id: 't5', title: 'Discharge summary draft', meta: 'AI draft generated', owner: 'Doc Agent', priority: 'LOW', done: true },
   ]);
 
-  readonly timelineEvents = signal<TimelineEvent[]>([
-    { time: '08:00', title: 'Admission', desc: 'Patient admitted to 3N, room 312', type: 'admission' },
-    { time: '09:30', title: 'Medication Reconciliation', desc: 'Home medications reviewed', type: 'medication' },
-    { time: '14:32', title: 'Discharge Summary Draft', desc: 'AI-generated draft ready for review', type: 'document' },
-    { time: '16:15', title: 'Alert Generated', desc: 'Major drug interaction flagged', type: 'alert' },
-  ]);
+  readonly timelineEvents = signal<TimelineEvent[]>([]);
+  readonly isLoadingTimeline = signal<boolean>(false);
+  readonly timelineError = signal<string | null>(null);
 
   ngOnInit(): void {
     const patientId = this.route.snapshot.paramMap.get('patientId');
@@ -292,6 +297,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       this.loadDocuments(patientId);
       this.loadMedications(patientId);
       this.loadPharmacistAlerts(patientId);
+      this.loadTimeline(patientId);
     }
 
     // Restore the tab requested by a returning child view (e.g. document review).
@@ -562,6 +568,74 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
         this.isLoadingAlerts.set(false);
       },
     });
+  }
+
+  private loadTimeline(encounterId: string): void {
+    this.isLoadingTimeline.set(true);
+    this.timelineError.set(null);
+    this.timelineApi.getEncounterTimeline(encounterId).subscribe({
+      next: (response) => {
+        const events = (response.events ?? []).map((e) => this.toViewTimelineEvent(e));
+        this.timelineEvents.set(events);
+        this.isLoadingTimeline.set(false);
+      },
+      error: (err: Error) => {
+        this.timelineError.set(err.message ?? 'Failed to load timeline');
+        this.isLoadingTimeline.set(false);
+      },
+    });
+  }
+
+  private toViewTimelineEvent(event: BackendTimelineEvent): TimelineEvent {
+    const timestamp = event.timestamp ? new Date(event.timestamp) : null;
+    const time = timestamp
+      ? timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '—';
+    const date = timestamp
+      ? timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })
+      : null;
+    const displayTime = date ? `${date} · ${time}` : time;
+
+    return {
+      time: displayTime,
+      title: event.title,
+      desc: event.description ?? '',
+      type: this.mapTimelineEventType(event.event_type),
+      rawTimestamp: event.timestamp,
+      eventType: event.event_type,
+      status: event.status,
+      resourceType: event.resource_type,
+      resourceId: event.resource_id,
+      metadata: event.metadata,
+    };
+  }
+
+  private mapTimelineEventType(eventType: string): string {
+    switch (eventType?.toLowerCase()) {
+      case 'admission':
+      case 'encounter_created':
+        return 'admission';
+      case 'transfer':
+        return 'transfer';
+      case 'discharge':
+        return 'discharge';
+      case 'cancellation':
+        return 'cancellation';
+      case 'document':
+      case 'approval':
+        return 'success';
+      case 'rejection':
+        return 'alert';
+      case 'alert':
+      case 'medication':
+        return 'warning';
+      case 'agent_task':
+        return 'system';
+      case 'resolution':
+        return 'success';
+      default:
+        return 'system';
+    }
   }
 
   private mapAlertToItem(alert: PharmacistAlert): AlertItem {
@@ -944,6 +1018,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       this.loadDocuments(patientId);
       this.loadMedications(patientId);
       this.loadPharmacistAlerts(patientId);
+      this.loadTimeline(patientId);
     }
   }
 
@@ -957,6 +1032,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     this.loadDocuments(patientId);
     this.loadMedications(patientId);
     this.loadPharmacistAlerts(patientId);
+    this.loadTimeline(patientId);
   }
 
   refreshAgentTasks(): void {
@@ -1007,6 +1083,13 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     const patientId = this.patientId();
     if (patientId) {
       this.loadPharmacistAlerts(patientId);
+    }
+  }
+
+  refreshTimeline(): void {
+    const patientId = this.patientId();
+    if (patientId) {
+      this.loadTimeline(patientId);
     }
   }
 
