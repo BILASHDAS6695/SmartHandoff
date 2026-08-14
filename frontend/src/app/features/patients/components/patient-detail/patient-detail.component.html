@@ -42,15 +42,20 @@
 
   <!-- Tabs -->
   <nav class="tabs" role="tablist" aria-label="Patient detail sections">
-    <button class="tab" [class.active]="activeTab() === 'Overview'" (click)="setTab('Overview')" role="tab" [attr.aria-selected]="activeTab() === 'Overview'">Overview</button>
-    <button class="tab" [class.active]="activeTab() === 'Medications'" (click)="setTab('Medications')" role="tab" [attr.aria-selected]="activeTab() === 'Medications'">Medications</button>
-    <button class="tab" [class.active]="activeTab() === 'Documents'" (click)="setTab('Documents')" role="tab" [attr.aria-selected]="activeTab() === 'Documents'">Documents</button>
-    <button class="tab" [class.active]="activeTab() === 'Tasks'" (click)="setTab('Tasks')" role="tab" [attr.aria-selected]="activeTab() === 'Tasks'">Tasks</button>
-    <button class="tab" [class.active]="activeTab() === 'Timeline'" (click)="setTab('Timeline')" role="tab" [attr.aria-selected]="activeTab() === 'Timeline'">Timeline</button>
+    @for (tab of visibleTabs(); track tab) {
+      <button
+        class="tab"
+        [class.active]="safeActiveTab() === tab"
+        (click)="setTab(tab)"
+        role="tab"
+        [attr.aria-selected]="safeActiveTab() === tab">
+        {{ tab }}
+      </button>
+    }
   </nav>
 
   <!-- Overview content -->
-  @if (activeTab() === 'Overview') {
+  @if (safeActiveTab() === 'Overview') {
     <div class="card">
       <div class="card-header">
         <h3>Overview</h3>
@@ -186,7 +191,7 @@
   }
 
   <!-- Documents content -->
-  @if (activeTab() === 'Documents') {
+  @if (safeActiveTab() === 'Documents') {
     <div class="card documents-card">
       <div class="card-header documents-header">
         <div class="documents-header-title">
@@ -313,7 +318,7 @@
   }
 
   <!-- Medications content -->
-  @if (activeTab() === 'Medications') {
+  @if (safeActiveTab() === 'Medications') {
     <div class="card">
       <div class="card-header">
         <h3>Medication Reconciliation</h3>
@@ -701,7 +706,7 @@
   }
 
   <!-- Tasks content -->
-  @if (activeTab() === 'Tasks') {
+  @if (safeActiveTab() === 'Tasks') {
     <div class="agent-tasks-layout" [class.has-detail]="selectedAgentTask()">
       <div class="card agent-tasks-card">
         <div class="card-header">
@@ -834,7 +839,7 @@
   }
 
   <!-- Timeline content -->
-  @if (activeTab() === 'Timeline') {
+  @if (safeActiveTab() === 'Timeline') {
     <div class="card timeline-card">
       <div class="card-header">
         <div class="timeline-header-left">

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
@@ -149,6 +149,18 @@ export class MedicationApiService {
     return this.http.get<PharmacistAlert[]>(
       `${this.alertsBase}/encounters/${encounterId}/alerts`
     );
+  }
+
+  /**
+   * Retrieves all pharmacist alerts visible to the current user.
+   * GET /api/v1/alerts?status=ACTIVE
+   */
+  getAlerts(status?: 'ACTIVE' | 'RESOLVED'): Observable<{ alerts: PharmacistAlert[]; user: string }> {
+    let params = new HttpParams();
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http.get<{ alerts: PharmacistAlert[]; user: string }>(this.alertsBase, { params });
   }
 
   /**

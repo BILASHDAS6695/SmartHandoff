@@ -3,8 +3,8 @@
   <div class="page-header">
     <h1 class="greeting">WELCOME, {{ currentUserName() }}</h1>
     <div class="page-meta">
-      <span class="last-updated">UXR-011 Last updated {{ lastUpdated() }}</span>
-      <button class="link-refresh" (click)="refreshTasks()" [disabled]="isLoading()">
+      <span class="last-updated">Last updated {{ lastUpdated() }}</span>
+      <button class="link-refresh" (click)="refreshDashboard()" [disabled]="isLoading()">
         <mat-icon aria-hidden="true">refresh</mat-icon>
         <span>Refresh</span>
       </button>
@@ -31,91 +31,189 @@
 
   @if (!isLoading()) {
     <div class="dashboard-grid">
-      <!-- My Pending Tasks -->
-      <section class="dashboard-card pending-tasks" aria-labelledby="pending-tasks-title">
-        <div class="card-header">
-          <h2 id="pending-tasks-title">My Pending Tasks</h2>
-          <span class="task-count">{{ pendingTasks().length }} tasks</span>
-        </div>
-        <ul class="task-list">
-          @for (task of pendingTasks(); track task.id) {
-            <li class="task-row">
-              <div class="task-info">
-                <div class="task-title">{{ taskDisplayName()[task.agent_type] || (task.agent_type | titlecase) }}</div>
-                <div class="task-subtitle">{{ getPatientName(task.encounter_id) }} — Unit {{ task.unit_id ?? '—' }}</div>
-              </div>
-              <div class="task-meta">
-                <span class="priority" [class]="'priority-' + (taskPriority()[task.agent_type] || 'normal')">{{ getPriorityLabel(taskPriority()[task.agent_type]) }}</span>
-                <span class="due-time">Due {{ getDueTime(task.start_time) }}</span>
-              </div>
-            </li>
-          }
-          @if (pendingTasks().length === 0) {
-            <li class="empty-state">No pending tasks</li>
-          }
-        </ul>
-        <a class="view-all" routerLink="/tasks">View all {{ pendingTasks().length }} tasks →</a>
-      </section>
+      @for (card of visibleCards(); track card.id) {
+        <section class="dashboard-card" [class]="'card-' + card.id" [attr.aria-labelledby]="card.id + '-title'">
+          <div class="card-header">
+            <h2 [id]="card.id + '-title'">
+              <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
+              {{ card.title }}
+            </h2>
+            @switch (card.id) {
+              @case ('pendingTasks') { <span class="count-badge">{{ pendingTasks().length }}</span> }
+              @case ('pendingApprovals') { <span class="count-badge">{{ pendingApprovals().length }}</span> }
+              @case ('pharmacistAlerts') { <span class="count-badge">{{ pharmacistAlerts().length }}</span> }
+            }
+          </div>
 
-      <!-- Live ADT Event Feed -->
-      <section class="dashboard-card adt-feed" aria-labelledby="adt-feed-title">
-        <app-live-adt-feed></app-live-adt-feed>
-      </section>
+          @switch (card.id) {
+            <!-- My Pending Tasks -->
+            @case ('pendingTasks') {
+              <ul class="task-list">
+                @for (task of pendingTasks(); track task.id) {
+                  <li class="task-row clickable" (click)="goToPatient(task.encounter_id, 'Tasks')" tabindex="0" (keydown.enter)="goToPatient(task.encounter_id, 'Tasks')">
+                    <div class="task-info">
+                      <div class="task-title">{{ taskDisplayName[task.agent_type] || (task.agent_type | titlecase) }}</div>
+                      <div class="task-subtitle">{{ getPatientName(task.encounter_id) }} — Unit {{ task.unit_id ?? '—' }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority" [class]="'priority-' + (taskPriority[task.agent_type] || 'normal')">{{ getPriorityLabel(taskPriority[task.agent_type]) }}</span>
+                      <span class="due-time">Due {{ getDueTime(task.start_time) }}</span>
+                    </div>
+                  </li>
+                }
+                @if (pendingTasks().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+            }
 
-      <!-- Active Patients — Risk Overview -->
-      <section class="dashboard-card risk-overview" aria-labelledby="risk-title">
-        <div class="card-header">
-          <h2 id="risk-title">Active Patients — Risk Overview</h2>
-        </div>
-        <ul class="risk-list">
-          @for (patient of activePatients(); track patient.id) {
-            <li class="risk-row">
-              <div class="risk-patient">
-                <span class="status-dot" [class]="'risk-' + patient.riskLevel.toLowerCase()"></span>
-                <span class="patient-name">{{ patient.name }}</span>
-              </div>
-              <div class="risk-bar">
-                <div class="risk-fill" [style.width.%]="patient.riskScore * 100" [class]="'risk-' + patient.riskLevel.toLowerCase()"></div>
-              </div>
-              <div class="risk-score">
-                <span>{{ patient.riskScore | number:'1.2-2' }}</span>
-                <span class="risk-label" [class]="'risk-' + patient.riskLevel.toLowerCase()">{{ getRiskLabel(patient.riskLevel) }}</span>
-              </div>
-            </li>
-          }
-          @if (activePatients().length === 0) {
-            <li class="empty-state">No active patients</li>
-          }
-        </ul>
-        <a class="view-all" routerLink="/patients">View all patients →</a>
-      </section>
+            <!-- Pending Document Approvals -->
+            @case ('pendingApprovals') {
+              <ul class="task-list">
+                @for (doc of pendingApprovals(); track doc.documentId) {
+                  <li class="task-row clickable" (click)="goToDocuments()" tabindex="0" (keydown.enter)="goToDocuments()">
+                    <div class="task-info">
+                      <div class="task-title">{{ doc.documentType | titlecase }} — {{ getDocumentPatientName(doc) }}</div>
+                      <div class="task-subtitle">{{ doc.contentExcerpt || 'No excerpt' }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority priority-critical">REVIEW</span>
+                    </div>
+                  </li>
+                }
+                @if (pendingApprovals().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+            }
 
-      <!-- Agent Status -->
-      <section class="dashboard-card agent-status" aria-labelledby="agent-status-title">
-        <div class="card-header">
-          <h2 id="agent-status-title">Agent Status</h2>
-        </div>
-        <ul class="agent-list">
-          @for (agent of agentStatusList(); track agent.name) {
-            <li class="agent-row">
-              <div class="agent-info">
-                <span class="status-dot" [class]="'status-' + agent.status.toLowerCase()"></span>
-                <span class="agent-name">{{ agent.name }}</span>
+            <!-- Medication Alerts -->
+            @case ('pharmacistAlerts') {
+              <ul class="task-list">
+                @for (alert of pharmacistAlerts(); track alert.id) {
+                  <li class="task-row clickable" (click)="goToMedications()" tabindex="0" (keydown.enter)="goToMedications()">
+                    <div class="task-info">
+                      <div class="task-title">{{ alert.alert_type | titlecase }}</div>
+                      <div class="task-subtitle">{{ getPatientName(alert.encounter_id) }} — {{ alert.drug_name || (alert.drug_pair?.join(' + ') || 'N/A') }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority" [class]="'priority-' + (alert.severity | lowercase)">{{ alert.severity }}</span>
+                    </div>
+                  </li>
+                }
+                @if (pharmacistAlerts().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+            }
+
+            <!-- Active Patients — Risk Overview -->
+            @case ('riskOverview') {
+              <ul class="risk-list">
+                @for (patient of activePatients(); track patient.id) {
+                  <li class="risk-row clickable" (click)="goToPatient(patient.id)" tabindex="0" (keydown.enter)="goToPatient(patient.id)">
+                    <div class="risk-patient">
+                      <span class="status-dot" [class]="'risk-' + patient.riskLevel.toLowerCase()"></span>
+                      <span class="patient-name">{{ patient.name }}</span>
+                    </div>
+                    <div class="risk-bar">
+                      <div class="risk-fill" [style.width.%]="patient.riskScore * 100" [class]="'risk-' + patient.riskLevel.toLowerCase()"></div>
+                    </div>
+                    <div class="risk-score">
+                      <span>{{ patient.riskScore | number:'1.2-2' }}</span>
+                      <span class="risk-label" [class]="'risk-' + patient.riskLevel.toLowerCase()">{{ getRiskLabel(patient.riskLevel) }}</span>
+                    </div>
+                  </li>
+                }
+                @if (activePatients().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+            }
+
+            <!-- Bed Census Summary -->
+            @case ('bedCensus') {
+              <div class="census-grid">
+                @for (row of bedCensusRows(); track row.label) {
+                  <div class="census-tile clickable" [class]="'census-' + row.cssClass" (click)="goToBedBoard()" tabindex="0" (keydown.enter)="goToBedBoard()">
+                    <mat-icon aria-hidden="true">{{ row.icon }}</mat-icon>
+                    <span class="census-count">{{ row.count }}</span>
+                    <span class="census-label">{{ row.label }}</span>
+                  </div>
+                }
               </div>
-              <div class="agent-state">
-                <span class="status-text" [class]="'status-' + agent.status.toLowerCase()">
-                  @if (agent.alerts && agent.alerts > 0) {
-                    <span class="alert-indicator" aria-hidden="true">⚠</span>
-                    {{ agent.alerts }} alerts
-                  } @else {
-                    {{ agent.status }}
-                  }
-                </span>
+              @if (beds().length === 0) {
+                <p class="empty-state">{{ card.emptyText }}</p>
+              }
+            }
+
+            <!-- Live ADT Event Feed -->
+            @case ('adtFeed') {
+              <app-live-adt-feed></app-live-adt-feed>
+            }
+
+            <!-- ED Boarding -->
+            @case ('edBoarding') {
+              <ul class="task-list">
+                @for (bed of edBoardingList(); track bed.bedId) {
+                  <li class="task-row clickable" (click)="goToBedBoard()" tabindex="0" (keydown.enter)="goToBedBoard()">
+                    <div class="task-info">
+                      <div class="task-title">{{ bed.bedId }} — {{ bed.status }}</div>
+                      <div class="task-subtitle">Unit {{ bed.unit }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority priority-urgent">BOARDING</span>
+                    </div>
+                  </li>
+                }
+                @if (edBoardingList().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+            }
+
+            <!-- Agent Status -->
+            @case ('agentStatus') {
+              <ul class="agent-list">
+                @for (agent of agentStatusList(); track agent.name) {
+                  <li class="agent-row">
+                    <div class="agent-info">
+                      <span class="status-dot" [class]="'status-' + agent.status.toLowerCase()"></span>
+                      <span class="agent-name">{{ agent.name }}</span>
+                    </div>
+                    <div class="agent-state">
+                      <span class="status-text" [class]="'status-' + agent.status.toLowerCase()">
+                        @if (agent.alerts && agent.alerts > 0) {
+                          <span class="alert-indicator" aria-hidden="true">⚠</span>
+                          {{ agent.alerts }} alerts
+                        } @else {
+                          {{ agent.status }}
+                        }
+                      </span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+
+            <!-- Quick Links -->
+            @case ('quickLinks') {
+              <div class="quick-links">
+                @for (link of quickLinks(); track link.route) {
+                  <a class="quick-link" [routerLink]="link.route">
+                    <mat-icon aria-hidden="true">{{ link.icon }}</mat-icon>
+                    <span>{{ link.label }}</span>
+                  </a>
+                }
               </div>
-            </li>
+            }
           }
-        </ul>
-      </section>
+
+          @if (card.viewAllRoute && card.id !== 'quickLinks') {
+            <a class="view-all" [routerLink]="card.viewAllRoute">{{ card.actionLabel }} →</a>
+          }
+        </section>
+      }
     </div>
   }
 </main>

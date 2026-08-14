@@ -1,11 +1,12 @@
-"""Authentication router — POST /api/v1/auth/token, POST /api/v1/auth/logout.
+"""Authentication router — token, logout, and role switching.
 
 Accepts an OIDC id_token from the Angular callback component, validates it,
 enforces MFA, and issues a SmartHandoff application JWT.
 
 Routes:
-    POST /api/v1/auth/token   — exchange OIDC id_token for app JWT (US-056)
-    POST /api/v1/auth/logout  — revoke current JWT via Redis blocklist (US-059)
+    POST /api/v1/auth/token        — exchange OIDC id_token for app JWT (US-056)
+    POST /api/v1/auth/logout       — revoke current JWT via Redis blocklist (US-059)
+    POST /api/v1/auth/switch-role  — admin role assumption for session context
 
 Design refs:
     design.md §3.3 API Layer / Routers
@@ -27,6 +28,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth.dependencies import require_role
 from app.core.auth.jwt import TokenClaims, get_current_user, issue_app_jwt
 from app.core.auth.jwt_blocklist import add_to_blocklist
 from app.core.auth.tokens import validate_id_token
@@ -46,6 +48,18 @@ class TokenResponse(BaseModel):
     access_token: str = Field(..., description="SmartHandoff application JWT")
     token_type: str = Field(default="bearer")
     expires_in: int = Field(default=28800, description="Token validity in seconds (8h)")
+
+
+class SwitchRoleRequest(BaseModel):
+    role: str = Field(
+        ...,
+        description="Target role to assume for this session",
+        examples=["nurse", "physician", "pharmacist", "bed_manager"],
+    )
+
+
+# Roles an admin user is permitted to switch into for session context.
+_ADMIN_SWITCHABLE_ROLES = ["nurse", "physician", "pharmacist", "bed_manager", "admin"]
 
 
 @router.post(
@@ -170,6 +184,95 @@ async def logout(
         },
     )
     return {"message": "Logged out successfully"}
+
+
+# ── POST /api/v1/auth/switch-role ─────────────────────────────────────────────
+
+@router.post(
+    "/switch-role",
+    response_model=TokenResponse,
+    summary="Switch session role (admin only)",
+    description=(
+        "Allows an administrator to assume a different clinical role in real-time. "
+        "Issues a new JWT with the requested role claim while preserving sub, email, "
+        "and unit assignments. The previous token is blocklisted to prevent reuse."
+    ),
+)
+async def switch_role(
+    body: SwitchRoleRequest,
+    current_user: Annotated[TokenClaims, Depends(require_role(["admin"]))],
+    db: Annotated[AsyncSession, Depends(get_write_db)],
+) -> TokenResponse:
+    """Switch the current admin session to a different role.
+
+    Only admins may call this endpoint. The target role must be one of the
+    clinical roles defined in ``_ADMIN_SWITCHABLE_ROLES``.
+    """
+    target_role = body.role.lower().strip()
+    if target_role not in _ADMIN_SWITCHABLE_ROLES:
+        logger.warning(
+            "Admin attempted to switch to invalid role: sub=%s role=%s",
+            current_user.sub,
+            body.role,
+            extra={"event_type": "switch_role_invalid", "target_role": body.role},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Role '{body.role}' is not available for role switching",
+        )
+
+    # Build OIDC-style claims from the current token so _map_claims can validate
+    # the new role and produce a fresh JWT.
+    oidc_claims = {
+        "sub": current_user.sub,
+        "email": current_user.email,
+        "units": current_user.units or [],
+        "role": target_role,
+    }
+    new_token, new_jti = issue_app_jwt(oidc_claims, db_role=target_role)
+
+    # Blocklist the previous token to prevent concurrent sessions with different roles.
+    if current_user.jti and current_user.exp:
+        try:
+            add_to_blocklist(current_user.jti, current_user.exp)
+        except redis.RedisError as exc:
+            logger.error(
+                "Redis error during switch-role blocklist write: jti=%s error=%s",
+                current_user.jti,
+                exc,
+                extra={"event_type": "redis_error", "context": "switch_role", "jti": current_user.jti},
+            )
+
+    # Update the user's current_jti so deprovisioning remains effective.
+    try:
+        await db.execute(
+            sa_update(AppUser)
+            .where(AppUser.idp_subject == current_user.sub)
+            .values(current_jti=new_jti)
+        )
+        await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Failed to persist current_jti after switch-role for sub=%s: %s",
+            current_user.sub,
+            exc,
+            extra={"event_type": "jti_persist_failure"},
+        )
+        await db.rollback()
+
+    logger.info(
+        "Admin switched role: sub=%s new_role=%s jti=%s",
+        current_user.sub,
+        target_role,
+        new_jti,
+        extra={
+            "event_type": "role_switched",
+            "sub": current_user.sub,
+            "new_role": target_role,
+            "jti": new_jti,
+        },
+    )
+    return TokenResponse(access_token=new_token)
 
 
 # ── POST /api/v1/auth/exchange-code ───────────────────────────────────────────

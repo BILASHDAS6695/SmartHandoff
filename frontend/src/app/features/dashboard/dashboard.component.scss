@@ -531,6 +531,150 @@ $radius: 0.75rem;
   font-size: 14px;
 }
 
+// Count badge in card headers
+.count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 9999px;
+  padding: 2px 8px;
+}
+
+// Clickable rows
+.clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background-color: #f9fafb;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
+}
+
+// Bed census tiles
+.census-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 14px 18px;
+
+  .census-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 16px 8px;
+    border-radius: 0.5rem;
+    background: #f3f4f6;
+    color: $text-main;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: $text-secondary;
+    }
+
+    .census-count {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .census-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: $text-secondary;
+    }
+
+    &.census-occupied {
+      background: #eff6ff;
+      .census-count { color: #1d4ed8; }
+    }
+
+    &.census-vacant {
+      background: #f0fdf4;
+      .census-count { color: #16a34a; }
+    }
+
+    &.census-dirty,
+    &.census-maintenance {
+      background: #fffbeb;
+      .census-count { color: #d97706; }
+    }
+  }
+}
+
+// Quick links
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 14px 18px;
+
+  .quick-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 0.5rem;
+    background: #f3f4f6;
+    color: $text-main;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+
+    &:hover {
+      background: #e5e7eb;
+    }
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: $primary;
+    }
+  }
+}
+
+// Extra priority chips
+.priority {
+  &.priority-high {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  &.priority-medium {
+    background: #fffbeb;
+    color: #d97706;
+  }
+
+  &.priority-low {
+    background: #f0fdf4;
+    color: #16a34a;
+  }
+}
+
+// Card header icon alignment
+.card-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

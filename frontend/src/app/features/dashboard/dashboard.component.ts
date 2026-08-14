@@ -1,35 +1,38 @@
 /**
- * DashboardComponent — Care team dashboard with real-time task updates.
+ * DashboardComponent — Role-aware care team dashboard with real-time updates.
  *
- * US-022 Integration:
- *   - Establishes SignalR connection on component init
- *   - Subscribes to task_updated events via SignalRService
- *   - Fetches initial task list via EncounterTasksApiService
- *   - Updates task list in real-time when events are received
- *
- * US-048 Integration:
- *   - Uses new connect() method with JoinGroupsRequest
- *   - Subscribes to new event types: adt_event_received, alert_created, bed_status_changed
- *
- * Design:
- *   - Standalone component (Angular 17+)
- *   - Uses signals for reactive state management
- *   - Uses inject() API for dependency injection
- *   - Proper cleanup on component destroy
+ * Loads only APIs authorized for the current user's role, so bed managers,
+ * pharmacists and other narrow roles never receive 401/403 on init.
+ * Each card is actionable and deep-links to the screen where work is done.
  */
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { Subscription, forkJoin, interval } from 'rxjs';
+import { Subscription, forkJoin, interval, Observable, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { SignalRService, TaskUpdatedPayload, JoinGroupsRequest } from '../../core/signalr';
 import { EncounterTasksApiService } from '../../core/api';
-import { AgentTaskResponse, DASHBOARD_AGENTS, TaskStatus } from '../../core/models';
+import {
+  AgentTaskResponse,
+  DASHBOARD_AGENTS,
+  DASHBOARD_CARDS,
+  DashboardCardConfig,
+  TaskStatus,
+  roleCanFetchDashboard,
+  dashboardCardOrderForRole,
+  quickLinksForRole,
+  patientDetailTabForRole,
+} from '../../core/models';
 import { AuthService } from '../../core/auth/auth.service';
 import { PatientApiService } from '../patients/services/patient-api.service';
 import { PatientSummary } from '../patients/models/patient.model';
 import { LiveAdtFeedComponent } from './components/live-adt-feed/live-adt-feed.component';
+import { BedBoardService } from '../beds/services/bed-board.service';
+import { BedDto } from '../beds/models/bed.model';
+import { DocumentApiService, PendingDocument } from '../documents/services/document-api.service';
+import { MedicationApiService, PharmacistAlert } from '../medications/services/medication-api.service';
 
 /** Active patient risk overview item. */
 export interface ActivePatient {
@@ -46,6 +49,14 @@ export interface AgentStatus {
   alerts?: number;
 }
 
+/** Card-friendly bed census row. */
+export interface BedCensusRow {
+  label: string;
+  count: number;
+  icon: string;
+  cssClass: string;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -55,19 +66,29 @@ export interface AgentStatus {
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly signalR = inject(SignalRService);
   private readonly tasksApi = inject(EncounterTasksApiService);
   private readonly patientApi = inject(PatientApiService);
+  private readonly bedBoardApi = inject(BedBoardService);
+  private readonly documentApi = inject(DocumentApiService);
+  private readonly medicationApi = inject(MedicationApiService);
   private readonly authService = inject(AuthService);
 
   private taskSub?: Subscription;
   private documentCreatedSub?: Subscription;
+  private alertCreatedSub?: Subscription;
+  private bedStatusSub?: Subscription;
   private pollSub?: Subscription;
   private readonly POLL_INTERVAL_MS = 30_000;
-  
+
   // Reactive state using signals
   readonly encounterId = signal<string>('');
   readonly tasks = signal<AgentTaskResponse[]>([]);
+  readonly patients = signal<PatientSummary[]>([]);
+  readonly beds = signal<BedDto[]>([]);
+  readonly pendingApprovals = signal<PendingDocument[]>([]);
+  readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
   readonly isLoading = signal<boolean>(true);
   readonly isReconnecting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
@@ -76,59 +97,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly currentUserName = signal<string>('Nancy');
   readonly lastUpdated = signal<string>(new Date().toLocaleTimeString());
 
-  // Live data signals
-  readonly patients = signal<PatientSummary[]>([]);
-  /** Live agent health derived from the current task list. */
-  readonly agentStatusList = computed<AgentStatus[]>(() => {
-    const tasks = this.tasks();
-    return DASHBOARD_AGENTS.map(({ name, agentType }) => {
-      const agentTasks = tasks.filter(
-        t => t.agent_type?.toLowerCase() === agentType,
-      );
-      if (agentTasks.length === 0) {
-        return { name, status: 'Inactive' as const };
-      }
+  /** Current user role in lowercase for RBAC checks. */
+  readonly userRole = computed(() => this.authService.currentUser()?.role?.toLowerCase() ?? '');
 
-      const issueCount = agentTasks.filter(t => {
-        const status = t.status?.toUpperCase();
-        return (
-          status === TaskStatus.FAILED ||
-          status === TaskStatus.BLOCKED ||
-          t.sla_breached === true
-        );
-      }).length;
+  /** Permission helpers — never call an API the role cannot access. */
+  readonly canFetchTasks = computed(() => roleCanFetchDashboard(this.userRole(), 'tasks'));
+  readonly canFetchPatients = computed(() => roleCanFetchDashboard(this.userRole(), 'patients'));
+  readonly canFetchBeds = computed(() => roleCanFetchDashboard(this.userRole(), 'beds'));
+  readonly canFetchDocuments = computed(() => roleCanFetchDashboard(this.userRole(), 'documents'));
+  readonly canFetchAlerts = computed(() => roleCanFetchDashboard(this.userRole(), 'alerts'));
 
-      // Active if at least one task is in progress/running and there are no issues.
-      const hasActiveTask = agentTasks.some(t => {
-        const status = t.status?.toUpperCase();
-        return (
-          status === TaskStatus.IN_PROGRESS ||
-          status === 'RUNNING' ||
-          status === TaskStatus.PENDING
-        );
-      });
-
-      if (issueCount > 0) {
-        return { name, status: 'Degraded' as const, alerts: issueCount };
-      }
-      if (hasActiveTask) {
-        return { name, status: 'Active' as const };
-      }
-      return { name, status: 'Inactive' as const };
-    });
+  readonly visibleCards = computed<DashboardCardConfig[]>(() => {
+    const role = this.userRole();
+    const allowed = new Set(DASHBOARD_CARDS.filter(c => c.roles.includes(role)).map(c => c.id));
+    return dashboardCardOrderForRole(role)
+      .map(id => DASHBOARD_CARDS.find(c => c.id === id)!)
+      .filter(c => allowed.has(c.id));
   });
 
-  readonly taskPriority = signal<Record<string, 'urgent' | 'critical' | 'normal'>>({
+  readonly quickLinks = computed(() => quickLinksForRole(this.userRole()));
+
+  readonly taskPriority: Record<string, 'urgent' | 'critical' | 'normal'> = {
     'medication_reconciliation': 'urgent',
     'discharge_summary': 'critical',
     'follow_up_care': 'normal',
-  });
+  };
 
-  readonly taskDisplayName = signal<Record<string, string>>({
+  readonly taskDisplayName: Record<string, string> = {
     'medication_reconciliation': 'Medication Reconciliation',
     'discharge_summary': 'Discharge Summary Review',
     'follow_up_care': 'Follow-up Care Plan',
-  });
+  };
 
   /** Map encounter_id → "Last, First" for task subtitles. */
   readonly patientNameMap = computed<Record<string, string>>(() => {
@@ -150,54 +149,85 @@ export class DashboardComponent implements OnInit, OnDestroy {
   );
 
   // Computed signals for derived state
-  readonly pendingTasks = computed(() => 
+  readonly pendingTasks = computed(() =>
     this.tasks().filter(t => t.status === TaskStatus.PENDING)
   );
-  
-  readonly inProgressTasks = computed(() => 
+
+  readonly inProgressTasks = computed(() =>
     this.tasks().filter(t => t.status === TaskStatus.IN_PROGRESS)
   );
-  
-  readonly completedTasks = computed(() => 
+
+  readonly completedTasks = computed(() =>
     this.tasks().filter(t => t.status === TaskStatus.COMPLETED)
   );
 
-  readonly tasksByRole = computed(() => {
-    const grouped = new Map<string, AgentTaskResponse[]>();
-    this.tasks().forEach(task => {
-      const role = task.target_role ?? 'unassigned';
-      if (!grouped.has(role)) {
-        grouped.set(role, []);
+  /** Live agent health derived from the current task list. */
+  readonly agentStatusList = computed<AgentStatus[]>(() => {
+    const tasks = this.tasks();
+    return DASHBOARD_AGENTS.map(({ name, agentType }) => {
+      const agentTasks = tasks.filter(t => t.agent_type?.toLowerCase() === agentType);
+      if (agentTasks.length === 0) {
+        return { name, status: 'Inactive' as const };
       }
-      grouped.get(role)!.push(task);
+
+      const issueCount = agentTasks.filter(t => {
+        const status = t.status?.toUpperCase();
+        return status === TaskStatus.FAILED || status === TaskStatus.BLOCKED || t.sla_breached === true;
+      }).length;
+
+      const hasActiveTask = agentTasks.some(t => {
+        const status = t.status?.toUpperCase();
+        return status === TaskStatus.IN_PROGRESS || status === 'RUNNING' || status === TaskStatus.PENDING;
+      });
+
+      if (issueCount > 0) {
+        return { name, status: 'Degraded' as const, alerts: issueCount };
+      }
+      if (hasActiveTask) {
+        return { name, status: 'Active' as const };
+      }
+      return { name, status: 'Inactive' as const };
     });
-    return grouped;
   });
 
-  /** Computed signal: true if current user is a physician */
-  readonly isPhysician = computed(() =>
-    this.authService.currentUser()?.role === 'physician'
-  );
+  readonly bedCensusRows = computed<BedCensusRow[]>(() => {
+    const all = this.beds();
+    const byStatus = (status: string) => all.filter(b => b.status === status).length;
+    return [
+      { label: 'Occupied', count: byStatus('OCCUPIED'), icon: 'hotel', cssClass: 'occupied' },
+      { label: 'Vacant', count: byStatus('VACANT'), icon: 'bed', cssClass: 'vacant' },
+      { label: 'Dirty', count: byStatus('DIRTY'), icon: 'cleaning_services', cssClass: 'dirty' },
+      { label: 'Maintenance', count: byStatus('MAINTENANCE'), icon: 'handyman', cssClass: 'maintenance' },
+    ];
+  });
+
+  readonly edBoardingList = computed(() => this.beds().filter(b => b.status === 'DIRTY' || b.status === 'MAINTENANCE'));
 
   ngOnInit(): void {
-    // Set current user name from auth service if available
     const user = this.authService.currentUser();
     if (user?.email) {
       this.currentUserName.set(user.email.split('@')[0]);
     }
 
-    // Subscribe to document_created events and update queue count for physicians
+    // Real-time cues: refresh the affected role-specific slice when an event arrives.
     this.documentCreatedSub = this.signalR.documentCreated$.subscribe((payload) => {
-      // Only update for physicians with PENDING_REVIEW documents
-      if (
-        payload.status === 'PENDING_REVIEW' &&
-        this.authService.currentUser()?.role === 'physician'
-      ) {
-        // Document queue badge update placeholder
+      if (this.canFetchDocuments() && payload.status === 'PENDING_REVIEW') {
+        this._fetchPendingApprovals().subscribe(docs => this.pendingApprovals.set(docs));
       }
     });
 
-    // Extract optional encounter ID from route params, then load live data
+    this.alertCreatedSub = this.signalR.alertCreated$.subscribe(() => {
+      if (this.canFetchAlerts()) {
+        this._fetchPharmacistAlerts().subscribe(alerts => this.pharmacistAlerts.set(alerts));
+      }
+    });
+
+    this.bedStatusSub = this.signalR.bedStatusChanged$.subscribe(() => {
+      if (this.canFetchBeds()) {
+        this.bedBoardApi.getBeds().subscribe(beds => this.beds.set(beds));
+      }
+    });
+
     this.route.params.subscribe(params => {
       const encounterId = params['encounterId'] || params['id'] || '';
       this.encounterId.set(encounterId);
@@ -208,37 +238,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.taskSub?.unsubscribe();
     this.documentCreatedSub?.unsubscribe();
+    this.alertCreatedSub?.unsubscribe();
+    this.bedStatusSub?.unsubscribe();
     this.pollSub?.unsubscribe();
     void this.signalR.disconnect();
   }
 
   /**
-   * Refresh tasks and patients manually — useful when user suspects stale data.
+   * Refresh all authorized dashboard data manually.
    */
-  refreshTasks(): void {
-    const encounterId = this.encounterId();
+  refreshDashboard(): void {
     this.lastUpdated.set(new Date().toLocaleTimeString());
+    void this._loadDashboardData();
+  }
 
-    this.isLoading.set(true);
-    this.errorMessage.set(null);
+  /**
+   * Navigate to the patient detail view, opening the tab most relevant to the current role.
+   */
+  goToPatient(encounterId: string, preferredTab?: string): void {
+    const tab = preferredTab || patientDetailTabForRole(this.userRole());
+    void this.router.navigate(['/patients', encounterId], { queryParams: { tab } });
+  }
 
-    const unit = this.authService.currentUser()?.units?.[0] ?? '';
-    forkJoin({
-      tasks: encounterId
-        ? this.tasksApi.getTasksForEncounter(encounterId)
-        : this.tasksApi.getMyTasks(),
-      patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
-    }).subscribe({
-      next: ({ tasks, patients }) => {
-        this.tasks.set(tasks);
-        this.patients.set(patients.items ?? []);
-        this.isLoading.set(false);
-      },
-      error: error => {
-        this.errorMessage.set(`Failed to refresh dashboard: ${error.message}`);
-        this.isLoading.set(false);
-      }
-    });
+  goToTasks(encounterId?: string): void {
+    if (encounterId) {
+      void this.router.navigate(['/tasks'], { queryParams: { encounterId } });
+    } else {
+      void this.router.navigate(['/tasks']);
+    }
+  }
+
+  goToDocuments(): void {
+    void this.router.navigate(['/documents']);
+  }
+
+  goToMedications(): void {
+    void this.router.navigate(['/medications']);
+  }
+
+  goToBedBoard(): void {
+    void this.router.navigate(['/beds']);
   }
 
   // ---------------------------------------------------------------------------
@@ -256,12 +295,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         throw new Error('User not authenticated');
       }
 
-      // 1. Load tasks and patients in parallel
-      await this._loadDashboardData(encounterId, currentUser);
+      await this._loadDashboardData();
 
-      // 2. Start SignalR connection with group subscriptions (best-effort)
-      //    Local development does not run Azure SignalR Service, so a missing
-      //    hub is expected. We degrade to REST polling instead of failing init.
       const joinRequest: JoinGroupsRequest = {
         units: currentUser.units || [],
         roles: [currentUser.role],
@@ -282,28 +317,76 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async _loadDashboardData(encounterId: string, currentUser: { role: string; units?: string[] }): Promise<void> {
+  private _loadDashboardData(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const unit = currentUser.units?.[0] ?? '';
-      forkJoin({
-        tasks: encounterId
+      const unit = this.authService.currentUser()?.units?.[0] ?? '';
+      const encounterId = this.encounterId();
+
+      const requests: Record<string, Observable<unknown>> = {};
+      if (this.canFetchTasks()) {
+        requests['tasks'] = encounterId
           ? this.tasksApi.getTasksForEncounter(encounterId)
-          : this.tasksApi.getMyTasks(),
-        patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
-      }).subscribe({
-        next: ({ tasks, patients }) => {
-          this.tasks.set(tasks);
-          this.patients.set(patients.items ?? []);
+          : this.tasksApi.getMyTasks();
+      }
+      if (this.canFetchPatients()) {
+        requests['patients'] = this.patientApi.getPatients({ unit, page: 1, page_size: 100 });
+      }
+      if (this.canFetchBeds()) {
+        requests['beds'] = this.bedBoardApi.getBeds();
+      }
+      if (this.canFetchDocuments()) {
+        requests['pendingApprovals'] = this._fetchPendingApprovals();
+      }
+      // Alerts are fetched after patients are known so we can scope them to visible encounters.
+
+      // Edge case: a role with zero authorized data sources (should not happen) just resolves.
+      if (Object.keys(requests).length === 0) {
+        this.isLoading.set(false);
+        resolve();
+        return;
+      }
+
+      this.isLoading.set(true);
+      forkJoin(requests).subscribe({
+        next: (result: Record<string, unknown>) => {
+          this.tasks.set((result['tasks'] as AgentTaskResponse[]) ?? this.tasks());
+          this.patients.set((result['patients'] as { items?: PatientSummary[] })?.items ?? this.patients());
+          this.beds.set((result['beds'] as BedDto[]) ?? this.beds());
+          this.pendingApprovals.set((result['pendingApprovals'] as PendingDocument[]) ?? this.pendingApprovals());
+
+          // Pharmacist alerts depend on the visible patient list, so load them after patients settle.
+          if (this.canFetchAlerts()) {
+            this._fetchPharmacistAlerts().subscribe(alerts => this.pharmacistAlerts.set(alerts));
+          }
+
+          this.isLoading.set(false);
           resolve();
         },
         error: error => {
+          const message = this.#formatError(error);
+          this.errorMessage.set(`Failed to load dashboard: ${message}`);
+          this.isLoading.set(false);
           reject(error);
         }
       });
     });
   }
 
+  private _fetchPendingApprovals(): Observable<PendingDocument[]> {
+    if (!this.canFetchDocuments()) return of([]);
+    return this.documentApi.getPendingReviewQueue();
+  }
+
+  private _fetchPharmacistAlerts(): Observable<PharmacistAlert[]> {
+    if (!this.canFetchAlerts()) return of([]);
+    // Bulk fetch all active alerts for the caller in a single request.
+    return this.medicationApi.getAlerts('ACTIVE').pipe(
+      map(response => response.alerts ?? [])
+    );
+  }
+
   private _subscribeToTaskUpdates(): void {
+    if (!this.canFetchTasks()) return;
     this.taskSub = this.signalR.taskUpdated$.subscribe({
       next: (event: TaskUpdatedPayload) => {
         this._applyTaskUpdate(event);
@@ -316,12 +399,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private _applyTaskUpdate(event: TaskUpdatedPayload): void {
-    // Backend broadcasts snake_case fields (task_id, new_status, updated_at);
-    // some older client code uses camelCase aliases. Normalize both.
     const taskId = event.task_id ?? event.taskId;
     const newStatus = event.new_status ?? event.newStatus;
-    const completedAt =
-      event.completed_at ?? event.completedAt ?? event.updated_at ?? event.updatedAt;
+    const completedAt = event.completed_at ?? event.completedAt ?? event.updated_at ?? event.updatedAt;
 
     if (!taskId || !newStatus) {
       console.warn('Received malformed task update event; ignoring.', event);
@@ -332,7 +412,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const taskIndex = currentTasks.findIndex(t => t.id === taskId);
 
     if (taskIndex >= 0) {
-      // Update existing task
       const updatedTasks = [...currentTasks];
       updatedTasks[taskIndex] = {
         ...updatedTasks[taskIndex],
@@ -344,7 +423,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       };
       this.tasks.set(updatedTasks);
     } else {
-      // New task arrived — fetch full details from API
       this.tasksApi.getTaskById(taskId).subscribe({
         next: task => {
           this.tasks.set([...this.tasks(), task]);
@@ -358,36 +436,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /**
    * REST fallback for real-time updates when SignalR hub is unavailable.
-   * Refreshes tasks and patients on a fixed interval without blocking the UI.
    */
   private _startPolling(joinRequest: JoinGroupsRequest): void {
     this.pollSub?.unsubscribe();
     this.pollSub = interval(this.POLL_INTERVAL_MS).subscribe(() => {
-      const encounterId = this.encounterId();
-      const currentUser = this.authService.currentUser();
-      if (!currentUser) return;
-
-      const unit = currentUser.units?.[0] ?? '';
-      forkJoin({
-        tasks: encounterId
-          ? this.tasksApi.getTasksForEncounter(encounterId)
-          : this.tasksApi.getMyTasks(),
-        patients: this.patientApi.getPatients({ unit, page: 1, page_size: 100 }),
-      }).subscribe({
-        next: ({ tasks, patients }) => {
-          this.tasks.set(tasks);
-          this.patients.set(patients.items ?? []);
-          this.lastUpdated.set(new Date().toLocaleTimeString());
-        },
-        error: error => {
-          console.error('Dashboard polling refresh failed:', error);
-        }
-      });
+      void this._loadDashboardData();
     });
   }
 
   getPatientName(encounterId: string): string {
     return this.patientNameMap()[encounterId] || 'Unknown Patient';
+  }
+
+  getDocumentPatientName(doc: PendingDocument): string {
+    return doc.patientName || this.getPatientName(doc.encounterId);
   }
 
   private _riskTierToLevel(tier: string): ActivePatient['riskLevel'] {
@@ -447,4 +509,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return labels[level] ?? level;
   }
 
+  trackByCardId(_: number, card: DashboardCardConfig): string {
+    return card.id;
+  }
+
+  #formatError(error: unknown): string {
+    if (error && typeof error === 'object') {
+      if ('error' in error && typeof (error as { error?: { detail?: string } }).error?.detail === 'string') {
+        return (error as { error: { detail: string } }).error.detail;
+      }
+      if ('message' in error && typeof (error as { message?: string }).message === 'string') {
+        return (error as { message: string }).message;
+      }
+    }
+    return String(error);
+  }
 }

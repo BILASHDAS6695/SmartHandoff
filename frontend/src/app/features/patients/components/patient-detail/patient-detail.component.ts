@@ -1,4 +1,4 @@
-import { Component, signal, inject, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, signal, inject, computed, effect, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,7 +21,8 @@ import {
 } from './document-approval-dialog.component';
 import { ToastService } from '@core/notifications/toast.service';
 import { EncounterTasksApiService } from '@core/api';
-import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, TaskStatus } from '@core/models';
+import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, PATIENT_DETAIL_TAB_ROLES, TaskStatus, roleCanFetchPatientDetail } from '@core/models';
+import { AuthService } from '@core/auth/auth.service';
 import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
 import { DocumentService } from '@features/documents/services/document.service';
@@ -121,12 +122,36 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   private readonly documentService = inject(DocumentService);
   private readonly medicationApi = inject(MedicationApiService);
   private readonly timelineApi = inject(TimelineApiService);
+  private readonly auth = inject(AuthService);
 
   private taskUpdateSub?: Subscription;
 
   readonly activeTab = signal<string>('Overview');
-  readonly tabs = signal<string[]>(['Overview', 'Medications', 'Documents', 'Tasks', 'Timeline']);
+  readonly allTabs = ['Overview', 'Medications', 'Documents', 'Tasks', 'Timeline'] as const;
   readonly patientId = signal<string>('enc-001');
+
+  /** Current user role in lowercase, reactive to real-time role switches. */
+  readonly userRole = computed(() => this.auth.currentUser()?.role?.toLowerCase() ?? '');
+
+  /** Tabs visible to the current role, derived from the RBAC matrix. */
+  readonly visibleTabs = computed<string[]>(() => {
+    const role = this.userRole();
+    return this.allTabs.filter((tab) => PATIENT_DETAIL_TAB_ROLES[tab]?.includes(role));
+  });
+
+  /** When the active tab becomes hidden (e.g. after role switch), fall back to Overview. */
+  readonly safeActiveTab = computed<string>(() => {
+    const active = this.activeTab();
+    return this.visibleTabs().includes(active) ? active : (this.visibleTabs()[0] ?? 'Overview');
+  });
+
+  /** Keep the active tab in sync with role-driven visibility changes. */
+  private readonly activeTabSync = effect(() => {
+    const safe = this.safeActiveTab();
+    if (this.activeTab() !== safe) {
+      this.activeTab.set(safe);
+    }
+  });
 
   readonly mrnRevealed = signal<boolean>(false);
 
@@ -292,17 +317,28 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     const patientId = this.route.snapshot.paramMap.get('patientId');
     if (patientId) {
       this.patientId.set(patientId);
+      const role = this.userRole();
       this.loadPatient(patientId);
-      this.loadAgentTasks(patientId);
-      this.loadDocuments(patientId);
-      this.loadMedications(patientId);
-      this.loadPharmacistAlerts(patientId);
-      this.loadTimeline(patientId);
+      if (roleCanFetchPatientDetail(role, 'tasks')) {
+        this.loadAgentTasks(patientId);
+      }
+      if (roleCanFetchPatientDetail(role, 'documents')) {
+        this.loadDocuments(patientId);
+      }
+      if (roleCanFetchPatientDetail(role, 'medications')) {
+        this.loadMedications(patientId);
+      }
+      if (roleCanFetchPatientDetail(role, 'alerts')) {
+        this.loadPharmacistAlerts(patientId);
+      }
+      if (roleCanFetchPatientDetail(role, 'timeline')) {
+        this.loadTimeline(patientId);
+      }
     }
 
     // Restore the tab requested by a returning child view (e.g. document review).
     const returnTab = this.route.snapshot.queryParamMap.get('tab');
-    const matchedTab = this.tabs().find(
+    const matchedTab = this.visibleTabs().find(
       (t) => t.toLowerCase() === returnTab?.toLowerCase(),
     );
     if (matchedTab) {

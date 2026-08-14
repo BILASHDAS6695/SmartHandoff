@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { PendingDocument, DocumentActionPayload } from '../models/pending-document.model';
+
+export { PendingDocument } from '../models/pending-document.model';
 
 /**
  * Structured document content returned by the backend.
@@ -63,12 +65,17 @@ export class DocumentApiService {
   /**
    * Returns all PENDING_REVIEW documents assigned to the current physician.
    * GET /api/v1/documents?status=PENDING_REVIEW&assignedTo=me
+   *
+   * The backend returns a wrapper object `{ documents: [...], user: ... }`;
+   * this method unwraps and normalizes the array for consumers.
    */
   getPendingReviewQueue(): Observable<PendingDocument[]> {
     const params = new HttpParams()
       .set('status', 'PENDING_REVIEW')
       .set('assignedTo', 'me');
-    return this.http.get<PendingDocument[]>(this.base, { params });
+    return this.http.get<{ documents: PendingDocument[]; user?: string }>(this.base, { params }).pipe(
+      map((response) => response.documents ?? [])
+    );
   }
 
   /**

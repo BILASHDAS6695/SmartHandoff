@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { AuthService } from '@core/auth/auth.service';
 import { DocumentQueueStore } from '../../../documents/store/document-queue.store';
+import { DASHBOARD_SECTION_ROLES, Role } from '@core/models';
 
 interface MenuSection {
   title: string;
@@ -48,13 +49,13 @@ export class SidebarComponent {
         { icon: 'dashboard', label: 'Dashboard', route: '/dashboard' },
         { icon: 'people', label: 'Patients', route: '/patients', badge: () => 142 },
         { icon: 'assignment_add', label: 'Register Encounter', route: '/patients/register' },
-        { icon: 'assignment', label: 'Task Monitor', route: '/tasks' },
+        { icon: 'assignment', label: 'Task Monitor', route: '/tasks', roles: [Role.Nurse, Role.Physician, Role.Admin] },
       ],
     },
     {
       title: 'Account',
       items: [
-        { icon: 'switch_account', label: 'Switch Role', route: '/switch-role' },
+        { icon: 'switch_account', label: 'Switch Role', route: '/switch-role', roles: [Role.Admin] },
       ],
     },
     {

@@ -149,9 +149,24 @@ async def create_pharmacist_alert(
 @router.get("")
 async def list_alerts(
     current_user: Annotated[TokenClaims, Depends(require_permission("alert", "list"))],
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+    status: str | None = None,
 ) -> dict:
-    """List alerts — requires alert:list permission."""
-    return {"alerts": [], "user": current_user.sub}
+    """List alerts scoped to the caller — requires alert:list permission.
+
+    Query params:
+        status: Optional filter (ACTIVE | RESOLVED).
+    """
+    stmt = select(PharmacistAlert)
+    if status:
+        stmt = stmt.where(PharmacistAlert.status == status.upper())
+    stmt = stmt.order_by(PharmacistAlert.created_at.desc())
+    result = await db.execute(stmt)
+    alerts = list(result.scalars().all())
+    return {
+        "alerts": [AlertRead.model_validate(alert) for alert in alerts],
+        "user": current_user.sub,
+    }
 
 
 @router.get("/{alert_id}")

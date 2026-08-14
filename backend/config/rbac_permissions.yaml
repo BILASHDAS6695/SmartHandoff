@@ -55,7 +55,7 @@ roles:
     agent_task: [list, read]
 
   PHARMACIST:
-    patient:    [read]
+    patient:    [list, read]
     encounter:  [read]
     document:   []
     medication: [list, read, write]
@@ -67,7 +67,7 @@ roles:
     agent_task: []
 
   BED_MANAGER:
-    patient:    []
+    patient:    [read]
     encounter:  [list, read]
     document:   []
     medication: []

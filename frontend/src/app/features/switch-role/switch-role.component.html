@@ -54,7 +54,17 @@
   </section>
 
   <div class="footer-actions">
-    <button class="btn-secondary" (click)="onCancel()">Cancel</button>
-    <button class="btn-primary" id="wf-confirm-switch" (click)="onConfirm()">Confirm Switch</button>
+    <button class="btn-secondary" (click)="onCancel()" [disabled]="isSubmitting()">Cancel</button>
+    <button
+      class="btn-primary"
+      id="wf-confirm-switch"
+      (click)="onConfirm()"
+      [disabled]="isSubmitting()">
+      @if (isSubmitting()) {
+        <span>Switching…</span>
+      } @else {
+        <span>Confirm Switch</span>
+      }
+    </button>
   </div>
 </main>

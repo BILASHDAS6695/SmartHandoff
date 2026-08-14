@@ -52,6 +52,7 @@ export class HeaderComponent {
   private readonly elementRef = inject(ElementRef);
 
   readonly currentUser = this.auth.currentUser;
+  readonly canSwitchRole = this.auth.canSwitchRole;
   readonly notifications = this.notificationService.notifications;
   readonly unreadCount = this.notificationService.unreadCount;
   readonly isNotificationPanelOpen = signal(false);
