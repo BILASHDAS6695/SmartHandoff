@@ -62,10 +62,11 @@
             <p class="occupant-discharge">
               Predicted discharge:
               <strong>
-                {{ bedDetail?.predicted_discharge_time
-                   ? (bedDetail!.predicted_discharge_time | date:'short')
-                   : '—' }}
+                {{ bedDetail?.predicted_discharge_time | date:'short' }}
               </strong>
+              <span class="discharge-confidence">
+                (±{{ bedDetail?.discharge_prediction_interval_hours ?? 2 }}h · {{ bedDetail?.discharge_prediction_confidence }} confidence)
+              </span>
             </p>
 
             <!-- AI Medication-based prediction -->

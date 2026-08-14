@@ -2,6 +2,7 @@
 
 Endpoints:
     GET  /api/v1/beds                       — Filtered bed board (read replica, mv_bed_board)
+    GET  /api/v1/beds/discharge-predictions — Occupied beds with predicted discharge times
     GET  /api/v1/beds/suggestions           — Pending bed-management suggestions
     POST /api/v1/beds/suggestions/{id}/assign  — Bed manager approves a suggestion
     POST /api/v1/beds/suggestions/{id}/decline — Bed manager declines a suggestion
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -214,10 +215,85 @@ class BedDetailResponse(BaseModel):
     status: BedStatus
     isolation_required: bool
     gender_designation: str
-    predicted_discharge_time: str | None = None
+    predicted_discharge_time: str
+    discharge_prediction_confidence: str = "medium"
+    discharge_prediction_interval_hours: int | None = None
     occupant: BedOccupant | None = None
     waiting_patients: list[WaitingPatientForBed] = []
     medication_analysis: MedicationAnalysisSnapshot | None = None
+
+
+class DischargePredictionEntry(BaseModel):
+    """Single occupied bed with a predicted discharge time."""
+
+    bed_id: str
+    bed_number: str
+    unit: str
+    patient_name: str
+    predicted_discharge_time: str
+    confidence: str
+    interval_hours: int | None = None
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Heuristic discharge prediction fallback
+# ───────────────────────────────────────────────────────────────────────────
+
+# Default expected length-of-stay (hours) by unit when no ML prediction exists.
+# These deterministic clinical heuristics are used only as a fallback so the
+# bed board and detail panel never show "—" for an occupied bed.
+_DEFAULT_UNIT_LOS_HOURS: dict[str, int] = {
+    "ICU": 48,
+    "CCU": 48,
+    "ED": 8,
+    "MED": 72,
+    "SURG": 48,
+    "PED": 48,
+    "PEDS": 48,
+    "CARD": 72,
+    "NEURO": 72,
+    "ONC": 120,
+    "General": 48,
+}
+
+
+def _estimate_discharge_time(
+    bed: Bed,
+    encounter: Encounter | None,
+    now: datetime | None = None,
+) -> tuple[datetime, str, int]:
+    """Return a predicted discharge time plus confidence/interval for a bed.
+
+    Priority:
+        1. bed.predicted_discharge_at if present (ML inference result).
+        2. encounter.created_at + unit-based heuristic LOS.
+        3. now + unit-based heuristic LOS (last resort).
+    """
+    if now is None:
+        now = datetime.now(UTC)
+
+    if bed.predicted_discharge_at:
+        return bed.predicted_discharge_at, "high", 2
+
+    unit = (bed.unit or "General").upper()
+    base_hours = _DEFAULT_UNIT_LOS_HOURS.get(unit, 48)
+
+    if encounter is not None and encounter.risk_tier:
+        risk_multiplier: dict[str, float] = {
+            "HIGH": 1.4,
+            "MEDIUM": 1.1,
+            "LOW": 0.9,
+            "UNKNOWN": 1.0,
+        }
+        base_hours = int(base_hours * risk_multiplier.get(encounter.risk_tier, 1.0))
+
+    start = encounter.created_at if encounter is not None and encounter.created_at else now
+    predicted = start + timedelta(hours=base_hours)
+    # Never predict a time in the past; floor at now + 1 hour.
+    if predicted < now:
+        predicted = now + timedelta(hours=1)
+
+    return predicted, "medium", 4
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -332,6 +408,7 @@ async def get_bed_details(
         )
 
     occupant: BedOccupant | None = None
+    occupant_encounter: Encounter | None = None
     try:
         bed_status = BedStatus(bed.status)
     except ValueError:
@@ -347,19 +424,19 @@ async def get_bed_details(
         )
         row = occupant_result.one_or_none()
         if row:
-            encounter, patient, _ = row
+            occupant_encounter, patient, _ = row
             mrn = patient.mrn_encrypted or ""
             occupant = BedOccupant(
-                encounter_id=str(encounter.id),
+                encounter_id=str(occupant_encounter.id),
                 patient_id=str(patient.id),
                 first_name=patient.first_name or "",
                 last_name=patient.last_name or "",
                 date_of_birth=patient.date_of_birth or None,
                 mrn_masked=f"****{mrn[-4:]}" if mrn and len(str(mrn)) >= 4 else "****",
-                encounter_status=encounter.status,
-                unit=encounter.unit,
-                risk_tier=encounter.risk_tier,
-                admission_date=encounter.created_at,
+                encounter_status=occupant_encounter.status,
+                unit=occupant_encounter.unit,
+                risk_tier=occupant_encounter.risk_tier,
+                admission_date=occupant_encounter.created_at,
             )
 
     waiting: list[WaitingPatientForBed] = []
@@ -414,6 +491,10 @@ async def get_bed_details(
                 exc,
             )
 
+    predicted_dt, pred_confidence, pred_interval = _estimate_discharge_time(
+        bed, occupant_encounter
+    )
+
     return BedDetailResponse(
         bed_id=str(bed.id),
         bed_number=bed.bed_number,
@@ -423,13 +504,73 @@ async def get_bed_details(
         status=bed_status,
         isolation_required=getattr(bed, "isolation_required", False),
         gender_designation=getattr(bed, "gender_designation", "Unknown"),
-        predicted_discharge_time=(
-            bed.predicted_discharge_at.isoformat() if bed.predicted_discharge_at else None
-        ),
+        predicted_discharge_time=predicted_dt.isoformat(),
+        discharge_prediction_confidence=pred_confidence,
+        discharge_prediction_interval_hours=pred_interval,
         occupant=occupant,
         waiting_patients=waiting,
         medication_analysis=medication_analysis,
     )
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# GET /api/v1/beds/discharge-predictions
+# ───────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/discharge-predictions",
+    response_model=list[DischargePredictionEntry],
+    summary="Real-time discharge predictions for occupied beds",
+    description=(
+        "Returns occupied beds with predicted discharge times within the requested "
+        "window. Uses ML-predicted discharge_at when available; falls back to a "
+        "deterministic clinical heuristic based on unit and risk tier."
+    ),
+)
+async def list_discharge_predictions(
+    hours: Annotated[
+        int, Query(ge=1, le=168, description="Prediction horizon in hours (default 4)")
+    ] = 4,
+    current_user: Annotated[
+        TokenClaims, Depends(require_permission("bed", "list"))
+    ] = None,
+    read_db: AsyncSession = Depends(get_read_db),
+) -> list[DischargePredictionEntry]:
+    """Return occupied beds whose predicted discharge falls within ``hours`` from now."""
+    now = datetime.now(UTC)
+    horizon = now + timedelta(hours=hours)
+
+    result = await read_db.execute(
+        select(Bed, Encounter, Patient)
+        .join(Encounter, Bed.current_encounter_id == Encounter.id)
+        .join(Patient, Encounter.patient_id == Patient.id)
+        .where(Bed.status == BedStatus.OCCUPIED.value)
+        .where(Encounter.deleted_at.is_(None))
+        .where(Patient.deleted_at.is_(None))
+    )
+
+    predictions: list[DischargePredictionEntry] = []
+    for bed, encounter, patient in result.all():
+        predicted_dt, confidence, interval = _estimate_discharge_time(bed, encounter, now)
+        if now <= predicted_dt <= horizon:
+            predictions.append(
+                DischargePredictionEntry(
+                    bed_id=str(bed.id),
+                    bed_number=bed.bed_number,
+                    unit=bed.unit,
+                    patient_name=(
+                        f"{patient.first_name or ''} {patient.last_name or ''}".strip()
+                        or "Unknown"
+                    ),
+                    predicted_discharge_time=predicted_dt.isoformat(),
+                    confidence=confidence,
+                    interval_hours=interval,
+                )
+            )
+
+    predictions.sort(key=lambda p: p.predicted_discharge_time)
+    return predictions
 
 
 # ───────────────────────────────────────────────────────────────────────────

@@ -148,15 +148,52 @@
 
   <!-- Discharge Predictions -->
   <div class="predictions">
-    <h2>Predicted Discharges (next 4 hours) — ML Model ±2h</h2>
-    <div class="pred-list">
-      @for (pred of dischargePredictions(); track pred.bedId) {
-        <div class="pred-item">
-          <strong>{{ pred.patientName }} ({{ pred.bedId }})</strong> —
-          <span class="pred-time">{{ pred.time }}</span> (±2h)
-        </div>
-      }
+    <div class="predictions__header">
+      <h2>Predicted Discharges</h2>
+      <div class="predictions__filter">
+        <label for="prediction-hours">Next</label>
+        <mat-select
+          id="prediction-hours"
+          [value]="dischargePredictionHours()"
+          (selectionChange)="onDischargePredictionHoursChange($event.value)"
+          aria-label="Prediction horizon">
+          @for (hours of dischargePredictionOptions(); track hours) {
+            <mat-option [value]="hours">{{ hours }} hours</mat-option>
+          }
+        </mat-select>
+      </div>
     </div>
+
+    @if (dischargePredictionsLoading()) {
+      <div class="predictions__loading" role="status">
+        <mat-spinner diameter="24" aria-label="Loading discharge predictions"></mat-spinner>
+        <span>Loading predictions…</span>
+      </div>
+    }
+
+    @if (!dischargePredictionsLoading() && dischargePredictions().length === 0) {
+      <div class="predictions__empty" role="status">
+        No discharge predictions within the next {{ dischargePredictionHours() }} hours.
+      </div>
+    }
+
+    @if (!dischargePredictionsLoading() && dischargePredictions().length > 0) {
+      <div class="pred-list">
+        @for (pred of dischargePredictions(); track pred.bed_id) {
+          <div class="pred-item">
+            <div class="pred-item__info">
+              <strong>{{ pred.patient_name }}</strong>
+              <span class="pred-item__bed">{{ pred.bed_number }} · {{ pred.unit }}</span>
+            </div>
+            <div class="pred-item__time">
+              <span class="pred-time">{{ pred.predicted_discharge_time | date:'shortTime' }}</span>
+              <span class="pred-date">{{ pred.predicted_discharge_time | date:'MMM d' }}</span>
+              <span class="pred-interval">(±{{ pred.interval_hours ?? 2 }}h)</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <!-- Detail panel -->

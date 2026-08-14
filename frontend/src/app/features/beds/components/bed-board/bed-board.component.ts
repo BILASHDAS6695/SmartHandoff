@@ -12,16 +12,10 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Subject, takeUntil } from 'rxjs';
 import { BedDetailPanelComponent } from '../bed-detail-panel/bed-detail-panel.component';
-import { BedDetailDto, BedDto, BedStatus, BedSuggestion, WaitingPatientForBed } from '../../models/bed.model';
+import { BedDetailDto, BedDto, BedStatus, BedSuggestion, DischargePredictionDto, WaitingPatientForBed } from '../../models/bed.model';
 import { BedBoardService } from '../../services/bed-board.service';
 import { SignalRService } from '../../../../core/signalr/signalr.service';
 import { AuthService } from '../../../../core/auth/auth.service';
-
-interface DischargePrediction {
-  patientName: string;
-  bedId: string;
-  time: string;
-}
 
 /**
  * BedBoardComponent — Visual bed board floor plan matching Hi-Fi wireframe.
@@ -73,12 +67,10 @@ export class BedBoardComponent implements OnInit, OnDestroy {
     return role === 'bed_manager' || role === 'admin';
   });
 
-  readonly dischargePredictions = signal<DischargePrediction[]>([
-    { patientName: 'Jones, M.', bedId: '4W-05', time: '~16:00' },
-    { patientName: 'Patel, R.', bedId: '4W-04', time: '~18:30' },
-    { patientName: 'Lee, K.', bedId: '3N-04', time: '~17:15' },
-    { patientName: 'Nguyen, L.', bedId: '4W-07', time: '~14:00 tomorrow' },
-  ]);
+  readonly dischargePredictionHours = signal<number>(4);
+  readonly dischargePredictionOptions = signal<number[]>([1, 2, 4, 8, 12, 24]);
+  readonly dischargePredictions = signal<DischargePredictionDto[]>([]);
+  readonly dischargePredictionsLoading = signal(false);
 
   readonly filteredBeds = computed(() => {
     let result = this.beds();
@@ -110,10 +102,16 @@ export class BedBoardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadBeds();
+    this.loadDischargePredictions();
     if (this.canManageSuggestions()) {
       this.loadSuggestions();
       this.subscribeToRealtimeUpdates();
     }
+  }
+
+  onDischargePredictionHoursChange(hours: number): void {
+    this.dischargePredictionHours.set(hours);
+    this.loadDischargePredictions();
   }
 
   ngOnDestroy(): void {
@@ -131,6 +129,23 @@ export class BedBoardComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.loadBeds();
         this.loadSuggestions();
+        this.loadDischargePredictions();
+      });
+  }
+
+  private loadDischargePredictions(): void {
+    this.dischargePredictionsLoading.set(true);
+    this.bedService.getDischargePredictions(this.dischargePredictionHours())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: predictions => {
+          this.dischargePredictions.set(predictions);
+          this.dischargePredictionsLoading.set(false);
+        },
+        error: err => {
+          console.error('Failed to load discharge predictions', err);
+          this.dischargePredictionsLoading.set(false);
+        },
       });
   }
 
@@ -219,6 +234,7 @@ export class BedBoardComponent implements OnInit, OnDestroy {
 
   refresh(): void {
     this.loadBeds();
+    this.loadDischargePredictions();
     if (this.canManageSuggestions()) {
       this.loadSuggestions();
     }

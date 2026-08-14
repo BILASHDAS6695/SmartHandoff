@@ -148,8 +148,21 @@ export interface BedDetailDto {
   status: BedStatus;
   isolation_required: boolean;
   gender_designation: string;
-  predicted_discharge_time: string | null;
+  predicted_discharge_time: string;
+  discharge_prediction_confidence: string;
+  discharge_prediction_interval_hours: number | null;
   occupant: BedOccupant | null;
   waiting_patients: WaitingPatientForBed[];
   medication_analysis: MedicationAnalysisSnapshot | null;
+}
+
+/** Real-time discharge prediction for an occupied bed. */
+export interface DischargePredictionDto {
+  bed_id: string;
+  bed_number: string;
+  unit: string;
+  patient_name: string;
+  predicted_discharge_time: string;
+  confidence: string;
+  interval_hours: number | null;
 }

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { BedDetailDto, BedDto, BedItem, BedStatus, BedSuggestion } from '../models/bed.model';
+import { BedDetailDto, BedDto, BedItem, BedStatus, BedSuggestion, DischargePredictionDto } from '../models/bed.model';
 import { environment } from '@environments/environment';
 
 /** Raw mv_bed_board row shape returned by GET /api/v1/beds (snake_case). */
@@ -53,6 +53,19 @@ export class BedBoardService {
    */
   getBedDetails(bedId: string): Observable<BedDetailDto> {
     return this.http.get<BedDetailDto>(`${this.apiBase}/${encodeURIComponent(bedId)}/details`);
+  }
+
+  /**
+   * Fetches real-time discharge predictions for occupied beds within a horizon.
+   * @param hours Prediction window in hours (default 4).
+   * @returns Observable of discharge predictions sorted by predicted time.
+   */
+  getDischargePredictions(hours = 4): Observable<DischargePredictionDto[]> {
+    const params = new HttpParams().set('hours', String(hours));
+    return this.http.get<DischargePredictionDto[]>(
+      `${this.apiBase}/discharge-predictions`,
+      { params }
+    );
   }
 
   /**
