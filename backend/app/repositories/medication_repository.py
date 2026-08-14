@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.encounter import Encounter
 from app.models.medication import Medication
 
 
@@ -95,3 +96,49 @@ async def get_all_medications(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_medication_history_for_patient(
+    current_encounter_id: UUID,
+    patient_id: UUID,
+    session: AsyncSession,
+    limit: int = 10,
+) -> list[tuple[Encounter, list[Medication]]]:
+    """Return medication reconciliation results for prior encounters of a patient.
+
+    Results are grouped by encounter and ordered by most-recent encounter first.
+    The current encounter is excluded so the caller can compare it against history.
+
+    Args:
+        current_encounter_id: The encounter being viewed (excluded from history).
+        patient_id: Patient UUID whose history is being queried.
+        session: Active async SQLAlchemy session (read or write).
+        limit: Maximum number of prior encounters to return.
+
+    Returns:
+        List of (Encounter, [Medication]) tuples for prior encounters.
+    """
+    stmt = (
+        select(Medication, Encounter)
+        .join(Encounter, Medication.encounter_id == Encounter.id)
+        .where(
+            Encounter.patient_id == patient_id,
+            Encounter.id != current_encounter_id,
+            Encounter.deleted_at.is_(None),
+        )
+        .order_by(Encounter.created_at.desc(), Medication.drug_name)
+    )
+    result = await session.execute(stmt)
+
+    encounters_map: dict[UUID, tuple[Encounter, list[Medication]]] = {}
+    for med, enc in result.all():
+        if enc.id not in encounters_map:
+            encounters_map[enc.id] = (enc, [])
+        encounters_map[enc.id][1].append(med)
+
+    ordered = sorted(
+        encounters_map.values(),
+        key=lambda pair: pair[0].created_at or datetime.min,
+        reverse=True,
+    )
+    return ordered[:limit]

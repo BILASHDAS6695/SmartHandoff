@@ -25,10 +25,13 @@ from app.models.medication import (
 from app.models.pharmacist_alert import PharmacistAlert
 from app.repositories.medication_repository import (
     get_all_medications,
+    get_medication_history_for_patient,
     get_reconciliation_completed_at,
     get_reconciliation_results,
 )
 from app.schemas.medication import (
+    MedicationHistoryEncounter,
+    MedicationHistoryResponse,
     MedicationReconciliationResponse,
     MedicationReconciliationResult,
 )
@@ -157,7 +160,10 @@ async def get_medication_reconciliation(
     if not medications and not completed_at:
         raise HTTPException(
             status_code=status.HTTP_202_ACCEPTED,
-            detail="Reconciliation in progress",
+            detail={
+                "status": "pending",
+                "message": "Medication reconciliation has not been generated yet.",
+            },
         )
 
     # 4. Map ORM records to response schema (must happen within the open session)
@@ -323,6 +329,81 @@ async def complete_medication_reconciliation(
         ),
         reconciliation_completed_by=str(sub_to_uuid(current_user.sub)),
         medications=[_to_result(m) for m in medications],
+    )
+
+
+@encounters_medications_router.get(
+    "/{encounter_id}/medications/history",
+    response_model=MedicationHistoryResponse,
+    summary="Medication history across patient's prior encounters",
+    description=(
+        "Returns medication reconciliation results for the patient's prior encounters, "
+        "ordered from most recent to oldest. Excludes the current encounter so the caller "
+        "can compare the current medication list against historical snapshots."
+    ),
+    responses={
+        200: {"description": "Medication history retrieved"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Encounter not found"},
+    },
+)
+async def get_medication_history(
+    encounter_id: uuid.UUID,
+    current_user: Annotated[
+        TokenClaims, Depends(require_permission("medication", "read"))
+    ],
+    db: AsyncSession = Depends(get_read_db),
+) -> MedicationHistoryResponse:
+    """Return medication history for the same patient across prior encounters.
+
+    Args:
+        encounter_id: UUID of the current encounter being viewed.
+        current_user: JWT claims from authenticated user.
+        db: Database session (read replica).
+
+    Returns:
+        MedicationHistoryResponse containing prior encounter snapshots.
+
+    Raises:
+        404: Encounter not found or not linked to a patient.
+        403: User lacks medication:read permission.
+    """
+    stmt = select(Encounter).where(Encounter.id == encounter_id)
+    result = await db.execute(stmt)
+    encounter = result.scalar_one_or_none()
+
+    if not encounter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Encounter not found",
+        )
+
+    if not encounter.patient_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Encounter is not linked to a patient",
+        )
+
+    history = await get_medication_history_for_patient(
+        encounter_id,
+        encounter.patient_id,
+        db,
+        limit=10,
+    )
+
+    return MedicationHistoryResponse(
+        current_encounter_id=encounter_id,
+        patient_id=encounter.patient_id,
+        history=[
+            MedicationHistoryEncounter(
+                encounter_id=enc.id,
+                status=enc.status,
+                created_at=enc.created_at.isoformat() if enc.created_at else None,
+                total_medications=len(meds),
+                medications=[_to_result(m) for m in meds],
+            )
+            for enc, meds in history
+        ],
     )
 
 

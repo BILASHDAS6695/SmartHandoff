@@ -123,3 +123,56 @@ class MedicationReconciliationResponse(BaseModel):
     )
 
     model_config = {"from_attributes": True}
+
+
+class MedicationHistoryEncounter(BaseModel):
+    """Medication reconciliation results for a single prior encounter."""
+
+    encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID for this historical snapshot",
+    )
+
+    status: str = Field(
+        ...,
+        description="Encounter status at the time of the snapshot",
+    )
+
+    created_at: Optional[str] = Field(
+        default=None,
+        description="ISO 8601 timestamp when the encounter was created",
+    )
+
+    total_medications: int = Field(
+        ...,
+        description="Number of medications reconciled for that encounter",
+        ge=0,
+    )
+
+    medications: list[MedicationReconciliationResult] = Field(
+        default_factory=list,
+        description="List of reconciled medications for that encounter",
+    )
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationHistoryResponse(BaseModel):
+    """Full medication history response for the current encounter's patient."""
+
+    current_encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID whose history is being viewed",
+    )
+
+    patient_id: UUID = Field(
+        ...,
+        description="Patient UUID owning the encounter history",
+    )
+
+    history: list[MedicationHistoryEncounter] = Field(
+        default_factory=list,
+        description="Prior encounters with reconciled medications, most recent first",
+    )
+
+    model_config = {"from_attributes": True}

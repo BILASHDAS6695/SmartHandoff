@@ -26,7 +26,10 @@ import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
 import {
   MedicationApiService,
+  MedicationHistoryEncounter,
+  MedicationHistoryResponse,
   MedicationReconciliationResponse,
+  MedicationReconciliationResult,
   PharmacistAlert,
 } from '@features/medications/services/medication-api.service';
 
@@ -197,6 +200,14 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     'actions',
   ];
 
+  readonly medicationDisplayedColumns = [
+    'name',
+    'schedule',
+    'phases',
+    'severity',
+    'actions',
+  ];
+
   readonly documents = signal<BackendDocument[]>([]);
   readonly isLoadingDocuments = signal<boolean>(false);
   readonly documentError = signal<string | null>(null);
@@ -204,6 +215,12 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   readonly medications = signal<MedicationReconciliationResponse | null>(null);
   readonly isLoadingMedications = signal<boolean>(false);
   readonly medicationError = signal<string | null>(null);
+  readonly medicationPending = signal<boolean>(false);
+  readonly expandedMedId = signal<string | null>(null);
+  readonly showHistory = signal<boolean>(false);
+  readonly medicationHistory = signal<MedicationHistoryResponse | null>(null);
+  readonly isLoadingHistory = signal<boolean>(false);
+  readonly historyError = signal<string | null>(null);
 
   readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
   readonly isLoadingAlerts = signal<boolean>(false);
@@ -352,17 +369,143 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   private loadMedications(encounterId: string): void {
     this.isLoadingMedications.set(true);
     this.medicationError.set(null);
+    this.medicationPending.set(false);
     this.medicationApi.getReconciliation(encounterId).subscribe({
+      next: (data) => {
+        // FastAPI returns 202 with body { detail: { status: 'pending', message: ... } }
+        // before medication reconciliation has been generated.
+        const pending = (data as any).detail?.status === 'pending';
+        if (pending) {
+          this.medicationPending.set(true);
+        } else {
+          this.medications.set(data as MedicationReconciliationResponse);
+        }
+        this.isLoadingMedications.set(false);
+      },
+      error: (err: any) => {
+        this.medicationError.set(err.message ?? 'Failed to load medications');
+        this.isLoadingMedications.set(false);
+      },
+    });
+  }
+
+  generateMedications(): void {
+    const encounterId = this.patientId();
+    if (!encounterId) {
+      return;
+    }
+    this.isLoadingMedications.set(true);
+    this.medicationPending.set(false);
+    this.medicationError.set(null);
+    this.medicationApi.generateReconciliation(encounterId).subscribe({
       next: (data) => {
         this.medications.set(data);
         this.isLoadingMedications.set(false);
       },
       error: (err: Error) => {
-        this.medicationError.set(err.message);
+        this.medicationError.set(err.message ?? 'Failed to generate medications');
         this.isLoadingMedications.set(false);
       },
     });
   }
+
+  private loadMedicationHistory(encounterId: string): void {
+    this.isLoadingHistory.set(true);
+    this.historyError.set(null);
+    this.medicationApi.getMedicationHistory(encounterId).subscribe({
+      next: (data) => {
+        this.medicationHistory.set(data);
+        this.isLoadingHistory.set(false);
+      },
+      error: (err: Error) => {
+        this.historyError.set(err.message ?? 'Failed to load medication history');
+        this.isLoadingHistory.set(false);
+      },
+    });
+  }
+
+  toggleShowHistory(): void {
+    const next = !this.showHistory();
+    this.showHistory.set(next);
+    if (next && !this.medicationHistory()) {
+      const encounterId = this.patientId();
+      if (encounterId) {
+        this.loadMedicationHistory(encounterId);
+      }
+    }
+  }
+
+  refreshHistory(): void {
+    const encounterId = this.patientId();
+    if (encounterId) {
+      this.loadMedicationHistory(encounterId);
+    }
+  }
+
+  toggleMedDetail(med: MedicationReconciliationResult): void {
+    this.expandedMedId.update((id) => (id === med.id ? null : med.id));
+  }
+
+  medicationCategoryClass(category: string | null | undefined): string {
+    switch (category?.toUpperCase()) {
+      case 'CONTINUED':
+        return 'category-continued';
+      case 'NEW':
+        return 'category-new';
+      case 'STOPPED':
+        return 'category-stopped';
+      case 'DOSE_CHANGED':
+        return 'category-dose-changed';
+      default:
+        return 'category-unknown';
+    }
+  }
+
+  readonly selectedMedication = computed<MedicationReconciliationResult | null>(() => {
+    const id = this.expandedMedId();
+    if (!id) {
+      return null;
+    }
+    return this.medications()?.medications?.find((m) => m.id === id) ?? null;
+  });
+
+  readonly latestHistoryEncounter = computed<MedicationHistoryEncounter | null>(() => {
+    const history = this.medicationHistory()?.history ?? [];
+    return history[0] ?? null;
+  });
+
+  readonly medicationChanges = computed(() => {
+    const currentMeds = this.medications()?.medications ?? [];
+    const prior = this.latestHistoryEncounter();
+    const priorMeds = prior?.medications ?? [];
+
+    const priorByName = new Map(priorMeds.map((m) => [m.name.toLowerCase(), m]));
+    const currentByName = new Map(currentMeds.map((m) => [m.name.toLowerCase(), m]));
+
+    const continued: { current: MedicationReconciliationResult; prior: MedicationReconciliationResult; doseChanged: boolean }[] = [];
+    const newMeds: MedicationReconciliationResult[] = [];
+
+    for (const med of currentMeds) {
+      const priorMed = priorByName.get(med.name.toLowerCase());
+      if (priorMed) {
+        continued.push({
+          current: med,
+          prior: priorMed,
+          doseChanged: med.dose !== priorMed.dose,
+        });
+      } else {
+        newMeds.push(med);
+      }
+    }
+
+    const stopped = priorMeds.filter((m) => !currentByName.has(m.name.toLowerCase()));
+
+    return { continued, new: newMeds, stopped, priorEncounter: prior };
+  });
+
+  readonly doseChangedCount = computed(() =>
+    this.medicationChanges().continued.filter((c) => c.doseChanged).length
+  );
 
   private loadPharmacistAlerts(encounterId: string): void {
     this.isLoadingAlerts.set(true);

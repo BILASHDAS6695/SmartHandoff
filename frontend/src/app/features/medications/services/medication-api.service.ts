@@ -35,6 +35,22 @@ export interface MedicationListResponse {
   user: string;
 }
 
+/** Per-encounter medication history snapshot. */
+export interface MedicationHistoryEncounter {
+  encounter_id: string;
+  status: string;
+  created_at: string | null;
+  total_medications: number;
+  medications: MedicationReconciliationResult[];
+}
+
+/** Backend medication history response shape. */
+export interface MedicationHistoryResponse {
+  current_encounter_id: string;
+  patient_id: string;
+  history: MedicationHistoryEncounter[];
+}
+
 /** Backend pharmacist alert shape. */
 export interface PharmacistAlert {
   id: string;
@@ -131,6 +147,16 @@ export class MedicationApiService {
     return this.http.patch<PharmacistAlert>(
       `${this.alertsBase}/${alertId}/resolve`,
       payload
+    );
+  }
+
+  /**
+   * Retrieves medication reconciliation results for the patient's prior encounters.
+   * GET /api/v1/encounters/{encounterId}/medications/history
+   */
+  getMedicationHistory(encounterId: string): Observable<MedicationHistoryResponse> {
+    return this.http.get<MedicationHistoryResponse>(
+      `${this.base}/${encounterId}/medications/history`
     );
   }
 }
