@@ -16,42 +16,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { SignalRService } from '../signalr/signalr.service';
 import { AppNotification } from '../models';
 
-/** Initial demo notifications aligned with the SCR-002 wireframe. */
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'notif-1',
-    title: 'New discharge task assigned',
-    message: 'Smith, John · Unit 4W',
-    tone: 'info',
-    read: false,
-    timestamp: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-    route: '/patients',
-  },
-  {
-    id: 'notif-2',
-    title: 'Medication conflict needs review',
-    message: 'Warfarin + Aspirin · Nguyen, Lee',
-    tone: 'error',
-    read: false,
-    timestamp: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-    route: '/medications',
-  },
-  {
-    id: 'notif-3',
-    title: 'Patient message received',
-    message: 'Garcia, Maria via portal',
-    tone: 'success',
-    read: false,
-    timestamp: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-    route: '/portal',
-  },
-];
-
 @Injectable({ providedIn: 'root' })
 export class NotificationService implements OnDestroy {
   private readonly signalR = inject(SignalRService);
 
-  private readonly _notifications = signal<AppNotification[]>(INITIAL_NOTIFICATIONS);
+  /** Notifications are generated dynamically from SignalR events and client workflows. */
+  private readonly _notifications = signal<AppNotification[]>([]);
   private readonly subs: Subscription[] = [];
 
   /** All notifications, newest first. */
@@ -70,6 +40,8 @@ export class NotificationService implements OnDestroy {
     this.watchTaskUpdates();
     this.watchAlerts();
     this.watchAdtEvents();
+    this.watchBedSuggestions();
+    this.watchBoardingAlerts();
   }
 
   ngOnDestroy(): void {
@@ -79,15 +51,24 @@ export class NotificationService implements OnDestroy {
   /**
    * Add a new notification.
    * @param notification Partial notification; id and timestamp are auto-populated.
+   * @returns The generated notification id, or the existing id if a notification
+   *          with the same key already exists.
    */
-  add(notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'> & Partial<Pick<AppNotification, 'read'>>): void {
+  add(notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'> & Partial<Pick<AppNotification, 'id' | 'read'>>): string {
+    if (notification.key) {
+      const existing = this._notifications().find((n) => n.key === notification.key);
+      if (existing) {
+        return existing.id;
+      }
+    }
     const next: AppNotification = {
-      id: uuidv4(),
-      read: false,
+      id: notification.id ?? uuidv4(),
+      read: notification.read ?? false,
       timestamp: new Date().toISOString(),
       ...notification,
     };
     this._notifications.update((current) => [next, ...current]);
+    return next.id;
   }
 
   /** Mark a single notification as read. */
@@ -149,6 +130,52 @@ export class NotificationService implements OnDestroy {
         message: `${event.eventType} — ${event.patientUnit ?? 'Unknown unit'}`,
         tone: 'info',
         route: '/patients',
+      });
+    });
+    this.subs.push(sub);
+  }
+
+  private watchBedSuggestions(): void {
+    const sub = this.signalR.bedSuggestionCreated$.subscribe((suggestion) => {
+      const name = suggestion.patientName ?? suggestion.patient_name ?? 'A patient';
+      const unit = suggestion.patientUnit ?? suggestion.patient_unit ?? 'Unknown unit';
+      const bed = suggestion.bestBedNumber ?? suggestion.best_bed_number ?? suggestion.bedId ?? suggestion.bed_id ?? '';
+      const taskId = suggestion.taskId ?? suggestion.task_id ?? '';
+      const encounterId = suggestion.encounterId ?? suggestion.encounter_id ?? '';
+      const key = taskId ? `bed-suggestion-${taskId}` : `bed-suggestion-${encounterId}`;
+      const id = uuidv4();
+      this.add({
+        id,
+        title: 'ED Boarding Bed Suggestion',
+        message: `${name} · Recommended bed ${bed} in ${unit}`,
+        tone: 'info',
+        route: '/beds',
+        key,
+        queryParams: { openAssign: 'true', taskId, encounterId, notificationId: id },
+      });
+    });
+    this.subs.push(sub);
+  }
+
+  private watchBoardingAlerts(): void {
+    const sub = this.signalR.boardingAlertCreated$.subscribe((alert) => {
+      const minutes = alert.minutesElapsed ?? alert.minutes_elapsed ?? 0;
+      const unit = alert.patientUnit ?? alert.patient_unit ?? 'ED';
+      const tone: AppNotification['tone'] =
+        alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? 'error' : 'warning';
+      const encounterId = alert.encounterId ?? alert.encounter_id ?? '';
+      const key = encounterId ? `boarding-alert-${encounterId}` : `boarding-alert-${alert.alertId ?? alert.alert_id}`;
+      const id = uuidv4();
+      this.add({
+        id,
+        title: alert.title || 'ED Boarding Alert',
+        message: alert.message || `Patient in ${unit} has been waiting ${minutes} minutes.`,
+        tone,
+        route: '/beds',
+        key,
+        queryParams: encounterId
+          ? { openAssign: 'true', encounterId, notificationId: id }
+          : { openAssign: 'true', notificationId: id },
       });
     });
     this.subs.push(sub);

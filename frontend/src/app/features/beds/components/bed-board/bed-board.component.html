@@ -40,7 +40,12 @@
   <!-- Pending Bed Suggestions -->
   @if (canManageSuggestions()) {
     @for (suggestion of suggestions(); track suggestion.task_id) {
-      <div class="ed-alert" role="alert">
+      <div class="ed-alert" role="alert" [class.ed-alert--processing]="isActionLoading(suggestion.task_id)">
+        @if (isActionLoading(suggestion.task_id)) {
+          <div class="ed-alert-loader" aria-hidden="true">
+            <mat-spinner diameter="24"></mat-spinner>
+          </div>
+        }
         <div class="ed-alert-icon">🚨</div>
         <div class="ed-alert-body">
           <div class="ed-alert-title">
@@ -61,6 +66,7 @@
                 class="rec-bed"
                 [class.secondary]="bed.bed_id !== suggestion.best_bed_id"
                 [class.selected]="bed.bed_id === suggestion.best_bed_id"
+                [disabled]="isActionLoading(suggestion.task_id)"
                 (click)="openAssignDialog(suggestion, bed.bed_id)"
                 [attr.aria-label]="'Assign ' + bed.bed_number + ' to ' + suggestion.patient_name">
                 @if (bed.bed_id === suggestion.best_bed_id) { ✓ } {{ bed.bed_number }} ({{ bed.unit }}) @if (bed.bed_id === suggestion.best_bed_id) { — Best match }
@@ -68,8 +74,20 @@
             }
           </div>
           <div class="ed-alert-actions">
-            <button class="btn-assign" (click)="openAssignDialog(suggestion)">Assign Best Bed →</button>
-            <button class="btn-ghost-small" (click)="declineSuggestion(suggestion)">Decline ✗</button>
+            <button class="btn-assign" (click)="openAssignDialog(suggestion)" [disabled]="isActionLoading(suggestion.task_id)">
+              @if (isActionLoading(suggestion.task_id)) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+                Assign Best Bed →
+              }
+            </button>
+            <button class="btn-ghost-small" (click)="declineSuggestion(suggestion)" [disabled]="isActionLoading(suggestion.task_id)">
+              @if (isActionLoading(suggestion.task_id)) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+                Decline ✗
+              }
+            </button>
           </div>
         </div>
       </div>
@@ -80,13 +98,6 @@
         <div class="ed-alert-body">
           <div class="ed-alert-title">No pending ED boarding alerts</div>
           <div class="ed-alert-meta">All bed suggestions have been actioned.</div>
-        </div>
-      </div>
-    }
-    @if (suggestionsLoading()) {
-      <div class="ed-alert" role="status">
-        <div class="ed-alert-body">
-          <div class="ed-alert-meta">Loading bed suggestions…</div>
         </div>
       </div>
     }

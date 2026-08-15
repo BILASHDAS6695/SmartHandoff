@@ -4,6 +4,8 @@ import { RouterOutlet } from '@angular/router';
 
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { HeaderComponent } from './header/header.component';
+import { SignalRService, JoinGroupsRequest } from '@core/signalr';
+import { AuthService } from '@core/auth/auth.service';
 
 /**
  * ShellComponent — Persistent authenticated layout wrapper.
@@ -22,6 +24,9 @@ import { HeaderComponent } from './header/header.component';
 export class ShellComponent implements OnInit {
   @ViewChild('sidenav') sidenav!: MatSidenav;
 
+  private readonly signalR = inject(SignalRService);
+  private readonly authService = inject(AuthService);
+
   /** True when viewport is mobile (≤ 768px). */
   readonly isMobile = signal(false);
 
@@ -30,6 +35,16 @@ export class ShellComponent implements OnInit {
 
   /** Sidenav open state: always open on desktop, closed by default on mobile. */
   readonly sidenavOpened = computed(() => !this.isMobile());
+  private lastConnectedRole: string | null = null;
+
+  // Reconnect with the new role groups when an admin switches role in real time.
+  private readonly reconnectEffect = effect(() => {
+    const role = this.authService.currentUser()?.role;
+    if (role && role !== this.lastConnectedRole) {
+      this.lastConnectedRole = role;
+      void this._reconnectSignalR();
+    }
+  });
 
   ngOnInit(): void {
     // Check initial screen size
@@ -37,6 +52,35 @@ export class ShellComponent implements OnInit {
 
     // Listen for window resize events
     window.addEventListener('resize', () => this.updateMobileState());
+
+    // Start the real-time hub for every authenticated shell route (bed manager,
+    // dashboard, etc.). The service is idempotent, so dashboard's own init is safe.
+    void this._connectSignalR();
+  }
+
+  private async _connectSignalR(): Promise<void> {
+    const user = this.authService.currentUser();
+    if (!user) return;
+
+    const joinRequest: JoinGroupsRequest = {
+      units: user.units || [],
+      roles: [user.role],
+    };
+
+    try {
+      await this.signalR.connect(joinRequest);
+    } catch (error) {
+      console.warn('SignalR real-time hub unavailable; falling back to polling:', error);
+    }
+  }
+
+  private async _reconnectSignalR(): Promise<void> {
+    try {
+      await this.signalR.disconnect();
+    } catch {
+      // Ignore disconnect errors; connect will create a fresh connection.
+    }
+    await this._connectSignalR();
   }
 
   private updateMobileState(): void {

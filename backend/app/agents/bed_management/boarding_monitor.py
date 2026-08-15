@@ -6,11 +6,11 @@ provided by US-021. Delegates alert publishing to BoardingAlertPublisher (TASK-0
 Detection query returns encounters where ALL of the following hold:
     1. unit IN <ed_location_codes> (patient is in the ED)
     2. status = 'ADMITTED'
-    3. admit_date + 120 minutes <= now (threshold breached)
+    3. created_at + 120 minutes <= now (threshold breached; created_at substitutes admit_date)
     4. boarding_alert_resolved_at IS NULL (alert not already resolved)
 
-NOTE: The Encounter model uses `admit_date` (not `admit_time`) and `unit` (not
-`current_location`). This implementation adapts to the actual schema.
+NOTE: The Encounter model currently lacks `admit_date`; we use `created_at` as the
+ED arrival proxy. This implementation adapts to the actual schema.
 
 Design refs:
     US-038 AC Scenario 1  — 120-minute threshold; every-5-min APScheduler job
@@ -131,12 +131,12 @@ class BoardingMonitor:
         Query criteria (US-038 AC Scenario 1, TASK-002):
             1. unit IN <ed_location_codes> — patient is in the ED
             2. status = 'ADMITTED' — active admission
-            3. admit_date + 120 minutes <= now — threshold breached
+            3. created_at + 120 minutes <= now — threshold breached
             4. boarding_alert_resolved_at IS NULL — alert not resolved
 
         NOTE: Current Encounter model does not have `transfer_time`, `bed_assigned_at`,
-        or `current_location` fields. This implementation uses:
-            - `admit_date` (instead of admit_time or transfer_time)
+        `admit_date`, or `current_location` fields. This implementation uses:
+            - `created_at` as ED arrival proxy (instead of admit_date)
             - `unit` (instead of current_location)
             - `boarding_alert_resolved_at IS NULL` (instead of bed_assigned_at IS NULL)
 
@@ -155,8 +155,8 @@ class BoardingMonitor:
             .where(
                 Encounter.unit.in_(ed_codes),
                 Encounter.status == "ADMITTED",
-                Encounter.admit_date.isnot(None),
-                Encounter.admit_date <= threshold_time,
+                Encounter.created_at.isnot(None),
+                Encounter.created_at <= threshold_time,
                 Encounter.boarding_alert_resolved_at.is_(None),
             )
         )
@@ -168,22 +168,22 @@ class BoardingMonitor:
 
         now = datetime.now(UTC)
         for enc in encounters:
-            if enc.admit_date is None:
+            if enc.created_at is None:
                 logger.warning(
-                    "Encounter %s has no admit_date — skipping.", enc.id
+                    "Encounter %s has no created_at — skipping.", enc.id
                 )
                 continue
 
-            minutes_elapsed = int((now - enc.admit_date).total_seconds() / 60)
+            minutes_elapsed = int((now - enc.created_at).total_seconds() / 60)
             candidates.append(
                 BoardingCandidate(
                     encounter_id=str(enc.id),
                     patient_id=str(enc.patient_id),
-                    ed_arrival_time=enc.admit_date,
+                    ed_arrival_time=enc.created_at,
                     minutes_elapsed=minutes_elapsed,
-                    target_unit=enc.unit,  # NOTE: using unit as target_unit (might need adjustment)
+                    target_unit=enc.unit,
                     boarding_alert_sent_at=enc.boarding_alert_sent_at,
-                    current_location=enc.unit,  # NOTE: using unit as current_location
+                    current_location=enc.unit,
                 )
             )
 

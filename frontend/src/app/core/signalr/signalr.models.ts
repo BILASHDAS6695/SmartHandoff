@@ -71,12 +71,77 @@ export interface BedStatusChangedPayload {
   timestamp: string;
 }
 
+export interface BedSuggestionCreatedPayload {
+  /** Agent task unique identifier for the bed suggestion. */
+  taskId: string;
+  /** Alias used by the backend (snake_case). */
+  task_id?: string;
+  /** Encrypted / display-safe encounter identifier. */
+  encounterId?: string;
+  encounter_id?: string;
+  /** Encrypted / display-safe patient identifier. */
+  patientId?: string;
+  patient_id?: string;
+  /** Human-readable patient name. */
+  patientName?: string;
+  patient_name?: string;
+  /** Patient acuity level. */
+  acuity?: string;
+  /** Minutes the patient has been waiting. */
+  minutesWaiting?: number;
+  minutes_waiting?: number;
+  /** Recommended bed identifier. */
+  bedId?: string;
+  bed_id?: string;
+  /** Recommended bed number (display). */
+  bestBedNumber?: string;
+  best_bed_number?: string;
+  /** Unit/floor of the recommended bed. */
+  patientUnit?: string;
+  patient_unit?: string;
+  /** Ranked list of suggested beds (when provided by the backend). */
+  suggestions?: Array<{
+    bed_id: string;
+    bed_number: string;
+    unit: string;
+    score?: number;
+    room?: string;
+  }>;
+  /** ISO-8601 timestamp of the event. */
+  timestamp?: string;
+}
+
+export interface BoardingAlertCreatedPayload {
+  /** Idempotency key / alert identifier. */
+  alertId: string;
+  alert_id?: string;
+  /** ED encounter identifier. */
+  encounterId?: string;
+  encounter_id?: string;
+  /** ED unit / current location of the patient. */
+  patientUnit: string;
+  patient_unit?: string;
+  /** How long the patient has been waiting in minutes. */
+  minutesElapsed: number;
+  minutes_elapsed?: number;
+  /** Severity classification of the alert. */
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  /** Short headline. */
+  title: string;
+  /** Human-readable body. */
+  message: string;
+  /** ISO-8601 timestamp of the event. */
+  timestamp?: string;
+}
+
 /** Union of all inbound SignalR event payloads */
 export type SignalREventPayload =
   | AdtEventPayload
   | TaskUpdatedPayload
   | AlertCreatedPayload
-  | BedStatusChangedPayload;
+  | BedStatusChangedPayload
+  | BedSuggestionCreatedPayload
+  | BoardingAlertCreatedPayload;
 
 /** Connection state values mirroring @microsoft/signalr HubConnectionState */
 export type SignalRConnectionState =

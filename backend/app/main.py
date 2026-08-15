@@ -59,9 +59,11 @@ from app.api.v1.routers.signalr_hub import router as signalr_router, set_signalr
 from app.api.v1.routers.signalr_negotiate import router as negotiate_router
 from app.core.auth.rbac_validator import validate_rbac_config
 from app.core.config import get_settings
-from app.signalr.broadcaster import SignalRBroadcaster
+from app.signalr.broadcaster import SignalRBroadcaster, SignalRBroadcasterStub
 from app.db.encryption_key import get_phi_encryption_key
 from app.db.session import create_db_engines, dispose_db_engines, get_write_session
+from app.agents.bed_management.boarding_monitor import BoardingMonitor
+from app.agents.bed_management.boarding_publisher import BoardingAlertPublisher
 # from app.db.ensure_schema import ensure_schema  # REMOVED - file does not exist
 # from app.db.add_missing_encounter_columns import add_missing_encounter_columns  # REMOVED - file does not exist
 from app.middleware.audit import HIPAAAuditMiddleware
@@ -121,6 +123,7 @@ async def lifespan(app: FastAPI):
         
         # 4. Initialize SignalR broadcaster (US-022) - optional
         settings = get_settings()
+        broadcaster: SignalRBroadcaster | SignalRBroadcasterStub | None = None
         if settings.AZURE_SIGNALR_CONNECTION_STRING:
             logger.warning("🔧 Startup Step 4/4: Initializing SignalR broadcaster...")
             broadcaster = SignalRBroadcaster(settings.AZURE_SIGNALR_CONNECTION_STRING)
@@ -128,6 +131,25 @@ async def lifespan(app: FastAPI):
             logger.warning("✓ SignalR broadcaster initialized successfully")
         else:
             logger.warning("🔧 Startup Step 4/4: SignalR broadcaster not configured (skipped)")
+
+        # 4.1 Register ED boarding monitor (local dev / test fallback w/o Pub/Sub)
+        if os.environ.get("ENABLE_BOARDING_MONITOR", "false").lower() == "true":
+            logger.warning("🔧 Startup Step 4.1/4: Registering ED boarding monitor...")
+            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            scheduler = AsyncIOScheduler()
+            publisher = BoardingAlertPublisher(
+                pubsub_client=None,  # type: ignore[arg-type]
+                db_session_factory=get_write_session,
+                project_id=settings.GCP_PROJECT_ID,
+                topic_path=settings.NOTIFICATION_REQUESTS_TOPIC,
+                signalr_broadcaster=broadcaster,
+            )
+            monitor = BoardingMonitor(publisher=publisher, scheduler=scheduler)
+            monitor.register()
+            scheduler.start()
+            logger.warning("✓ ED boarding monitor registered")
+        else:
+            logger.warning("🔧 Startup Step 4.1/4: ED boarding monitor disabled (ENABLE_BOARDING_MONITOR not true)")
         
         logger.warning("=" * 80)
         logger.warning("✅ FastAPI application startup COMPLETE - READY TO ACCEPT REQUESTS")

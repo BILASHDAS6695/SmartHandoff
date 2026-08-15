@@ -6,6 +6,8 @@ import { SignalRService } from '../signalr/signalr.service';
 import {
   AdtEventPayload,
   AlertCreatedPayload,
+  BedSuggestionCreatedPayload,
+  BoardingAlertCreatedPayload,
   TaskUpdatedPayload,
 } from '../signalr/signalr.models';
 
@@ -14,16 +16,22 @@ describe('NotificationService', () => {
   let taskUpdated$: Subject<TaskUpdatedPayload>;
   let alertCreated$: Subject<AlertCreatedPayload>;
   let adtEvent$: Subject<AdtEventPayload>;
+  let bedSuggestionCreated$: Subject<BedSuggestionCreatedPayload>;
+  let boardingAlertCreated$: Subject<BoardingAlertCreatedPayload>;
 
   beforeEach(() => {
     taskUpdated$ = new Subject<TaskUpdatedPayload>();
     alertCreated$ = new Subject<AlertCreatedPayload>();
     adtEvent$ = new Subject<AdtEventPayload>();
+    bedSuggestionCreated$ = new Subject<BedSuggestionCreatedPayload>();
+    boardingAlertCreated$ = new Subject<BoardingAlertCreatedPayload>();
 
     const signalRMock = {
       taskUpdated$: taskUpdated$.asObservable(),
       alertCreated$: alertCreated$.asObservable(),
       adtEvent$: adtEvent$.asObservable(),
+      bedSuggestionCreated$: bedSuggestionCreated$.asObservable(),
+      boardingAlertCreated$: boardingAlertCreated$.asObservable(),
     };
 
     TestBed.configureTestingModule({
@@ -40,42 +48,49 @@ describe('NotificationService', () => {
     taskUpdated$.complete();
     alertCreated$.complete();
     adtEvent$.complete();
+    bedSuggestionCreated$.complete();
+    boardingAlertCreated$.complete();
   });
 
-  it('should be created with initial wireframe notifications', () => {
+  it('should be created with no initial notifications', () => {
     expect(service).toBeTruthy();
-    expect(service.notifications().length).toBe(3);
-    expect(service.unreadCount()).toBe(3);
+    expect(service.notifications().length).toBe(0);
+    expect(service.unreadCount()).toBe(0);
   });
 
   it('should add a notification and update unread count', () => {
     service.add({ title: 'Test', tone: 'info' });
-    expect(service.notifications().length).toBe(4);
-    expect(service.unreadCount()).toBe(4);
+    expect(service.notifications().length).toBe(1);
+    expect(service.unreadCount()).toBe(1);
   });
 
   it('should mark a notification as read', () => {
+    service.add({ title: 'Test', tone: 'info' });
     const first = service.notifications()[0];
     service.markAsRead(first.id);
-    expect(service.unreadCount()).toBe(2);
+    expect(service.unreadCount()).toBe(0);
     expect(
       service.notifications().find((n) => n.id === first.id)?.read,
     ).toBeTrue();
   });
 
   it('should mark all notifications as read', () => {
+    service.add({ title: 'One', tone: 'info' });
+    service.add({ title: 'Two', tone: 'warning' });
     const marked = service.markAllAsRead();
-    expect(marked).toBe(3);
+    expect(marked).toBe(2);
     expect(service.unreadCount()).toBe(0);
   });
 
   it('should dismiss a notification', () => {
+    service.add({ title: 'Test', tone: 'info' });
     const first = service.notifications()[0];
     service.dismiss(first.id);
     expect(service.notifications().some((n) => n.id === first.id)).toBeFalse();
   });
 
   it('should clear all notifications', () => {
+    service.add({ title: 'Test', tone: 'info' });
     service.clear();
     expect(service.notifications().length).toBe(0);
     expect(service.unreadCount()).toBe(0);
@@ -132,5 +147,35 @@ describe('NotificationService', () => {
     const latest = service.notifications()[0];
     expect(latest.title).toBe('ADT A01: Patel, R');
     expect(latest.tone).toBe('info');
+  });
+
+  it('should create an info notification for ED boarding bed suggestions', () => {
+    bedSuggestionCreated$.next({
+      taskId: 'task-1',
+      patientName: 'Doe, J',
+      patientUnit: '4-West',
+      bedId: '4W-05',
+      bestBedNumber: '4W-05',
+    });
+    const latest = service.notifications()[0];
+    expect(latest.title).toBe('ED Boarding Bed Suggestion');
+    expect(latest.message).toContain('Doe, J');
+    expect(latest.tone).toBe('info');
+    expect(latest.route).toBe('/beds');
+  });
+
+  it('should create an error notification for high-severity boarding alerts', () => {
+    boardingAlertCreated$.next({
+      alertId: 'alert-1',
+      patientUnit: 'ED',
+      minutesElapsed: 145,
+      severity: 'HIGH',
+      title: 'ED Boarding Alert',
+      message: 'Patient has been waiting in ED for 145 minutes.',
+    });
+    const latest = service.notifications()[0];
+    expect(latest.title).toBe('ED Boarding Alert');
+    expect(latest.tone).toBe('error');
+    expect(latest.route).toBe('/beds');
   });
 });

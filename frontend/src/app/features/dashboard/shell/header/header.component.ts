@@ -68,10 +68,6 @@ export class HeaderComponent {
 
   toggleNotificationPanel(): void {
     this.isNotificationPanelOpen.update((open) => !open);
-    // Mark all as read when the panel is opened
-    if (this.isNotificationPanelOpen()) {
-      this.notificationService.markAllAsRead();
-    }
   }
 
   closeNotificationPanel(): void {

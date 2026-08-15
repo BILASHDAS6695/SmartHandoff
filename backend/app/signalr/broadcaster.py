@@ -23,8 +23,13 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from app.signalr.schemas import BroadcastRequest, TaskUpdatedPayload
-from app.signalr.schemas import BedStatusChangedPayload
+from app.signalr.schemas import (
+    BedStatusChangedPayload,
+    BedSuggestionPayload,
+    BoardingAlertPayload,
+    BroadcastRequest,
+    TaskUpdatedPayload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +235,24 @@ class SignalRBroadcaster:
         for group in groups:
             await self._send_to_group(group, "bed_status_changed", arguments)
 
+    async def broadcast_bed_suggestion(self, payload: BedSuggestionPayload) -> None:
+        """Broadcast bed_suggestion_created to the bed_manager role group.
+
+        Triggered when the Bed Management Agent publishes ranked suggestions
+        for an ED boarding encounter. Bed managers see the alert immediately.
+        """
+        arguments = [payload.model_dump(mode="json")]
+        await self._send_to_group("role-bed_manager", "bed_suggestion_created", arguments)
+
+    async def broadcast_boarding_alert(self, payload: BoardingAlertPayload) -> None:
+        """Broadcast boarding_alert_created to the bed_manager role group.
+
+        Complements the Pub/Sub notification pipeline by also pushing an
+        in-app notification to bed managers in real time.
+        """
+        arguments = [payload.model_dump(mode="json")]
+        await self._send_to_group("role-bed_manager", "boarding_alert_created", arguments)
+
     async def broadcast_adt_event(self, payload: dict) -> None:
         """Broadcast adt_event_received to a unit group.
 
@@ -288,6 +311,22 @@ class SignalRBroadcasterStub:
             "SignalR stub: bed_status_changed bed_id=%s status=%s",
             payload.bed_id,
             payload.status,
+        )
+
+    async def broadcast_bed_suggestion(self, payload: BedSuggestionPayload) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug(
+            "SignalR stub: bed_suggestion_created task_id=%s bed=%s",
+            payload.task_id,
+            payload.best_bed_number,
+        )
+
+    async def broadcast_boarding_alert(self, payload: BoardingAlertPayload) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug(
+            "SignalR stub: boarding_alert_created encounter=%s unit=%s",
+            payload.encounter_id,
+            payload.patient_unit,
         )
 
     async def broadcast_adt_event(self, payload: dict) -> None:

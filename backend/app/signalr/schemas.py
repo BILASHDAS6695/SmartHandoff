@@ -50,6 +50,44 @@ class BedStatusChangedPayload(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
+class BedSuggestionPayload(BaseModel):
+    """Payload sent when the Bed Management Agent creates a ranked suggestion.
+
+    Delivered to bed-manager clients via the role-bed_manager group so the
+    ED boarding alert appears in real time without a page refresh.
+    """
+
+    task_id: str
+    encounter_id: str
+    patient_name: str
+    current_unit: str | None = None
+    acuity: str
+    minutes_waiting: int | None = None
+    best_bed_id: str
+    best_bed_number: str
+    best_bed_unit: str
+    suggestions: list[dict] = []
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BoardingAlertPayload(BaseModel):
+    """In-app notification payload for ED boarding alerts (SignalR).
+
+    Mirrors the Pub/Sub payload used by BoardingAlertPublisher but adds
+    display fields for the notification tray and bed board alert banner.
+    """
+
+    alert_id: str
+    encounter_id: str
+    patient_name: str | None = None
+    patient_unit: str
+    minutes_elapsed: int
+    severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] = "HIGH"
+    title: str
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
 class BroadcastRequest(BaseModel):
     """Internal broadcast request forwarded to Azure SignalR REST API.
 

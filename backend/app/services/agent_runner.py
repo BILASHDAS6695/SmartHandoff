@@ -60,6 +60,7 @@ from app.services.medication_generator import (
 )
 from app.services.task_status_service import TaskStatusTransitionService
 from app.signalr.broadcaster import SignalRBroadcaster, SignalRBroadcasterStub
+from app.signalr.schemas import BedSuggestionPayload
 
 logger = logging.getLogger(__name__)
 
@@ -497,6 +498,25 @@ class AgentRunner:
 
         # Leave task in PENDING_APPROVAL for bed manager review.
         await self._transition.transition(db, task, AgentTaskStatus.PENDING_APPROVAL)
+
+        # Notify bed managers in real time so the alert appears without refresh.
+        try:
+            await self._broadcaster.broadcast_bed_suggestion(
+                BedSuggestionPayload(
+                    task_id=str(task.id),
+                    encounter_id=str(encounter.id),
+                    patient_name=task.output.get("patient_name", "Unknown"),
+                    current_unit=task.output.get("current_unit"),
+                    acuity=task.output.get("acuity", "Unknown"),
+                    minutes_waiting=task.output.get("minutes_waiting"),
+                    best_bed_id=task.output.get("best_bed_id", ""),
+                    best_bed_number=task.output.get("best_bed_number", ""),
+                    best_bed_unit=task.output.get("best_bed_unit", ""),
+                    suggestions=task.output.get("suggestions", []),
+                )
+            )
+        except Exception as exc:
+            logger.warning("Failed to broadcast bed suggestion for task %s: %s", task.id, exc)
 
         logger.info(
             "Bed suggestion generated for encounter %s: best=%s score=%.4f",

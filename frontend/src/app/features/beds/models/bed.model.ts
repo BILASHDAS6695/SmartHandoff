@@ -90,6 +90,7 @@ export interface BedSuggestion {
   task_id: string;
   encounter_id: string;
   patient_name: string;
+  patient_id?: string | null;
   current_unit: string | null;
   acuity: string;
   minutes_waiting: number | null;
@@ -97,7 +98,9 @@ export interface BedSuggestion {
   best_bed_number: string;
   best_bed_unit: string;
   suggestions: RankedBedSuggestion[];
-  created_at: string;
+  created_at?: string;
+  /** Client-side timestamp (ms) when this suggestion was injected via SignalR. */
+  receivedAt?: number;
 }
 
 /** Occupant details for an occupied bed (GET /api/v1/beds/{id}/details). */

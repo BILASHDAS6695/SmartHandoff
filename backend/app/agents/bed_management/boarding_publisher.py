@@ -26,15 +26,20 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from google.cloud import pubsub_v1
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
+
+try:
+    from google.cloud import pubsub_v1
+except Exception:  # pragma: no cover - google-cloud-pubsub may be absent in local dev
+    pubsub_v1 = None  # type: ignore[assignment]
 
 from app.agents.bed_management.boarding_schemas import (
     BoardingAlertPayload,
     BoardingCandidate,
 )
 from app.models.encounter import Encounter
+from app.signalr.schemas import BoardingAlertPayload as SignalRBoardingAlertPayload
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
@@ -55,6 +60,8 @@ class BoardingAlertPublisher:
         project_id: GCP project ID for topic path construction.
         topic_path: Override for the Pub/Sub topic path. Defaults to
                     ``projects/{project_id}/topics/notification-requests``.
+        signalr_broadcaster: Optional SignalR broadcaster to push an in-app
+            notification to bed managers in real time (local dev / test).
 
     Design refs:
         US-038 TASK-003 — BoardingAlertPublisher class definition
@@ -64,16 +71,23 @@ class BoardingAlertPublisher:
 
     def __init__(
         self,
-        pubsub_client: pubsub_v1.PublisherClient,
+        pubsub_client: pubsub_v1.PublisherClient | None,
         db_session_factory: SessionFactory,
         project_id: str,
         topic_path: str | None = None,
+        signalr_broadcaster: Any | None = None,
     ) -> None:
         self._client = pubsub_client
         self._session_factory = db_session_factory
-        self._topic_path = topic_path or pubsub_v1.PublisherClient.topic_path(
-            project_id, "notification-requests"
-        )
+        self._signalr_broadcaster = signalr_broadcaster
+        if topic_path:
+            self._topic_path = topic_path
+        elif pubsub_v1 is not None:
+            self._topic_path = pubsub_v1.PublisherClient.topic_path(
+                project_id, "notification-requests"
+            )
+        else:
+            self._topic_path = f"projects/{project_id}/topics/notification-requests"
 
     # ------------------------------------------------------------------
     # Public API
@@ -131,30 +145,36 @@ class BoardingAlertPublisher:
             idempotency_key=candidate.idempotency_key,
         )
 
-        # --- Pub/Sub publish ---
-        message_data = json.dumps(payload.model_dump()).encode("utf-8")
-        attributes = {
-            "notification_type": "ED_BOARDING_ALERT",
-            "priority": "IMMEDIATE",
-            "idempotency_key": candidate.idempotency_key,
-        }
-        try:
-            future = self._client.publish(
-                self._topic_path, data=message_data, **attributes
-            )
-            message_id = future.result(timeout=10)
+        # --- Pub/Sub publish (skipped if no client — local dev fallback) ---
+        if self._client is not None:
+            message_data = json.dumps(payload.model_dump()).encode("utf-8")
+            attributes = {
+                "notification_type": "ED_BOARDING_ALERT",
+                "priority": "IMMEDIATE",
+                "idempotency_key": candidate.idempotency_key,
+            }
+            try:
+                future = self._client.publish(
+                    self._topic_path, data=message_data, **attributes
+                )
+                message_id = future.result(timeout=10)
+                logger.info(
+                    "Boarding alert published: encounter=%s message_id=%s minutes_elapsed=%d",
+                    candidate.encounter_id,
+                    message_id,
+                    candidate.minutes_elapsed,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to publish boarding alert for encounter %s — will retry next cycle.",
+                    candidate.encounter_id,
+                )
+                return  # Do NOT write boarding_alert_sent_at — allow retry next cycle
+        else:
             logger.info(
-                "Boarding alert published: encounter=%s message_id=%s minutes_elapsed=%d",
-                candidate.encounter_id,
-                message_id,
-                candidate.minutes_elapsed,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to publish boarding alert for encounter %s — will retry next cycle.",
+                "Boarding alert (local fallback) for encounter %s — Pub/Sub client not configured.",
                 candidate.encounter_id,
             )
-            return  # Do NOT write boarding_alert_sent_at — allow retry next cycle
 
         # --- DB write (exactly-once guard) ---
         now_utc = datetime.now(UTC)
@@ -192,3 +212,23 @@ class BoardingAlertPublisher:
                     candidate.encounter_id,
                 )
             await session.commit()
+
+        # --- SignalR in-app notification (best-effort; local dev fallback) ---
+        if self._signalr_broadcaster is not None:
+            try:
+                await self._signalr_broadcaster.broadcast_boarding_alert(
+                    SignalRBoardingAlertPayload(
+                        alert_id=candidate.idempotency_key,
+                        encounter_id=candidate.encounter_id,
+                        patient_unit=candidate.current_location or "ED",
+                        minutes_elapsed=candidate.minutes_elapsed,
+                        severity="HIGH",
+                        title="ED Boarding Alert",
+                        message=(
+                            f"Patient has been waiting in {candidate.current_location or 'ED'} "
+                            f"for {candidate.minutes_elapsed} minutes."
+                        ),
+                    )
+                )
+            except Exception as exc:
+                logger.warning("SignalR boarding alert broadcast failed: %s", exc)
