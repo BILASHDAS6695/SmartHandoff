@@ -124,7 +124,7 @@ export class DocumentReviewComponent implements OnInit {
     this.aiGeneratedAt.set(this.formatDate(doc.created_at));
     this.fallbackVisible.set(doc.generation_type === 'TEMPLATE');
 
-    const content: DocumentContent = doc.content ?? {};
+    const content: DocumentContent = (doc.content as DocumentContent) ?? {};
     this.fields.set(this.toFields(content));
 
     if (doc.reviewed_by_display_name && doc.approved_at) {

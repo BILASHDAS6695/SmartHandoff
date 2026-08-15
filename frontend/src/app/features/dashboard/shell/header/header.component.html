@@ -93,13 +93,15 @@
 
   </button>
 
-  <button
-    mat-menu-item
-    (click)="switchRole()">
+  @if (canSwitchRole()) {
+    <button
+      mat-menu-item
+      (click)="switchRole()">
 
-    <span>Switch Role</span>
+      <span>Switch Role</span>
 
-  </button>
+    </button>
+  }
 
   <button
     mat-menu-item

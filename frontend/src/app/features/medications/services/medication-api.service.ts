@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
@@ -33,6 +33,34 @@ export interface MedicationListResponse {
   medications: MedicationReconciliationResult[];
   total: number;
   user: string;
+}
+
+/** Per-encounter medication history snapshot. */
+export interface MedicationHistoryEncounter {
+  encounter_id: string;
+  status: string;
+  created_at: string | null;
+  total_medications: number;
+  medications: MedicationReconciliationResult[];
+}
+
+/** Backend medication history response shape. */
+export interface MedicationHistoryResponse {
+  current_encounter_id: string;
+  patient_id: string;
+  history: MedicationHistoryEncounter[];
+}
+
+/** Backend AI medication analysis response shape. */
+export interface MedicationAnalysisResponse {
+  encounter_id: string;
+  summary: string;
+  readmission_risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  safety_score: number;
+  risks: string[];
+  recommendations: string[];
+  predicted_issues: string[];
 }
 
 /** Backend pharmacist alert shape. */
@@ -124,6 +152,28 @@ export class MedicationApiService {
   }
 
   /**
+   * Retrieves all pharmacist alerts visible to the current user.
+   * GET /api/v1/alerts?status=ACTIVE
+   */
+  getAlerts(status?: 'ACTIVE' | 'RESOLVED'): Observable<{ alerts: PharmacistAlert[]; user: string }> {
+    let params = new HttpParams();
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http.get<{ alerts: PharmacistAlert[]; user: string }>(this.alertsBase, { params });
+  }
+
+  /**
+   * Generates an AI-powered medication change analysis and readmission prediction.
+   * GET /api/v1/encounters/{encounterId}/medications/analysis
+   */
+  analyzeMedications(encounterId: string): Observable<MedicationAnalysisResponse> {
+    return this.http.get<MedicationAnalysisResponse>(
+      `${this.base}/${encounterId}/medications/analysis`
+    );
+  }
+
+  /**
    * Resolves a pharmacist alert.
    * PATCH /api/v1/alerts/{alertId}/resolve
    */
@@ -131,6 +181,16 @@ export class MedicationApiService {
     return this.http.patch<PharmacistAlert>(
       `${this.alertsBase}/${alertId}/resolve`,
       payload
+    );
+  }
+
+  /**
+   * Retrieves medication reconciliation results for the patient's prior encounters.
+   * GET /api/v1/encounters/{encounterId}/medications/history
+   */
+  getMedicationHistory(encounterId: string): Observable<MedicationHistoryResponse> {
+    return this.http.get<MedicationHistoryResponse>(
+      `${this.base}/${encounterId}/medications/history`
     );
   }
 }

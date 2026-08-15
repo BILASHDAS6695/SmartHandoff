@@ -26,13 +26,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.jwt import TokenClaims, sub_to_uuid
 from app.core.auth.rbac import require_permission
 from app.db.deps import get_read_db, get_write_db
+from app.models.agent_task import AgentTask
+from app.models.encounter import Encounter
 from app.models.pharmacist_alert import PharmacistAlert
 from app.schemas.pharmacist_alert import (
     AlertRead,
@@ -40,6 +43,10 @@ from app.schemas.pharmacist_alert import (
     PharmacistAlertCreate,
     PharmacistAlertRead,
 )
+from app.services.agent_runner import complete_agent_task, run_agent_task
+from app.services.encounter_orchestrator import EncounterOrchestratorService
+from app.signalr.broadcaster import SignalRBroadcaster
+from app.api.v1.routers.signalr_hub import get_signalr_broadcaster_optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +65,24 @@ _NOTIFICATION_TOPIC = "notification-requests"
 async def create_pharmacist_alert(
     encounter_id: uuid.UUID,
     payload: PharmacistAlertCreate,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_write_db)],
     current_user: Annotated[TokenClaims, Depends(require_permission("alert", "write"))],
+    broadcaster: SignalRBroadcaster | None = Depends(get_signalr_broadcaster_optional),
 ) -> PharmacistAlertRead:
     """Persist a pharmacist alert and publish a Pub/Sub notification.
 
     - ``HIGH`` severity → ``priority=IMMEDIATE`` on ``notification-requests``
     - ``INCOMPLETE`` status → stored on the alert record for dashboard display
+    - Ensures a ``medication_reconciliation`` AgentTask exists for the encounter
+      so the dashboard can show live agent status.
 
     Args:
         encounter_id: UUID of the encounter record.
         payload: Alert creation payload.
         db: Async write session (Cloud SQL primary).
         current_user: Validated JWT claims with alert:create permission (PHARMACIST/ADMIN).
+        broadcaster: SignalR broadcaster for live task updates.
 
     Returns:
         Newly created ``PharmacistAlertRead`` schema.
@@ -116,15 +128,45 @@ async def create_pharmacist_alert(
     await db.commit()
     await db.refresh(alert)
 
+    # Ensure a medication reconciliation task exists for this encounter so the
+    # dashboard agent status reflects the alert. Only schedule execution if a
+    # new task was actually created; existing tasks are already handled by the
+    # encounter orchestrator or the SLA monitor.
+    encounter = await db.get(Encounter, encounter_id)
+    if encounter is not None:
+        orchestrator = EncounterOrchestratorService(broadcaster=broadcaster)
+        task, created = await orchestrator.ensure_task_for_alert(
+            db=db,
+            encounter=encounter,
+            agent_type="medication_reconciliation",
+        )
+        if created and task is not None:
+            background_tasks.add_task(run_agent_task, task.id, broadcaster)
+
     return PharmacistAlertRead.model_validate(alert)
 
 
 @router.get("")
 async def list_alerts(
     current_user: Annotated[TokenClaims, Depends(require_permission("alert", "list"))],
+    db: Annotated[AsyncSession, Depends(get_read_db)],
+    status: str | None = None,
 ) -> dict:
-    """List alerts — requires alert:list permission."""
-    return {"alerts": [], "user": current_user.sub}
+    """List alerts scoped to the caller — requires alert:list permission.
+
+    Query params:
+        status: Optional filter (ACTIVE | RESOLVED).
+    """
+    stmt = select(PharmacistAlert)
+    if status:
+        stmt = stmt.where(PharmacistAlert.status == status.upper())
+    stmt = stmt.order_by(PharmacistAlert.created_at.desc())
+    result = await db.execute(stmt)
+    alerts = list(result.scalars().all())
+    return {
+        "alerts": [AlertRead.model_validate(alert) for alert in alerts],
+        "user": current_user.sub,
+    }
 
 
 @router.get("/{alert_id}")
@@ -149,12 +191,17 @@ async def get_alert(
 async def resolve_alert(
     alert_id: uuid.UUID,
     payload: AlertResolveRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_write_db)],
     current_user: Annotated[TokenClaims, Depends(require_permission("alert", "resolve"))],
+    broadcaster: SignalRBroadcaster | None = Depends(get_signalr_broadcaster_optional),
 ) -> AlertRead:
     """Resolve a pharmacist alert.
 
-    Marks a PHARMACIST_ALERT or HIGH_RISK_DRUG_CLASS alert as resolved.
+    Marks a PHARMACIST_ALERT or HIGH_RISK_DRUG_CLASS alert as resolved and
+    force-completes the related medication reconciliation AgentTask so the
+    dashboard reflects the resolution in real time.
+
     Restricted to PHARMACIST and ADMIN roles only (enforced via alert:resolve permission).
 
     AC Scenario 1 (US-057): NURSE JWT → 403 Forbidden (denied by require_permission).
@@ -164,8 +211,10 @@ async def resolve_alert(
     Args:
         alert_id: UUID of the alert to resolve.
         payload: Resolution type and optional note.
+        background_tasks: FastAPI background task queue.
         db: Async write session (Cloud SQL primary).
         current_user: Validated JWT claims with alert:resolve permission (PHARMACIST/ADMIN).
+        broadcaster: SignalR broadcaster for live task updates.
 
     Returns:
         Updated :class:`AlertRead` reflecting the resolved state.
@@ -202,6 +251,20 @@ async def resolve_alert(
     await db.flush()
     await db.refresh(alert)
     await db.commit()
+
+    # Force-complete the related medication reconciliation task so the agent
+    # status card shows COMPLETED when the alert is resolved.
+    stmt = (
+        select(AgentTask)
+        .where(AgentTask.encounter_id == alert.encounter_id)
+        .where(AgentTask.agent_type == "medication_reconciliation")
+        .order_by(AgentTask.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    med_task = result.scalar_one_or_none()
+    if med_task is not None:
+        background_tasks.add_task(complete_agent_task, med_task.id, broadcaster)
 
     # Publish ALERT_RESOLVED event so pharmacist dashboard queue updates
     # TODO: Replace with actual Pub/Sub publish when infrastructure is ready

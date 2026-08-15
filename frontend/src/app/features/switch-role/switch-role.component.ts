@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
 import { ToastService } from '@core/notifications/toast.service';
+import { SWITCH_ROLE_OPTIONS, UI_ROLE_LABELS } from '@core/models';
 
 interface RoleOption {
   id: string;
@@ -85,6 +86,7 @@ export class SwitchRoleComponent {
 
   readonly currentRole = signal<string>('Nurse');
   readonly currentUnit = signal<string>('4-West');
+  readonly isSubmitting = signal<boolean>(false);
 
   constructor() {
     const user = this.auth.currentUser();
@@ -101,9 +103,21 @@ export class SwitchRoleComponent {
       PHYSICIAN: 'Physician',
       PHARMACIST: 'Pharmacist',
       BEDMGR: 'BedManager',
+      BED_MANAGER: 'BedManager',
       ADMIN: 'Admin',
     };
     return map[role.toUpperCase()] ?? role;
+  }
+
+  private backendRole(roleId: string): string {
+    const map: Record<string, string> = {
+      Nurse: 'nurse',
+      Physician: 'physician',
+      Pharmacist: 'pharmacist',
+      BedManager: 'bed_manager',
+      Admin: 'admin',
+    };
+    return map[roleId] ?? roleId.toLowerCase();
   }
 
   selectRole(roleId: string): void {
@@ -114,13 +128,28 @@ export class SwitchRoleComponent {
     history.back();
   }
 
-  onConfirm(): void {
+  async onConfirm(): Promise<void> {
     const role = this.selectedRole();
     const unit = this.selectedUnit();
-    this.currentRole.set(role);
-    this.currentUnit.set(unit);
-    // Wireframe only — in production this would call the session context API
-    this.toast.success(`Switched to ${role} · ${unit}`);
-    void this.router.navigate(['/dashboard']);
+    const backendRole = this.backendRole(role);
+
+    if (!SWITCH_ROLE_OPTIONS.includes(backendRole)) {
+      this.toast.error(`Role ${role} is not available for switching.`);
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    try {
+      await this.auth.switchRole(backendRole);
+      this.currentRole.set(role);
+      this.currentUnit.set(unit);
+      this.toast.success(`Switched to ${UI_ROLE_LABELS[backendRole] ?? role} · ${unit}`);
+      await this.router.navigate(['/dashboard']);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Role switch failed';
+      this.toast.error(message);
+    } finally {
+      this.isSubmitting.set(false);
+    }
   }
 }

@@ -28,6 +28,8 @@ import {
   AdtEventPayload,
   AlertCreatedPayload,
   BedStatusChangedPayload,
+  BedSuggestionCreatedPayload,
+  BoardingAlertCreatedPayload,
   JoinGroupsRequest,
   SignalRConnectionState,
   TaskUpdatedPayload,
@@ -53,6 +55,8 @@ export class SignalRService implements OnDestroy {
   private readonly _taskUpdated$ = new Subject<TaskUpdatedPayload>();
   private readonly _alertCreated$ = new Subject<AlertCreatedPayload>();
   private readonly _bedStatusChanged$ = new Subject<BedStatusChangedPayload>();
+  private readonly _bedSuggestionCreated$ = new Subject<BedSuggestionCreatedPayload>();
+  private readonly _boardingAlertCreated$ = new Subject<BoardingAlertCreatedPayload>();
   private readonly _riskScoreUpdated$ = new Subject<RiskScoreUpdatedEvent>();
   private readonly _documentCreated$ = new Subject<{ documentId: string; status: string }>();
   private readonly _alertResolved$ = new Subject<{ alertId: string; status: string }>();
@@ -64,6 +68,10 @@ export class SignalRService implements OnDestroy {
     this._alertCreated$.asObservable();
   readonly bedStatusChanged$: Observable<BedStatusChangedPayload> =
     this._bedStatusChanged$.asObservable();
+  readonly bedSuggestionCreated$: Observable<BedSuggestionCreatedPayload> =
+    this._bedSuggestionCreated$.asObservable();
+  readonly boardingAlertCreated$: Observable<BoardingAlertCreatedPayload> =
+    this._boardingAlertCreated$.asObservable();
   readonly riskScoreUpdated$: Observable<RiskScoreUpdatedEvent> = this._riskScoreUpdated$.asObservable();
   readonly documentCreated$: Observable<{ documentId: string; status: string }> = this._documentCreated$.asObservable();
   readonly alertResolved$: Observable<{ alertId: string; status: string }> = this._alertResolved$.asObservable();
@@ -129,6 +137,8 @@ export class SignalRService implements OnDestroy {
     this._taskUpdated$.complete();
     this._alertCreated$.complete();
     this._bedStatusChanged$.complete();
+    this._bedSuggestionCreated$.complete();
+    this._boardingAlertCreated$.complete();
     this._riskScoreUpdated$.complete();
     this._documentCreated$.complete();
     this._alertResolved$.complete();
@@ -178,6 +188,14 @@ export class SignalRService implements OnDestroy {
     this.connection.on('bed_status_changed', (payload: BedStatusChangedPayload) => {
       this._lastEventTime = payload.timestamp;
       this._bedStatusChanged$.next(payload);
+    });
+
+    this.connection.on('bed_suggestion_created', (payload: BedSuggestionCreatedPayload) => {
+      this._bedSuggestionCreated$.next(payload);
+    });
+
+    this.connection.on('boarding_alert_created', (payload: BoardingAlertCreatedPayload) => {
+      this._boardingAlertCreated$.next(payload);
     });
 
     this.connection.on('risk_score_updated', (payload: RiskScoreUpdatedEvent) => {

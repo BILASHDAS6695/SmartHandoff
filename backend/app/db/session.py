@@ -51,6 +51,23 @@ write_session_factory: async_sessionmaker[AsyncSession] | None = None
 read_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
+def _ensure_async_driver(url: str) -> str:
+    """Rewrite synchronous postgresql:// URLs to use the asyncpg driver.
+
+    Local dev env vars commonly use ``postgresql+psycopg2://`` or plain
+    ``postgresql://``. SQLAlchemy's asyncio extension requires an async driver,
+    so this helper normalises to ``postgresql+asyncpg://`` without mutating
+    URLs that already specify an async driver.
+    """
+    if url.startswith("postgresql+asyncpg://"):
+        return url
+    if url.startswith("postgresql+psycopg2://"):
+        return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 def _resolve_db_url(env_var_name: str, secret_id_env_var: str) -> str:
     """Resolve a database connection URL from Secret Manager or env var.
 
@@ -123,7 +140,7 @@ def create_db_engines() -> None:
     )
 
     _write_engine = create_async_engine(
-        write_url,
+        _ensure_async_driver(write_url),
         pool_size=_WRITE_POOL_SIZE,
         max_overflow=_WRITE_MAX_OVERFLOW,
         pool_pre_ping=True,   # Verify connection before use (handles PgBouncer timeout)
@@ -132,7 +149,7 @@ def create_db_engines() -> None:
     )
 
     _read_engine = create_async_engine(
-        read_url,
+        _ensure_async_driver(read_url),
         pool_size=_READ_POOL_SIZE,
         max_overflow=_READ_MAX_OVERFLOW,
         pool_pre_ping=True,

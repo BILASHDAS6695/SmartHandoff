@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { IdleTimeoutService } from './idle-timeout.service';
+import { Role, SWITCH_ROLE_ALLOWED_ROLES } from '../models/role.model';
 
 interface JwtPayload {
   sub: string;
@@ -51,6 +52,18 @@ export class AuthService {
     const token = this.#tokenSignal();
     if (!token || this.#isTokenExpired(token)) return null;
     return this.#decodePayload(token);
+  });
+
+  /** True when the authenticated user has the admin role. */
+  readonly isAdmin = computed<boolean>(() => {
+    const role = this.currentUser()?.role?.toLowerCase();
+    return role === Role.Admin;
+  });
+
+  /** True when the current user is allowed to access the Switch Role feature. */
+  readonly canSwitchRole = computed<boolean>(() => {
+    const role = this.currentUser()?.role?.toLowerCase();
+    return role ? SWITCH_ROLE_ALLOWED_ROLES.includes(role) : false;
   });
 
   constructor(
@@ -116,6 +129,22 @@ export class AuthService {
    */
   setToken(token: string): void {
     this.#setSession(token);
+  }
+
+  /**
+   * Switch the current admin session to a different clinical role in real-time.
+   *
+   * Calls POST /api/v1/auth/switch-role (admin only). On success the new JWT
+   * replaces the in-memory token, causing all role-derived signals to update
+   * reactively without a full page reload.
+   */
+  async switchRole(role: string): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.post<TokenResponse>(`${environment.apiBaseUrl}/api/v1/auth/switch-role`, {
+        role,
+      })
+    );
+    this.#setSession(response.access_token);
   }
 
   /**

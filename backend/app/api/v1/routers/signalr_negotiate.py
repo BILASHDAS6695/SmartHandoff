@@ -82,6 +82,11 @@ async def negotiate(
         unit_id=current_user.units[0] if current_user.units else None,
         encounter_ids=[],  # TODO: Populate from DB or custom JWT claim
     )
+    if not current_user.units:
+        logger.warning(
+            "SignalR negotiate: JWT has no units claim; user will only join role group",
+            extra={"user_id": current_user.sub, "role": current_user.role},
+        )
 
     groups = _resolver.resolve(user_claims)
 

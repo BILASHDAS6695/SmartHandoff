@@ -52,6 +52,7 @@ export class HeaderComponent {
   private readonly elementRef = inject(ElementRef);
 
   readonly currentUser = this.auth.currentUser;
+  readonly canSwitchRole = this.auth.canSwitchRole;
   readonly notifications = this.notificationService.notifications;
   readonly unreadCount = this.notificationService.unreadCount;
   readonly isNotificationPanelOpen = signal(false);
@@ -67,10 +68,6 @@ export class HeaderComponent {
 
   toggleNotificationPanel(): void {
     this.isNotificationPanelOpen.update((open) => !open);
-    // Mark all as read when the panel is opened
-    if (this.isNotificationPanelOpen()) {
-      this.notificationService.markAllAsRead();
-    }
   }
 
   closeNotificationPanel(): void {

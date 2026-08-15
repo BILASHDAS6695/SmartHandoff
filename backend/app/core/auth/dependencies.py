@@ -253,7 +253,10 @@ def require_role(allowed_roles: list[str]):
     async def role_checker(
         user: Annotated[TokenClaims, Depends(get_current_user)],
     ) -> TokenClaims:
-        if user.role not in allowed_roles:
+        # Normalize role casing to match RBAC matrix and JWT claim conventions.
+        user_role = user.role.upper()
+        permitted_roles = {r.upper() for r in allowed_roles}
+        if user_role not in permitted_roles:
             logger.warning(
                 "Access denied: user role %r not in allowed roles %r",
                 user.role,

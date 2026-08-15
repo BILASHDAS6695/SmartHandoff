@@ -65,6 +65,12 @@ class AgentTaskResponse(BaseModel):
         description="List of missing required fields for INCOMPLETE documents (US-026).",
     )
 
+    # Structured agent output/results surfaced in the task monitor UI
+    output: dict[str, Any] | None = Field(
+        default=None,
+        description="Structured agent output: bed assignment, document id, risk score, etc.",
+    )
+
     model_config = {"populate_by_name": True, "from_attributes": True}
 
     @model_validator(mode="before")
@@ -90,7 +96,9 @@ class AgentTaskResponse(BaseModel):
         """Backfill sla_threshold_minutes from SLAConfig if not yet set in DB."""
         if self.sla_threshold_minutes is None:
             config = load_sla_config()
-            self.sla_threshold_minutes = config.threshold_for(self.agent_type)
+            self.sla_threshold_minutes = config.threshold_for(
+                (self.agent_type or "").upper()
+            )
         return self
 
 

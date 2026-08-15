@@ -23,7 +23,7 @@ roles:
     encounter:  [list, read, write]
     document:   [list, read, write, approve]
     medication: [list, read, write]
-    alert:      [list, read, resolve]
+    alert:      [list, read, write, resolve]
     bed:        [list, read, write]
     analytics:  [list, read]
     audit_log:  [list, read]
@@ -33,7 +33,7 @@ roles:
   PHYSICIAN:
     patient:    [list, read]
     encounter:  [list, read]
-    document:   [list, read, approve]
+    document:   [list, read, write, approve]
     medication: [list, read]
     alert:      [list, read]
     bed:        []
@@ -55,11 +55,11 @@ roles:
     agent_task: [list, read]
 
   PHARMACIST:
-    patient:    [read]
+    patient:    [list, read]
     encounter:  [read]
     document:   []
     medication: [list, read, write]
-    alert:      [list, read, resolve]
+    alert:      [list, read, write, resolve]
     bed:        []
     analytics:  []
     audit_log:  []
@@ -67,10 +67,10 @@ roles:
     agent_task: []
 
   BED_MANAGER:
-    patient:    []
+    patient:    [list, read]
     encounter:  [list, read]
     document:   []
-    medication: []
+    medication: [read]
     alert:      [list, read]
     bed:        [list, read, write]
     analytics:  [list, read]

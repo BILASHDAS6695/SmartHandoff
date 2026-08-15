@@ -35,4 +35,10 @@ export interface AppNotification {
 
   /** Optional query params for the route. */
   queryParams?: Record<string, string>;
+
+  /**
+   * Optional deduplication key. When set, add() will skip creating a new
+   * notification if a notification with the same key already exists.
+   */
+  key?: string;
 }

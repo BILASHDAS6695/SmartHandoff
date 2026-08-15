@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TaskUpdateHandlerService } from '@core/signalr/handlers/task-update-handler.service';
 
-type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+import { TaskStatus } from '@core/models/task.model';
 
 /**
  * Reusable badge displaying the current status of an agent task.
@@ -50,7 +50,7 @@ export class TaskStatusBadgeComponent implements OnInit {
    * Initial status to display before any real-time update arrives.
    * Sourced from the REST response when the page first loads.
    */
-  @Input() initialStatus: TaskStatus = 'PENDING';
+  @Input() initialStatus: TaskStatus = TaskStatus.PENDING;
 
   private readonly taskHandler = inject(TaskUpdateHandlerService);
 
@@ -67,20 +67,26 @@ export class TaskStatusBadgeComponent implements OnInit {
 
   protected readonly statusLabel = computed(() => {
     const labels: Record<TaskStatus, string> = {
-      PENDING: 'Pending',
-      IN_PROGRESS: 'In Progress',
-      COMPLETED: 'Completed',
-      FAILED: 'Failed',
+      [TaskStatus.PENDING]: 'Pending',
+      [TaskStatus.IN_PROGRESS]: 'In Progress',
+      [TaskStatus.BLOCKED]: 'Blocked',
+      [TaskStatus.PENDING_APPROVAL]: 'Pending Approval',
+      [TaskStatus.COMPLETED]: 'Completed',
+      [TaskStatus.FAILED]: 'Failed',
+      [TaskStatus.CANCELLED]: 'Cancelled',
     };
     return labels[this.status()];
   });
 
   protected readonly statusIcon = computed(() => {
     const icons: Record<TaskStatus, string> = {
-      PENDING: 'schedule',
-      IN_PROGRESS: 'sync',
-      COMPLETED: 'check_circle',
-      FAILED: 'error',
+      [TaskStatus.PENDING]: 'schedule',
+      [TaskStatus.IN_PROGRESS]: 'sync',
+      [TaskStatus.BLOCKED]: 'block',
+      [TaskStatus.PENDING_APPROVAL]: 'pending_actions',
+      [TaskStatus.COMPLETED]: 'check_circle',
+      [TaskStatus.FAILED]: 'error',
+      [TaskStatus.CANCELLED]: 'cancel',
     };
     return icons[this.status()];
   });
@@ -93,7 +99,7 @@ export class TaskStatusBadgeComponent implements OnInit {
     // Check if a live update has already arrived before this component mounted
     // (e.g., the task completed before the user navigated to the patient detail page)
     const existing = this.taskHandler.getTaskStatus(this.taskId);
-    if (existing) {
+    if (existing?.newStatus) {
       this._liveStatus.set(existing.newStatus);
     }
 

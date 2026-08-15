@@ -1,0 +1,147 @@
+<main class="register-main">
+  <button class="back-btn" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    Back to Patients
+  </button>
+
+  <div class="register-card card">
+    <div class="card-header">
+      <h2>Register New Encounter</h2>
+    </div>
+    <div class="card-body">
+      <!-- Patient search -->
+      <div class="search-section">
+        <h4>Find Existing Patient</h4>
+        <div class="search-row">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>Search by name, MRN, or DOB</mat-label>
+            <input
+              matInput
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              (keydown.enter)="onSearchPatients()" />
+          </mat-form-field>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="onSearchPatients()"
+            [disabled]="isSearching()">
+            <mat-icon>search</mat-icon>
+            {{ isSearching() ? 'Searching…' : 'Search' }}
+          </button>
+        </div>
+
+        @if (searchError()) {
+          <div class="error-banner">{{ searchError() }}</div>
+        }
+
+        @if (searchResults().length > 0) {
+          <div class="search-results">
+            @for (result of searchResults(); track result.patient_id) {
+              <div
+                class="search-result-item"
+                [class.selected]="selectedSearchPatient()?.patient_id === result.patient_id"
+                (click)="selectSearchPatient(result)">
+                <div class="result-name">{{ result.last_name }}, {{ result.first_name }}</div>
+                <div class="result-meta">
+                  DOB: {{ result.date_of_birth }} · MRN: {{ result.mrn_masked }} · Unit: {{ result.current_unit }}
+                </div>
+              </div>
+            }
+          </div>
+        } @else if (!isSearching() && searchQuery().trim() && searchResults().length === 0) {
+          <p class="empty-hint">No patients found. You can still register an encounter with the form below.</p>
+        }
+      </div>
+
+      <!-- Registration form -->
+      <form [formGroup]="registerForm" (ngSubmit)="onRegisterEncounter()" class="register-form">
+        <h4>Encounter Details</h4>
+
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Patient ID</mat-label>
+            <input matInput formControlName="patient_id" placeholder="UUID of the linked patient" />
+            @if (registerForm.get('patient_id')?.invalid && registerForm.get('patient_id')?.touched) {
+              <mat-error>Patient ID is required</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>MRN</mat-label>
+            <input matInput formControlName="mrn" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>First Name</mat-label>
+            <input matInput formControlName="first_name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Last Name</mat-label>
+            <input matInput formControlName="last_name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date of Birth</mat-label>
+            <input matInput formControlName="date_of_birth" type="date" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Unit</mat-label>
+            <input matInput formControlName="unit" placeholder="e.g. ICU, 3N" />
+            @if (registerForm.get('unit')?.invalid && registerForm.get('unit')?.touched) {
+              <mat-error>Unit is required</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="status">
+              @for (status of statusOptions; track status) {
+                <mat-option [value]="status">{{ status }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Risk Tier</mat-label>
+            <mat-select formControlName="risk_tier">
+              @for (tier of riskTierOptions; track tier) {
+                <mat-option [value]="tier">{{ tier }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>ADT Event Type</mat-label>
+            <mat-select formControlName="event_type">
+              @for (event of eventTypeOptions; track event.value) {
+                <mat-option [value]="event.value">{{ event.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        @if (registerError()) {
+          <div class="error-banner">{{ registerError() }}</div>
+        }
+
+        @if (registrationSuccess()) {
+          <div class="success-banner">Encounter registered successfully. Redirecting…</div>
+        }
+
+        <div class="form-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            [disabled]="isRegistering() || registerForm.invalid">
+            {{ isRegistering() ? 'Registering…' : 'Register Encounter' }}
+          </button>
+          <button mat-button type="button" (click)="clearSelectedSearchPatient()">Clear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</main>

@@ -99,12 +99,20 @@ class TaskStatusTransitionService:
 # Valid state machine transitions per US-021 / US-020.
 _VALID_TRANSITIONS: dict[AgentTaskStatus, set[AgentTaskStatus]] = {
     AgentTaskStatus.PENDING: {AgentTaskStatus.IN_PROGRESS},
-    AgentTaskStatus.IN_PROGRESS: {AgentTaskStatus.COMPLETED, AgentTaskStatus.FAILED},
+    AgentTaskStatus.IN_PROGRESS: {
+        AgentTaskStatus.COMPLETED,
+        AgentTaskStatus.FAILED,
+        AgentTaskStatus.PENDING_APPROVAL,
+    },
     AgentTaskStatus.FAILED: {AgentTaskStatus.IN_PROGRESS},  # retry path
     AgentTaskStatus.COMPLETED: set(),
     AgentTaskStatus.QUEUED: {AgentTaskStatus.PENDING, AgentTaskStatus.IN_PROGRESS},
     AgentTaskStatus.BLOCKED: {AgentTaskStatus.IN_PROGRESS, AgentTaskStatus.PENDING},
-    AgentTaskStatus.PENDING_APPROVAL: {AgentTaskStatus.COMPLETED, AgentTaskStatus.FAILED},
+    AgentTaskStatus.PENDING_APPROVAL: {
+        AgentTaskStatus.COMPLETED,
+        AgentTaskStatus.FAILED,
+        AgentTaskStatus.CANCELLED,
+    },
     AgentTaskStatus.CANCELLED: set(),
 }
 

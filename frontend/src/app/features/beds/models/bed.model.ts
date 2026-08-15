@@ -66,3 +66,106 @@ export const BED_STATUS_CLASS: Record<BedStatus, string> = {
   MAINTENANCE: 'bed-status--maintenance',
   RESERVED:    'bed-status--reserved',
 };
+
+/** Score breakdown for a single bed recommendation. */
+export interface BedSuggestionScoreBreakdown {
+  acuity_match: number;
+  care_type_match: number;
+  isolation_match: number;
+  gender_match: number;
+}
+
+/** A single ranked bed suggestion from the Bed Management Agent. */
+export interface RankedBedSuggestion {
+  bed_id: string;
+  bed_number: string;
+  unit: string;
+  room: string;
+  score: number;
+  score_breakdown: BedSuggestionScoreBreakdown;
+}
+
+/** Pending bed suggestion returned by GET /api/v1/beds/suggestions. */
+export interface BedSuggestion {
+  task_id: string;
+  encounter_id: string;
+  patient_name: string;
+  patient_id?: string | null;
+  current_unit: string | null;
+  acuity: string;
+  minutes_waiting: number | null;
+  best_bed_id: string;
+  best_bed_number: string;
+  best_bed_unit: string;
+  suggestions: RankedBedSuggestion[];
+  created_at?: string;
+  /** Client-side timestamp (ms) when this suggestion was injected via SignalR. */
+  receivedAt?: number;
+}
+
+/** Occupant details for an occupied bed (GET /api/v1/beds/{id}/details). */
+export interface BedOccupant {
+  encounter_id: string;
+  patient_id: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string | null;
+  mrn_masked: string;
+  encounter_status: string;
+  unit: string | null;
+  risk_tier: string;
+  admission_date: string | null;
+}
+
+/** A patient waiting for bed allocation, shown when a bed is selected. */
+export interface WaitingPatientForBed {
+  task_id: string;
+  encounter_id: string;
+  patient_name: string;
+  current_unit: string | null;
+  acuity: string;
+  minutes_waiting: number | null;
+  best_bed_id: string;
+  best_bed_number: string;
+  best_bed_unit: string;
+}
+
+/** AI medication analysis snapshot embedded in bed details. */
+export interface MedicationAnalysisSnapshot {
+  readmission_risk: string;
+  confidence: string;
+  safety_score: number;
+  summary: string;
+  risks: string[];
+  recommendations: string[];
+  predicted_issues: string[];
+}
+
+/** Detailed bed response including occupant and waiting patients. */
+export interface BedDetailDto {
+  bed_id: string;
+  bed_number: string;
+  unit: string;
+  room: string | null;
+  bed_type: string;
+  status: BedStatus;
+  isolation_required: boolean;
+  gender_designation: string;
+  predicted_discharge_time: string;
+  discharge_prediction_confidence: string;
+  discharge_prediction_interval_hours: number | null;
+  occupant: BedOccupant | null;
+  waiting_patients: WaitingPatientForBed[];
+  medication_analysis: MedicationAnalysisSnapshot | null;
+}
+
+/** Real-time discharge prediction for an occupied bed. */
+export interface DischargePredictionDto {
+  bed_id: string;
+  bed_number: string;
+  unit: string;
+  patient_name: string;
+  predicted_discharge_time: string;
+  confidence: string;
+  interval_hours: number | null;
+}

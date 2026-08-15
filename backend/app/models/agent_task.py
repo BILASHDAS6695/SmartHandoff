@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -145,6 +146,14 @@ class AgentTask(Base, TimestampMixin):
     error_message: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, server_default="0"
+    )
+
+    # Structured agent output/results (bed assignment, document id, risk score, etc.)
+    output: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+        comment="Structured agent output: bed assignment, document id, risk score, etc.",
     )
 
     encounter: Mapped["Encounter"] = relationship(

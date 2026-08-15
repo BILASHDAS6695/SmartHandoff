@@ -67,8 +67,10 @@ class DrugInteractionCache:
         result = await cache.get("456", "123")  # Same as ("123", "456")
     """
 
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: Redis | None = None) -> None:
         self._redis = redis
+        # Fallback in-memory cache when Redis is not configured (local dev).
+        self._memory: dict[str, dict[str, Any]] = {}
 
     async def get(self, rxcui1: str, rxcui2: str) -> dict[str, Any] | None:
         """Return cached interaction data for a CUI pair, or ``None`` on miss.
@@ -88,6 +90,8 @@ class DrugInteractionCache:
                 await cache.set(rxcui1, rxcui2, result)
         """
         key = _build_cache_key(rxcui1, rxcui2)
+        if self._redis is None:
+            return self._memory.get(key)
         raw = await self._redis.get(key)
         if raw is None:
             logger.debug("Cache miss for key=%s", key)
@@ -121,5 +125,8 @@ class DrugInteractionCache:
             await cache.set("123", "456", interaction_data)
         """
         key = _build_cache_key(rxcui1, rxcui2)
+        if self._redis is None:
+            self._memory[key] = data
+            return
         await self._redis.set(key, json.dumps(data), ex=_CACHE_TTL_SECONDS)
         logger.debug("Cached interaction result key=%s ttl=%ds", key, _CACHE_TTL_SECONDS)

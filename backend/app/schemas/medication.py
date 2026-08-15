@@ -123,3 +123,104 @@ class MedicationReconciliationResponse(BaseModel):
     )
 
     model_config = {"from_attributes": True}
+
+
+class MedicationHistoryEncounter(BaseModel):
+    """Medication reconciliation results for a single prior encounter."""
+
+    encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID for this historical snapshot",
+    )
+
+    status: str = Field(
+        ...,
+        description="Encounter status at the time of the snapshot",
+    )
+
+    created_at: Optional[str] = Field(
+        default=None,
+        description="ISO 8601 timestamp when the encounter was created",
+    )
+
+    total_medications: int = Field(
+        ...,
+        description="Number of medications reconciled for that encounter",
+        ge=0,
+    )
+
+    medications: list[MedicationReconciliationResult] = Field(
+        default_factory=list,
+        description="List of reconciled medications for that encounter",
+    )
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationHistoryResponse(BaseModel):
+    """Full medication history response for the current encounter's patient."""
+
+    current_encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID whose history is being viewed",
+    )
+
+    patient_id: UUID = Field(
+        ...,
+        description="Patient UUID owning the encounter history",
+    )
+
+    history: list[MedicationHistoryEncounter] = Field(
+        default_factory=list,
+        description="Prior encounters with reconciled medications, most recent first",
+    )
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationAnalysisResponse(BaseModel):
+    """AI-powered medication change analysis and readmission prediction."""
+
+    encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID analysed",
+    )
+
+    summary: str = Field(
+        ...,
+        description="Plain-language summary of medication-related risks",
+    )
+
+    readmission_risk: str = Field(
+        ...,
+        description="Predicted 30-day readmission risk: HIGH | MEDIUM | LOW",
+    )
+
+    confidence: str = Field(
+        ...,
+        description="Confidence in the prediction: HIGH | MEDIUM | LOW",
+    )
+
+    safety_score: int = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Medication safety score where higher is safer (0-100)",
+    )
+
+    risks: list[str] = Field(
+        default_factory=list,
+        description="Identified medication risks",
+    )
+
+    recommendations: list[str] = Field(
+        default_factory=list,
+        description="Clinical recommendations based on the analysis",
+    )
+
+    predicted_issues: list[str] = Field(
+        default_factory=list,
+        description="Predicted adverse events or issues within 30 days",
+    )
+
+    model_config = {"from_attributes": True}

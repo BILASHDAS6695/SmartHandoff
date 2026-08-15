@@ -71,10 +71,12 @@ describe('HeaderComponent', () => {
     expect(badge.textContent.trim()).toBe('1');
   });
 
-  it('should toggle notification panel and mark all as read on open', () => {
+  it('should toggle notification panel open and closed', () => {
     component.toggleNotificationPanel();
     expect(component.isNotificationPanelOpen()).toBeTrue();
-    expect(notificationServiceMock.markAllAsRead).toHaveBeenCalled();
+    component.toggleNotificationPanel();
+    expect(component.isNotificationPanelOpen()).toBeFalse();
+    expect(notificationServiceMock.markAllAsRead).not.toHaveBeenCalled();
   });
 
   it('should close notification panel', () => {
