@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  height: 320px;
+}
+
+.donut-wrap {
+  position: relative;
+  height: 100%;
+  width: 100%;
+
+  canvas {
+    display: block;
+    height: 100% !important;
+    width: 100% !important;
+  }
+}
+
+.no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}

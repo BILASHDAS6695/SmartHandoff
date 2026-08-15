@@ -11,6 +11,7 @@ export interface PatientSummary {
   date_of_birth: string; // ISO 8601
   current_unit: string;
   room_number: string;
+  status: string;
   risk_tier: RiskTier;
   risk_score: number | null;
   admission_date: string; // ISO 8601
@@ -28,6 +29,7 @@ export interface PatientListResponse {
 export interface PatientListQuery {
   unit: string;
   search?: string;
+  status?: string;
   page?: number;
   page_size?: number;
 }

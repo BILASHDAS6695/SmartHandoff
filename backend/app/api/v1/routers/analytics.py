@@ -31,7 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.query_service import KpiQueryService
-from app.analytics.schemas import KpiResponse
+from app.analytics.schemas import HighRiskEncounterResponse, KpiResponse
 from app.core.auth.jwt import TokenClaims, get_current_user
 from app.db.deps import get_read_db
 
@@ -112,4 +112,36 @@ async def get_kpis(
         to_date=effective_to,
         unit=unit,
         accessible_units=accessible_units,
+    )
+
+
+@router.get(
+    "/high-risk-encounters",
+    response_model=HighRiskEncounterResponse,
+    summary="Retrieve top high-risk encounters discharged in the last 7 days",
+    description=(
+        "Returns de-identified high-risk encounter rows for the analytics dashboard. "
+        "Accessible to MANAGER and ADMIN roles only. No PHI is returned — "
+        "patient identifiers are masked."
+    ),
+    responses={
+        200: {"description": "High-risk encounter snapshot"},
+        403: {"description": "Insufficient role — MANAGER or ADMIN required"},
+    },
+)
+async def get_high_risk_encounters(
+    unit: Annotated[str | None, Query(
+        description="Filter results to a single unit. Omit to include all accessible units.",
+        max_length=100,
+    )] = None,
+    current_user: Annotated[TokenClaims, Depends(_require_roles(_PERMITTED_ROLES))] = None,
+    read_session: Annotated[AsyncSession, Depends(get_read_db)] = None,
+) -> HighRiskEncounterResponse:
+    """Return top 10 high-risk encounters discharged in the last 7 days."""
+    accessible_units: list[str] = current_user.units or []
+
+    service = KpiQueryService(read_session=read_session)
+    return await service.get_high_risk_encounters(
+        accessible_units=accessible_units,
+        unit=unit,
     )

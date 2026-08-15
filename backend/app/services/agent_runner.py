@@ -390,9 +390,14 @@ class AgentRunner:
         used_fallback = not medications
         if used_fallback:
             encounter = await self._load_encounter(db, task.encounter_id)
+            risk_tier_value = (
+                encounter.risk_tier.value
+                if hasattr(encounter.risk_tier, "value")
+                else encounter.risk_tier
+            ) or "UNKNOWN"
             generated = generate_medications_for_encounter(
                 task.encounter_id,
-                encounter.risk_tier.value if encounter.risk_tier else "UNKNOWN",
+                risk_tier_value,
             )
             for med in generated:
                 db.add(med)
