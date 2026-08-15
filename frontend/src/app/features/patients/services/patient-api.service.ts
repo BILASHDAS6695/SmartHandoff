@@ -26,7 +26,7 @@ export class PatientApiService {
 
   /**
    * Fetches paginated patient list for the specified unit.
-   * @param query - Unit, optional search term, page, and page_size
+   * @param query - Unit, optional search term, status, page, and page_size
    */
   getPatients(query: PatientListQuery): Observable<PatientListResponse> {
     let params = new HttpParams()
@@ -36,6 +36,10 @@ export class PatientApiService {
 
     if (query.search?.trim()) {
       params = params.set('search', query.search.trim());
+    }
+
+    if (query.status?.trim()) {
+      params = params.set('status', query.status.trim());
     }
 
     return this.http.get<PatientListResponse>(this.baseUrl, { params });

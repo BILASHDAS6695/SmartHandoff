@@ -615,7 +615,25 @@ async def dev_test_token(
         "exp": int(time.time()) + 28800,  # 8 hours
         # SmartHandoff-specific claims
         "role": role.lower(),
-        "units": ["ICU", "ED", "MED-SURG"],  # Default units for dev
+        # Dev token units must match the seeded database units so the analytics
+        # unit filter and bed-board unit filter show real data in local dev.
+        "units": [
+            "ICU",
+            "ED",
+            "CARD",
+            "CCU",
+            "MED",
+            "PEDS",
+            "SURG",
+            "GENERAL",
+            "NEURO",
+            "OB",
+            "ONC",
+            "3A",
+            "3N",
+            "ICU-3",
+            "PED",
+        ],
     }
 
     # Issue the app JWT using the existing function

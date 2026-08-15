@@ -88,7 +88,7 @@ export class PatientListComponent implements OnInit, OnDestroy {
 
   /** Units available to this nurse from JWT claim */
   readonly availableUnits = signal<string[]>([]);
-  readonly availableStatuses = signal<string[]>(['All Status', 'Admitted', 'Discharging', 'Transferred']);
+  readonly availableStatuses = signal<string[]>(['All Status', 'Admitted', 'Discharged', 'Transferred']);
 
   currentPage = 0;
   pageSize = 25;
@@ -123,7 +123,7 @@ export class PatientListComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
     const units = user?.units?.length ? user.units : ['All Units'];
     this.availableUnits.set(['All Units', ...units.filter(u => u !== 'All Units')]);
-    this.availableStatuses.set(['All Status', 'Admitted', 'Discharging', 'Transferred']);
+    this.availableStatuses.set(['All Status', 'Admitted', 'Discharged', 'Transferred']);
     this.unitControl.setValue('All Units');
     this.statusControl.setValue('All Status');
 
@@ -150,10 +150,10 @@ export class PatientListComponent implements OnInit, OnDestroy {
       this.currentPage = 0;
     }
 
-    const queryUnit = unit === 'All Units' ? 'ICU' : unit; // Backend requires a concrete unit
     const query: import('../../models').PatientListQuery = {
-      unit: queryUnit,
+      unit: unit === 'All Units' ? '' : unit,
       search: search.trim() || undefined,
+      status: status === 'All Status' ? undefined : status.toUpperCase(),
       page: this.currentPage + 1,
       page_size: this.pageSize,
     };
@@ -162,13 +162,8 @@ export class PatientListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: response => {
-          let items = response.items ?? [];
-          // Apply client-side status filter since backend does not support it
-          if (status !== 'All Status') {
-            items = items.filter(p => this.getStatus(p) === status);
-          }
-          this.patients.set(items);
-          this.totalCount.set(response.total ?? items.length);
+          this.patients.set(response.items ?? []);
+          this.totalCount.set(response.total ?? 0);
           this.loading.set(false);
         },
         error: err => {
@@ -235,19 +230,17 @@ export class PatientListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  getStatus(patient: PatientSummary): string {
-    // Derive status from risk tier for wireframe demo; backend may provide real status later
-    if (patient.risk_tier === 'HIGH') return 'Discharging';
-    if (patient.risk_tier === 'MEDIUM') return 'Admitted';
-    return 'Transferred';
-  }
-
   getStatusClass(status: string): string {
-    switch (status) {
-      case 'Admitted': return 'admitted';
-      case 'Discharging': return 'discharging';
-      case 'Transferred': return 'transferred';
-      default: return 'admitted';
+    switch (status?.toUpperCase()) {
+      case 'ADMITTED':
+      case 'REGISTERED':
+        return 'admitted';
+      case 'DISCHARGED':
+        return 'discharging';
+      case 'TRANSFERRED':
+        return 'transferred';
+      default:
+        return 'admitted';
     }
   }
 
@@ -287,10 +280,4 @@ export class PatientListComponent implements OnInit, OnDestroy {
     }
   }
 
-  private filterByStatus(patients: PatientSummary[], status: string): PatientSummary[] {
-    if (!patients || status === 'All Status') {
-      return patients;
-    }
-    return patients.filter(patient => this.getStatus(patient) === status);
-  }
 }

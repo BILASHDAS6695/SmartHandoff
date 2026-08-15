@@ -12,7 +12,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { KpiFilterParams, KpiResponse } from './analytics.models';
+import { HighRiskEncounterResponse, KpiFilterParams, KpiResponse } from './analytics.models';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsApiService {
@@ -37,6 +37,18 @@ export class AnalyticsApiService {
   }
 
   /**
+   * Fetch top high-risk encounters discharged in the last 7 days.
+   * The optional unit filter is forwarded as a URL query string.
+   */
+  getHighRiskEncounters(unit?: string): Observable<HighRiskEncounterResponse> {
+    let params = new HttpParams();
+    if (unit) {
+      params = params.set('unit', unit);
+    }
+    return this.http.get<HighRiskEncounterResponse>(`${this.baseUrl}/high-risk-encounters`, { params });
+  }
+
+  /**
    * Return default filter params: last 30 days, no unit filter.
    * Used to initialise the filter form and URL query params on first load.
    */
@@ -44,6 +56,21 @@ export class AnalyticsApiService {
     const today = new Date();
     const from = new Date(today);
     from.setDate(today.getDate() - 30);
+
+    return {
+      from: from.toISOString().split('T')[0],
+      to: today.toISOString().split('T')[0],
+    };
+  }
+
+  /**
+   * Build filter params for the selected period.
+   */
+  filtersForPeriod(period: string): KpiFilterParams {
+    const today = new Date();
+    const from = new Date(today);
+    const days = period === 'Last 7 days' ? 7 : period === 'Last 90 days' ? 90 : 30;
+    from.setDate(today.getDate() - days);
 
     return {
       from: from.toISOString().split('T')[0],

@@ -34,7 +34,7 @@ class TaskStatusTransitionService:
       - Agent Cloud Run containers (via module-level singleton initialised at startup).
     """
 
-    def __init__(self, broadcaster: SignalRBroadcaster) -> None:
+    def __init__(self, broadcaster: SignalRBroadcaster | None) -> None:
         self._broadcaster = broadcaster
 
     async def transition(
@@ -91,7 +91,13 @@ class TaskStatusTransitionService:
             new_status=new_status_name,
             updated_at=task.completed_at or datetime.now(timezone.utc),
         )
-        await self._broadcaster.broadcast_task_updated(payload)
+        if self._broadcaster is not None:
+            await self._broadcaster.broadcast_task_updated(payload)
+        else:
+            logger.debug(
+                "Skipping SignalR broadcast: broadcaster not configured",
+                extra={"task_id": str(task.id), "new_status": new_status_name},
+            )
 
         return task
 

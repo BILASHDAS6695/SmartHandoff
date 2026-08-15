@@ -284,10 +284,12 @@ table {
 .follow-up {
   font-weight: 600;
 
+  &.completed,
   &.good {
     color: #16a34a;
   }
 
+  &.scheduled,
   &.pending {
     color: #d97706;
   }
