@@ -82,6 +82,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
 
   private loadKpis(): void {
     this.isLoading.set(true);
+    this.loadHighRiskEncounters();
     this.loadError.set(null);
 
     const filters = this.analyticsApi.filtersForPeriod(this.selectedPeriod());

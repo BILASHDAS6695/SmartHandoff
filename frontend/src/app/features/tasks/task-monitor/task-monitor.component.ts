@@ -26,6 +26,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Subscription } from 'rxjs';
 
 import { EncounterTasksApiService } from '@core/api';
@@ -47,6 +48,7 @@ type StatusFilter = 'ALL' | TaskStatus;
     MatTableModule,
     MatBadgeModule,
     MatProgressSpinnerModule,
+    MatPaginatorModule,
   ],
   templateUrl: './task-monitor.component.html',
   styleUrls: ['./task-monitor.component.scss'],
@@ -63,6 +65,14 @@ export class TaskMonitorComponent implements OnInit, OnDestroy {
   readonly selectedTask = signal<AgentTaskResponse | null>(null);
   readonly statusFilter = signal<StatusFilter>('ALL');
   readonly connectionState = this.signalR.connectionState;
+
+  readonly pageSize = signal<number>(15);
+  readonly pageIndex = signal<number>(0);
+
+  readonly pagedTasks = computed(() => {
+    const start = this.pageIndex() * this.pageSize();
+    return this.filteredTasks().slice(start, start + this.pageSize());
+  });
 
   readonly displayedColumns = [
     'agentType',
@@ -143,6 +153,12 @@ export class TaskMonitorComponent implements OnInit, OnDestroy {
 
   setFilter(filter: StatusFilter): void {
     this.statusFilter.set(filter);
+    this.pageIndex.set(0);
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageSize.set(event.pageSize);
+    this.pageIndex.set(event.pageIndex);
   }
 
   agentDisplayName(agentType: string | null): string {

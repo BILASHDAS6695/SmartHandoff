@@ -1,4 +1,12 @@
 <main class="register-main">
+  <!-- Full-page loading overlay -->
+  @if (isLoading()) {
+    <div class="register-loading-overlay" aria-busy="true" aria-label="Loading">
+      <div class="register-loading-spinner"></div>
+      <p>{{ isRegistering() ? 'Registering encounter…' : 'Searching patients…' }}</p>
+    </div>
+  }
+
   <button class="back-btn" (click)="goBack()">
     <mat-icon>arrow_back</mat-icon>
     Back to Patients

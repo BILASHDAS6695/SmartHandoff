@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -41,12 +41,21 @@ export class AdminPanelComponent implements OnInit {
 
   readonly users = signal<AdminUser[]>([]);
   readonly loading = signal<boolean>(false);
+  readonly savingUser = signal<boolean>(false);
   readonly error = signal<string | null>(null);
+
+  // User pagination
+  readonly userPage = signal<number>(1);
+  readonly userPageSize = signal<number>(10);
 
   readonly auditLog = signal<AuditLogEntry[]>([]);
   readonly auditLoading = signal<boolean>(false);
+  readonly auditExportLoading = signal<boolean>(false);
   readonly auditError = signal<string | null>(null);
   readonly auditTotal = signal<number>(0);
+  readonly auditPage = signal<number>(1);
+  readonly auditPageSize = signal<number>(15);
+  readonly auditPages = signal<number>(1);
 
   // User Management filters
   readonly userSearch = signal<string>('');
@@ -60,6 +69,7 @@ export class AdminPanelComponent implements OnInit {
   readonly bulkRoleTarget = signal<string>('');
   readonly bulkAssignLoading = signal<boolean>(false);
   readonly normalizeLoading = signal<boolean>(false);
+  readonly togglingUserId = signal<string | null>(null);
 
   readonly filteredUsers = computed(() => {
     const search = this.userSearch().trim().toLowerCase();
@@ -80,13 +90,40 @@ export class AdminPanelComponent implements OnInit {
     });
   });
 
-  readonly selectedDateFilter = signal<string>('Last 7 days');
-  readonly selectedUserFilter = signal<string>('All Users');
-  readonly selectedEventFilter = signal<string>('All Event Types');
+  readonly userTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredUsers().length / this.userPageSize()))
+  );
 
-  readonly dateFilters = signal<string[]>(['Last 7 days', 'Last 30 days']);
-  readonly userFilters = signal<string[]>(['All Users', 'd.chen', 'n.smith']);
-  readonly eventFilters = signal<string[]>(['All Event Types', 'read', 'write', 'sign', 'login']);
+  readonly pagedUsers = computed(() => {
+    const start = (this.userPage() - 1) * this.userPageSize();
+    return this.filteredUsers().slice(start, start + this.userPageSize());
+  });
+
+  readonly selectedDateFilter = signal<string>('Last 7 days');
+  readonly selectedUserFilter = signal<string>('all');
+  readonly selectedEventFilter = signal<string>('all');
+
+  readonly dateFilters = signal<string[]>(['Last 7 days', 'Last 30 days', 'All time']);
+  readonly eventFilters = signal<string[]>(['all', 'read', 'write', 'sign', 'login']);
+
+  readonly auditUserOptions = computed(() => {
+    const options = [{ id: 'all', label: 'All Users' }];
+    for (const user of this.users()) {
+      const display = user.full_name || user.email.split('@')[0];
+      options.push({ id: user.id, label: display });
+    }
+    return options;
+  });
+
+  constructor() {
+    effect(() => {
+      // Track user-filter changes, then reset to first page outside the reactive read.
+      const _search = this.userSearch();
+      const _role = this.userRoleFilter();
+      const _status = this.userStatusFilter();
+      queueMicrotask(() => this.userPage.set(1));
+    });
+  }
 
   ngOnInit(): void {
     this.loadUsers();
@@ -95,11 +132,14 @@ export class AdminPanelComponent implements OnInit {
   setTab(tab: string): void {
     const previous = this.activeTab();
     this.activeTab.set(tab);
-    if (tab === 'Audit Log' && previous !== 'Audit Log') {
-      this.loadAuditLog();
-    }
     if (tab === 'User Management' && previous !== 'User Management') {
       this.loadUsers();
+    }
+    if (tab === 'Audit Log' && previous !== 'Audit Log') {
+      if (this.users().length === 0) {
+        this.loadUsers();
+      }
+      this.loadAuditLog();
     }
   }
 
@@ -107,13 +147,25 @@ export class AdminPanelComponent implements OnInit {
     this.auditLoading.set(true);
     this.auditError.set(null);
 
+    const dateRange = this.#auditDateRange(this.selectedDateFilter());
+    const userId = this.selectedUserFilter() === 'all' ? undefined : this.selectedUserFilter();
+    const action = this.selectedEventFilter() === 'all' ? undefined : this.selectedEventFilter();
+
     this.api
-      .getAuditLog()
+      .getAuditLog({
+        page: this.auditPage(),
+        pageSize: this.auditPageSize(),
+        from: dateRange.from,
+        to: dateRange.to,
+        userId,
+        action,
+      })
       .pipe(finalize(() => this.auditLoading.set(false)))
       .subscribe({
         next: (response) => {
           this.auditLog.set(response.items);
           this.auditTotal.set(response.total);
+          this.auditPages.set(response.pages);
         },
         error: () => this.auditError.set('Failed to load audit log. Please try again.'),
       });
@@ -165,6 +217,7 @@ export class AdminPanelComponent implements OnInit {
     dialogRef.afterClosed().subscribe(async (result: Partial<AdminUser> | undefined) => {
       if (!result) return;
 
+      this.savingUser.set(true);
       try {
         const created = await firstValueFrom(
           this.api.createUser({
@@ -178,6 +231,8 @@ export class AdminPanelComponent implements OnInit {
         this.toast.success(`User ${created.full_name} created.`);
       } catch {
         this.toast.error('Failed to create user.');
+      } finally {
+        this.savingUser.set(false);
       }
     });
   }
@@ -192,6 +247,7 @@ export class AdminPanelComponent implements OnInit {
     dialogRef.afterClosed().subscribe(async (result: Partial<AdminUser> | undefined) => {
       if (!result) return;
 
+      this.savingUser.set(true);
       const payload: { email?: string; full_name?: string; role?: string; unit?: string } = {};
       if (result.email !== undefined) payload.email = result.email;
       if (result.full_name !== undefined) payload.full_name = result.full_name;
@@ -204,12 +260,15 @@ export class AdminPanelComponent implements OnInit {
         this.toast.success(`User ${updated.full_name} updated.`);
       } catch {
         this.toast.error('Failed to update user.');
+      } finally {
+        this.savingUser.set(false);
       }
     });
   }
 
   async toggleUserStatus(user: AdminUser): Promise<void> {
     const active = this.isUserActive(user);
+    this.togglingUserId.set(user.id);
 
     try {
       if (active) {
@@ -222,6 +281,8 @@ export class AdminPanelComponent implements OnInit {
       await this.refreshUser(user.id);
     } catch {
       this.toast.error(`Failed to ${active ? 'disable' : 're-enable'} user.`);
+    } finally {
+      this.togglingUserId.set(null);
     }
   }
 
@@ -269,6 +330,10 @@ export class AdminPanelComponent implements OnInit {
     return visibleIds.length > 0 && visibleIds.every((id) => this.selectedUserIds().has(id));
   }
 
+  clearSelection(): void {
+    this.selectedUserIds.set(new Set());
+  }
+
   async applyBulkRole(): Promise<void> {
     const role = this.bulkRoleTarget();
     const ids = Array.from(this.selectedUserIds());
@@ -282,7 +347,7 @@ export class AdminPanelComponent implements OnInit {
       const result = await firstValueFrom(
         this.api.bulkAssignRoles({ user_ids: ids, role })
       );
-      this.selectedUserIds.set(new Set());
+      this.clearSelection();
       this.bulkRoleTarget.set('');
       this.loadUsers();
       this.toast.success(`Assigned ${role} to ${result.total_assigned} user(s).`);
@@ -312,11 +377,72 @@ export class AdminPanelComponent implements OnInit {
     }
   }
 
-  applyAuditFilters(): void {
-    // Placeholder for audit filter action
+  applyUserFilters(): void {
+    this.userPage.set(1);
   }
 
-  exportAuditCsv(): void {
-    // Placeholder for export action
+  applyAuditFilters(): void {
+    this.auditPage.set(1);
+    this.loadAuditLog();
+  }
+
+  #auditDateRange(filter: string): { from?: string; to?: string } {
+    const now = new Date();
+    const to = now.toISOString();
+    if (filter === 'All time') {
+      return {};
+    }
+    let from: string | undefined;
+    if (filter === 'Last 7 days') {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 7);
+      from = d.toISOString();
+    } else if (filter === 'Last 30 days') {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 30);
+      from = d.toISOString();
+    }
+    return { from, to };
+  }
+
+  setUserPage(page: number): void {
+    if (page >= 1 && page <= this.userTotalPages()) {
+      this.userPage.set(page);
+    }
+  }
+
+  setAuditPage(page: number): void {
+    if (page >= 1 && page <= this.auditPages()) {
+      this.auditPage.set(page);
+      this.loadAuditLog();
+    }
+  }
+
+  async exportAuditCsv(): Promise<void> {
+    this.auditExportLoading.set(true);
+    try {
+      const dateRange = this.#auditDateRange(this.selectedDateFilter());
+      const userId = this.selectedUserFilter() === 'all' ? undefined : this.selectedUserFilter();
+      const action = this.selectedEventFilter() === 'all' ? undefined : this.selectedEventFilter();
+
+      const blob = await firstValueFrom(
+        this.api.exportAuditCsv({ from: dateRange.from, to: dateRange.to, userId, action })
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      this.toast.success('Audit log exported successfully.');
+    } catch {
+      this.toast.error('Failed to export audit log. Please try again.');
+    } finally {
+      this.auditExportLoading.set(false);
+    }
   }
 }

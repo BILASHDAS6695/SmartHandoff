@@ -162,16 +162,16 @@
     <div class="predictions__header">
       <h2>Predicted Discharges</h2>
       <div class="predictions__filter">
-        <label for="prediction-hours">Next</label>
-        <mat-select
-          id="prediction-hours"
+        <span class="predictions__filter-label">Next</span>
+        <mat-button-toggle-group
           [value]="dischargePredictionHours()"
-          (selectionChange)="onDischargePredictionHoursChange($event.value)"
-          aria-label="Prediction horizon">
+          (change)="onDischargePredictionHoursChange($event.value)"
+          aria-label="Prediction horizon"
+          class="prediction-horizon-toggle">
           @for (hours of dischargePredictionOptions(); track hours) {
-            <mat-option [value]="hours">{{ hours }} hours</mat-option>
+            <mat-button-toggle [value]="hours">{{ hours }}h</mat-button-toggle>
           }
-        </mat-select>
+        </mat-button-toggle-group>
       </div>
     </div>
 
@@ -190,7 +190,7 @@
 
     @if (!dischargePredictionsLoading() && dischargePredictions().length > 0) {
       <div class="pred-list">
-        @for (pred of dischargePredictions(); track pred.bed_id) {
+        @for (pred of pagedDischargePredictions(); track pred.bed_id) {
           <div class="pred-item">
             <div class="pred-item__info">
               <strong>{{ pred.patient_name }}</strong>
@@ -204,6 +204,32 @@
           </div>
         }
       </div>
+
+      @if (dischargePredictionsTotalPages() > 1) {
+        <div class="pred-pagination">
+          <button
+            type="button"
+            class="pred-pagination__btn"
+            [disabled]="dischargePredictionsPage() === 1"
+            (click)="setDischargePredictionsPage(dischargePredictionsPage() - 1)"
+            aria-label="Previous predictions">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+
+          <span class="pred-pagination__info">
+            Page {{ dischargePredictionsPage() }} of {{ dischargePredictionsTotalPages() }}
+          </span>
+
+          <button
+            type="button"
+            class="pred-pagination__btn"
+            [disabled]="dischargePredictionsPage() === dischargePredictionsTotalPages()"
+            (click)="setDischargePredictionsPage(dischargePredictionsPage() + 1)"
+            aria-label="Next predictions">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
     }
   </div>
 

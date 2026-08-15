@@ -138,11 +138,46 @@ export class AdminUsersApiService {
   }
 
   /**
-   * Fetch paginated audit log entries from the backend.
+   * Fetch paginated, filtered audit log entries from the backend.
    */
-  getAuditLog(page = 1, pageSize = 50): Observable<AuditLogPage> {
-    return this.http.get<AuditLogPage>(this.auditUrl, {
-      params: { page: page.toString(), page_size: pageSize.toString() },
+  getAuditLog(params: {
+    page?: number;
+    pageSize?: number;
+    from?: string;
+    to?: string;
+    userId?: string;
+    action?: string;
+  }): Observable<AuditLogPage> {
+    const httpParams: Record<string, string> = {
+      page: (params.page ?? 1).toString(),
+      page_size: (params.pageSize ?? 50).toString(),
+    };
+    if (params.from) httpParams['from'] = params.from;
+    if (params.to) httpParams['to'] = params.to;
+    if (params.userId) httpParams['user_id'] = params.userId;
+    if (params.action) httpParams['action'] = params.action;
+
+    return this.http.get<AuditLogPage>(this.auditUrl, { params: httpParams });
+  }
+
+  /**
+   * Export filtered audit log entries as a CSV blob.
+   */
+  exportAuditCsv(params: {
+    from?: string;
+    to?: string;
+    userId?: string;
+    action?: string;
+  }): Observable<Blob> {
+    const httpParams: Record<string, string> = {};
+    if (params.from) httpParams['from'] = params.from;
+    if (params.to) httpParams['to'] = params.to;
+    if (params.userId) httpParams['user_id'] = params.userId;
+    if (params.action) httpParams['action'] = params.action;
+
+    return this.http.get(`${this.auditUrl}/export/csv`, {
+      params: httpParams,
+      responseType: 'blob',
     });
   }
 

@@ -9,13 +9,16 @@ Design refs:
 """
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated, AsyncIterator, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import StreamingResponse
 
 from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import require_permission
@@ -95,6 +98,80 @@ async def query_audit_log(
         page=page,
         page_size=page_size,
         pages=pages,
+    )
+
+
+@router.get(
+    "/export/csv",
+    summary="Export filtered audit log entries as CSV (ADMIN only)",
+    description=(
+        "Streams all matching audit log records as a CSV download. "
+        "Supports the same filters as the paginated query endpoint."
+    ),
+)
+async def export_audit_csv(
+    current_user: Annotated[TokenClaims, Depends(require_permission("audit_log", "read"))],
+    user_id: Optional[uuid.UUID] = Query(None, description="Filter by acting user UUID"),
+    from_dt: Optional[datetime] = Query(None, alias="from", description="Start datetime (ISO-8601 UTC)"),
+    to_dt: Optional[datetime] = Query(None, alias="to", description="End datetime (ISO-8601 UTC)"),
+    entity_type: Optional[str] = Query(None, description="Filter by resource_type, e.g. patient"),
+    action: Optional[str] = Query(None, description="Filter by action, e.g. read, approve"),
+    db: AsyncSession = Depends(get_read_db),
+) -> StreamingResponse:
+    """Stream filtered audit log entries as a CSV attachment.
+
+    Queries the full matching result set in the database, then yields CSV
+    rows using a streaming writer to keep memory usage low.
+    """
+
+    async def _stream_rows() -> AsyncIterator[bytes]:
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["Time", "User", "Action", "Resource Type", "Resource ID"])
+        yield buffer.getvalue().encode("utf-8")
+        buffer.seek(0)
+        buffer.truncate(0)
+
+        stmt = select(AuditLog)
+
+        if user_id:
+            stmt = stmt.where(AuditLog.user_id == user_id)
+        if from_dt:
+            stmt = stmt.where(AuditLog.created_at >= from_dt)
+        if to_dt:
+            stmt = stmt.where(AuditLog.created_at <= to_dt)
+        if entity_type:
+            stmt = stmt.where(AuditLog.resource_type == entity_type.lower())
+        if action:
+            stmt = stmt.where(AuditLog.action == action.lower())
+
+        stmt = stmt.order_by(AuditLog.created_at.desc())
+        result = await db.execute(stmt)
+        rows = result.scalars().all()
+
+        for row in rows:
+            writer.writerow(
+                [
+                    row.created_at.isoformat() if row.created_at else "",
+                    row.user_role or "System",
+                    row.action or "",
+                    row.resource_type or "",
+                    row.resource_id or "",
+                ]
+            )
+            chunk = buffer.getvalue()
+            if chunk:
+                yield chunk.encode("utf-8")
+                buffer.seek(0)
+                buffer.truncate(0)
+
+    return StreamingResponse(
+        _stream_rows(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="audit-log-export.csv"',
+            "Cache-Control": "no-cache",
+        },
     )
 
 
