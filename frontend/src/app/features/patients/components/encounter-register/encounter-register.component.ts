@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -63,6 +63,7 @@ export class EncounterRegisterComponent {
   readonly isRegistering = signal<boolean>(false);
   readonly registerError = signal<string | null>(null);
   readonly registrationSuccess = signal<boolean>(false);
+  readonly isLoading = computed(() => this.isSearching() || this.isRegistering());
 
   readonly statusOptions = ['REGISTERED', 'PRE_ADMISSION', 'ADMITTED', 'TRANSFERRED', 'DISCHARGED'];
   readonly riskTierOptions = ['HIGH', 'MEDIUM', 'LOW', 'UNKNOWN'];

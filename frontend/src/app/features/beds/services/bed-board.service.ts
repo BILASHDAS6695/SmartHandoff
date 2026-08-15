@@ -18,6 +18,7 @@ interface RawBedItem {
   encounter_id: string | null;
   last_updated?: string;
   predicted_discharge_time: string | null;
+  patient_name: string | null;
   discharge_prediction_confidence: 'high' | 'medium' | 'low' | null;
   discharge_prediction_interval_hours: number | null;
 }
@@ -113,7 +114,7 @@ export class BedBoardService {
       bedId: item.bed_number || item.bed_id,
       unit: item.unit,
       status: item.status,
-      patientName: null, // Patient name sourced from separate Patient API (privacy boundary)
+      patientName: item.patient_name,
       predictedDischargeTime: item.predicted_discharge_time,
       assignedNurse: null, // Assigned nurse sourced from Nurse assignment API
       riskTier: this.calculateRiskTier(item), // Derive from confidence level (US-036)

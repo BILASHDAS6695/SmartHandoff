@@ -40,6 +40,7 @@ export class UserDialogComponent {
   readonly email = signal<string>(this.data.user?.email ?? '');
   readonly role = signal<string>(this.data.user?.role ?? 'nurse');
   readonly unit = signal<string>(this.data.user?.unit ?? '4-West');
+  readonly saving = signal<boolean>(false);
 
   get title(): string {
     return this.data.mode === 'edit' ? 'Edit User' : 'Add User';
@@ -50,12 +51,14 @@ export class UserDialogComponent {
   }
 
   onCancel(): void {
+    if (this.saving()) return;
     this.dialogRef.close();
   }
 
   onSave(): void {
-    if (!this.isValid()) return;
+    if (!this.isValid() || this.saving()) return;
 
+    this.saving.set(true);
     this.dialogRef.close({
       full_name: this.full_name().trim(),
       email: this.email().trim(),

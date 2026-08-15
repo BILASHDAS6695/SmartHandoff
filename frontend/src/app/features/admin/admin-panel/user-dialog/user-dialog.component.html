@@ -44,6 +44,13 @@
 </div>
 
 <div class="modal-footer">
-  <button class="btn-secondary" (click)="onCancel()">Cancel</button>
-  <button class="btn-primary" [disabled]="!isValid()" (click)="onSave()">Save User</button>
+  <button class="btn-secondary" [disabled]="saving()" (click)="onCancel()">Cancel</button>
+  <button class="btn-primary" [disabled]="!isValid() || saving()" (click)="onSave()">
+    @if (saving()) {
+      <span class="spinner"></span>
+      Saving…
+    } @else {
+      Save User
+    }
+  </button>
 </div>

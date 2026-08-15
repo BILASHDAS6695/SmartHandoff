@@ -75,7 +75,7 @@ export class AuditLogComponent implements OnInit {
     this.error.set(null);
 
     this.api
-      .getAuditLog()
+      .getAuditLog({})
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (response) => {

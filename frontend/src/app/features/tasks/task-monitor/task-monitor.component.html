@@ -45,7 +45,7 @@
   } @else {
     <div class="monitor-layout" [class.has-detail]="selectedTask()">
       <section class="task-table-card">
-        <table mat-table [dataSource]="filteredTasks()" class="task-table">
+        <table mat-table [dataSource]="pagedTasks()" class="task-table">
           <ng-container matColumnDef="agentType">
             <th mat-header-cell *matHeaderCellDef>Agent</th>
             <td mat-cell *matCellDef="let task">
@@ -112,6 +112,17 @@
             <p>No tasks match the selected filter.</p>
           </div>
         }
+
+        <mat-paginator
+          class="task-paginator"
+          [length]="filteredTasks().length"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [pageSizeOptions]="[10, 15, 25, 50]"
+          showFirstLastButtons
+          (page)="onPageChange($event)"
+          aria-label="Select page of agent tasks">
+        </mat-paginator>
       </section>
 
       @if (selectedTask(); as task) {

@@ -1,5 +1,13 @@
 <!-- analytics.component.html — shell template; filter bar and charts composed in TASK-004/005 -->
 <section class="analytics-shell" aria-label="KPI Analytics Dashboard">
+  <!-- Full-page loading overlay -->
+  @if (isLoading()) {
+    <div class="analytics-loading-overlay" aria-busy="true" aria-label="Loading analytics data">
+      <div class="analytics-loading-spinner"></div>
+      <p>Loading analytics…</p>
+    </div>
+  }
+
   <!-- Page Header -->
   <div class="page-header">
     <h1>Analytics</h1>

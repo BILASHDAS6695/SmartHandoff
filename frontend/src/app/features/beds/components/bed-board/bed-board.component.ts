@@ -79,6 +79,17 @@ export class BedBoardComponent implements OnInit, OnDestroy {
   readonly dischargePredictionOptions = signal<number[]>([4, 8, 12, 24,48, 120]);
   readonly dischargePredictions = signal<DischargePredictionDto[]>([]);
   readonly dischargePredictionsLoading = signal(false);
+  readonly dischargePredictionsPage = signal<number>(1);
+  readonly dischargePredictionsPageSize = signal<number>(10);
+
+  readonly dischargePredictionsTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.dischargePredictions().length / this.dischargePredictionsPageSize()))
+  );
+
+  readonly pagedDischargePredictions = computed(() => {
+    const start = (this.dischargePredictionsPage() - 1) * this.dischargePredictionsPageSize();
+    return this.dischargePredictions().slice(start, start + this.dischargePredictionsPageSize());
+  });
 
   private readonly pendingAssignQuery = signal<{ taskId?: string; encounterId?: string; notificationId?: string } | null>(null);
 
@@ -122,7 +133,14 @@ export class BedBoardComponent implements OnInit, OnDestroy {
 
   onDischargePredictionHoursChange(hours: number): void {
     this.dischargePredictionHours.set(hours);
+    this.dischargePredictionsPage.set(1);
     this.loadDischargePredictions();
+  }
+
+  setDischargePredictionsPage(page: number): void {
+    if (page >= 1 && page <= this.dischargePredictionsTotalPages()) {
+      this.dischargePredictionsPage.set(page);
+    }
   }
 
   ngOnDestroy(): void {
@@ -314,6 +332,7 @@ export class BedBoardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: predictions => {
           this.dischargePredictions.set(predictions);
+          this.dischargePredictionsPage.set(1);
           this.dischargePredictionsLoading.set(false);
         },
         error: err => {

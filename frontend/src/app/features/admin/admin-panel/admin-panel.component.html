@@ -49,59 +49,84 @@
             Staff Accounts
             <span class="user-count">{{ filteredUsers().length }} users</span>
           </h2>
-          <span class="uxr-badge">UXR-013 Role-filtered: Admin sees all roles</span>
         </div>
 
-        <div class="filter-row user-filters">
-          <input
-            type="text"
-            class="filter-input"
-            placeholder="Search by name or email"
-            [(ngModel)]="userSearch"
-            (input)="userSearch.set(userSearch())" />
-          <div class="filter-select">
-            <mat-select [value]="userRoleFilter()" (selectionChange)="userRoleFilter.set($event.value)" aria-label="Role filter">
-              @for (filter of roleFilters(); track filter) {
-                <mat-option [value]="filter">{{ filter === 'all' ? 'All Roles' : displayRole(filter) }}</mat-option>
-              }
-            </mat-select>
+        <div class="filter-bar">
+          <div class="filter-fields">
+            <div class="filter-field user-search-field">
+              <label for="user-search-input">Search</label>
+              <input
+                id="user-search-input"
+                type="text"
+                class="filter-input"
+                placeholder="Search by name or email"
+                [(ngModel)]="userSearch"
+                (input)="applyUserFilters()" />
+            </div>
+            <div class="filter-field">
+              <label for="user-role-filter">Role</label>
+              <div class="filter-select">
+                <mat-select id="user-role-filter" [value]="userRoleFilter()" (selectionChange)="userRoleFilter.set($event.value); applyUserFilters()" aria-label="Role filter">
+                  @for (filter of roleFilters(); track filter) {
+                    <mat-option [value]="filter">{{ filter === 'all' ? 'All Roles' : displayRole(filter) }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+            </div>
+            <div class="filter-field">
+              <label for="user-status-filter">Status</label>
+              <div class="filter-select">
+                <mat-select id="user-status-filter" [value]="userStatusFilter()" (selectionChange)="userStatusFilter.set($event.value); applyUserFilters()" aria-label="Status filter">
+                  @for (filter of statusFilters(); track filter) {
+                    <mat-option [value]="filter">{{ filter === 'all' ? 'All Statuses' : (filter | titlecase) }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+            </div>
           </div>
-          <div class="filter-select">
-            <mat-select [value]="userStatusFilter()" (selectionChange)="userStatusFilter.set($event.value)" aria-label="Status filter">
-              @for (filter of statusFilters(); track filter) {
-                <mat-option [value]="filter">{{ filter === 'all' ? 'All Statuses' : (filter | titlecase) }}</mat-option>
+          <div class="filter-actions">
+            <button class="btn-filter" (click)="applyUserFilters()" [disabled]="loading()">
+              @if (loading()) {
+                Loading…
+              } @else {
+                Apply Filters
               }
-            </mat-select>
+            </button>
+            <span class="uxr-badge phi-badge">UXR-013 Role-filtered: Admin sees all roles</span>
           </div>
         </div>
 
         <!-- Bulk role assignment toolbar -->
         <div class="bulk-toolbar">
-          <span class="bulk-count">{{ selectedUserIds().size }} selected</span>
-          <div class="filter-select">
-            <mat-select [value]="bulkRoleTarget()" (selectionChange)="bulkRoleTarget.set($event.value)" aria-label="Bulk assign role" placeholder="Assign role…">
-              @for (role of roleFilters(); track role) {
-                @if (role !== 'all') {
-                  <mat-option [value]="role">{{ displayRole(role) }}</mat-option>
-                }
-              }
-            </mat-select>
-          </div>
-          <button
-            class="btn-sm edit"
-            (click)="applyBulkRole()"
-            [disabled]="bulkAssignLoading() || selectedUserIds().size === 0 || !bulkRoleTarget()">
-            @if (bulkAssignLoading()) {
-              Assigning…
-            } @else {
-              Apply Role
+          <div class="bulk-selection">
+            <span class="bulk-count">{{ selectedUserIds().size }} selected</span>
+            @if (selectedUserIds().size > 0) {
+              <button class="btn-text" (click)="clearSelection()">Clear</button>
             }
-          </button>
+          </div>
+          <div class="bulk-actions">
+            <span class="bulk-label">Assign role</span>
+            <div class="filter-select">
+              <mat-select [value]="bulkRoleTarget()" (selectionChange)="bulkRoleTarget.set($event.value)" aria-label="Bulk assign role" placeholder="Choose role…">
+                @for (role of roleFilters(); track role) {
+                  @if (role !== 'all') {
+                    <mat-option [value]="role">{{ displayRole(role) }}</mat-option>
+                  }
+                }
+              </mat-select>
+            </div>
+            <button
+              class="btn-sm edit"
+              (click)="applyBulkRole()"
+              [disabled]="bulkAssignLoading() || selectedUserIds().size === 0 || !bulkRoleTarget()">
+              @if (bulkAssignLoading()) {
+                Assigning…
+              } @else {
+                Apply
+              }
+            </button>
+          </div>
         </div>
-
-        @if (loading()) {
-          <div class="state-message">Loading users…</div>
-        }
 
         @if (error()) {
           <div class="state-message error">
@@ -110,92 +135,184 @@
           </div>
         }
 
-        <table>
-          <thead>
-            <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  [checked]="isAllSelected()"
-                  (change)="toggleSelectAll()"
-                  aria-label="Select all visible users" />
-              </th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Last Updated</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (user of filteredUsers(); track user.id) {
-              <tr [class.inactive-row]="!isUserActive(user)">
-                <td>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>
                   <input
                     type="checkbox"
-                    [checked]="isSelected(user.id)"
-                    (change)="toggleSelection(user.id)"
-                    [attr.aria-label]="'Select ' + user.full_name" />
-                </td>
-                <td><strong>{{ user.full_name }}</strong></td>
-                <td>{{ user.email }}</td>
-                <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ displayRole(user.role) }}</span></td>
-                <td><span class="status-chip" [class]="getStatusClass(user)">{{ isUserActive(user) ? 'Active' : 'Inactive' }}</span></td>
-                <td>{{ user.updated_at | date:'yyyy-MM-dd HH:mm' }}</td>
-                <td>
-                  <div class="action-row">
-                    <button class="btn-sm edit" (click)="editUser(user)">Edit</button>
-                    @if (isUserActive(user)) {
-                      <button class="btn-sm disable" (click)="toggleUserStatus(user)" title="UXR-025: Confirm — all sessions revoked">Disable</button>
-                    } @else {
-                      <button class="btn-sm reenable" (click)="toggleUserStatus(user)">Re-enable</button>
-                    }
-                  </div>
-                </td>
+                    [checked]="isAllSelected()"
+                    (change)="toggleSelectAll()"
+                    aria-label="Select all visible users" />
+                </th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @if (loading()) {
+                <tr class="table-loader-row">
+                  <td colspan="7" class="table-loader-cell">
+                    <div class="table-loader" aria-busy="true" aria-label="Loading users">
+                      <div class="loader-spinner"></div>
+                      <div class="loader-text">Loading users…</div>
+                    </div>
+                  </td>
+                </tr>
+              }
+
+              @if (!loading()) {
+                @for (user of pagedUsers(); track user.id) {
+                <tr [class.inactive-row]="!isUserActive(user)">
+                  <td>
+                    <input
+                      type="checkbox"
+                      [checked]="isSelected(user.id)"
+                      (change)="toggleSelection(user.id)"
+                      [attr.aria-label]="'Select ' + user.full_name" />
+                  </td>
+                  <td><strong>{{ user.full_name }}</strong></td>
+                  <td>{{ user.email }}</td>
+                  <td><span class="role-chip" [class]="getRoleClass(user.role)">{{ displayRole(user.role) }}</span></td>
+                  <td><span class="status-chip" [class]="getStatusClass(user)">{{ isUserActive(user) ? 'Active' : 'Inactive' }}</span></td>
+                  <td>{{ user.updated_at | date:'yyyy-MM-dd HH:mm' }}</td>
+                  <td>
+                    <div class="action-row">
+                      <button class="btn-sm edit" (click)="editUser(user)">Edit</button>
+                      @if (isUserActive(user)) {
+                        <button
+                          class="btn-sm disable"
+                          (click)="toggleUserStatus(user)"
+                          [disabled]="togglingUserId() === user.id"
+                          title="UXR-025: Confirm — all sessions revoked">
+                          @if (togglingUserId() === user.id) {
+                            <span class="btn-spinner" aria-hidden="true"></span>
+                            <span>Disabling…</span>
+                          } @else {
+                            <span>Disable</span>
+                          }
+                        </button>
+                      } @else {
+                        <button
+                          class="btn-sm reenable"
+                          (click)="toggleUserStatus(user)"
+                          [disabled]="togglingUserId() === user.id">
+                          @if (togglingUserId() === user.id) {
+                            <span class="btn-spinner" aria-hidden="true"></span>
+                            <span>Enabling…</span>
+                          } @else {
+                            <span>Re-enable</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+
+                @if (pagedUsers().length === 0) {
+                  <tr class="empty-row">
+                    <td colspan="7">
+                      <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div class="empty-title">No users found</div>
+                        <div class="empty-subtitle">Try adjusting your search or filters</div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+
+          @if (savingUser()) {
+            <div class="table-overlay-loader" aria-busy="true" aria-label="Saving user">
+              <div class="loader-spinner"></div>
+              <div class="loader-text">Saving user…</div>
+            </div>
+          }
+        </div>
+
+        <div class="pagination-bar">
+          <button
+            class="btn-sm"
+            (click)="setUserPage(userPage() - 1)"
+            [disabled]="userPage() === 1">
+            Previous
+          </button>
+          <span class="page-info">Page {{ userPage() }} of {{ userTotalPages() }}</span>
+          <button
+            class="btn-sm"
+            (click)="setUserPage(userPage() + 1)"
+            [disabled]="userPage() === userTotalPages()">
+            Next
+          </button>
+        </div>
       </div>
     }
 
     @if (activeTab() === 'Audit Log') {
       <div class="page-header">
         <h1>Audit Log</h1>
-        <button class="btn-export" (click)="exportAuditCsv()">Export CSV</button>
+        <button class="btn-export" (click)="exportAuditCsv()" [disabled]="auditExportLoading()">
+          @if (auditExportLoading()) {
+            Exporting…
+          } @else {
+            Export CSV
+          }
+        </button>
       </div>
 
       <div class="card">
-        <div class="filter-row">
-          <div class="filter-select">
-            <mat-select [value]="selectedDateFilter()" (selectionChange)="selectedDateFilter.set($event.value)" aria-label="Date filter">
-              @for (filter of dateFilters(); track filter) {
-                <mat-option [value]="filter">{{ filter }}</mat-option>
-              }
-            </mat-select>
+        <div class="filter-bar">
+          <div class="filter-fields">
+            <div class="filter-field">
+              <label for="audit-date-filter">Date range</label>
+              <div class="filter-select">
+                <mat-select id="audit-date-filter" [value]="selectedDateFilter()" (selectionChange)="selectedDateFilter.set($event.value)" aria-label="Date filter">
+                  @for (filter of dateFilters(); track filter) {
+                    <mat-option [value]="filter">{{ filter }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+            </div>
+            <div class="filter-field">
+              <label for="audit-user-filter">User</label>
+              <div class="filter-select">
+                <mat-select id="audit-user-filter" [value]="selectedUserFilter()" (selectionChange)="selectedUserFilter.set($event.value)" aria-label="User filter">
+                  @for (option of auditUserOptions(); track option.id) {
+                    <mat-option [value]="option.id">{{ option.label }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+            </div>
+            <div class="filter-field">
+              <label for="audit-event-filter">Event type</label>
+              <div class="filter-select">
+                <mat-select id="audit-event-filter" [value]="selectedEventFilter()" (selectionChange)="selectedEventFilter.set($event.value)" aria-label="Event type filter">
+                  @for (filter of eventFilters(); track filter) {
+                    <mat-option [value]="filter">{{ filter === 'all' ? 'All Event Types' : filter }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+            </div>
           </div>
-          <div class="filter-select">
-            <mat-select [value]="selectedUserFilter()" (selectionChange)="selectedUserFilter.set($event.value)" aria-label="User filter">
-              @for (filter of userFilters(); track filter) {
-                <mat-option [value]="filter">{{ filter }}</mat-option>
+          <div class="filter-actions">
+            <button class="btn-filter" (click)="applyAuditFilters()" [disabled]="auditLoading()">
+              @if (auditLoading()) {
+                Loading…
+              } @else {
+                Apply Filters
               }
-            </mat-select>
+            </button>
+            <span class="uxr-badge phi-badge">UXR-014 PHI masked in all log entries</span>
           </div>
-          <div class="filter-select">
-            <mat-select [value]="selectedEventFilter()" (selectionChange)="selectedEventFilter.set($event.value)" aria-label="Event type filter">
-              @for (filter of eventFilters(); track filter) {
-                <mat-option [value]="filter">{{ filter }}</mat-option>
-              }
-            </mat-select>
-          </div>
-          <button class="btn-filter" (click)="applyAuditFilters()">Apply Filters</button>
-          <span class="uxr-badge phi-badge">UXR-014 PHI masked in all log entries</span>
         </div>
-
-        @if (auditLoading()) {
-          <div class="state-message">Loading audit log…</div>
-        }
 
         @if (auditError()) {
           <div class="state-message error">
@@ -204,14 +321,54 @@
           </div>
         }
 
-        @for (entry of auditLog(); track entry.id) {
-          <div class="audit-row">
-            <span class="audit-time">{{ entry.created_at | date:'yyyy-MM-dd HH:mm' }}</span>
-            <span class="audit-user">{{ entry.user_role || 'system' }}</span>
-            <span class="audit-action">{{ entry.action }}</span>
-            <span class="audit-target">{{ entry.resource_type }} {{ entry.resource_id }}</span>
+        <div class="audit-header">
+          <span class="audit-time">Time</span>
+          <span class="audit-user">User</span>
+          <span class="audit-action">Action</span>
+          <span class="audit-target">Target</span>
+        </div>
+
+        @if (auditLoading()) {
+          <div class="table-loader" aria-busy="true" aria-label="Loading audit log">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Loading audit log…</div>
           </div>
         }
+
+        @if (!auditLoading()) {
+          @for (entry of auditLog(); track entry.id) {
+            <div class="audit-row">
+              <span class="audit-time">{{ entry.created_at | date:'yyyy-MM-dd HH:mm' }}</span>
+              <span class="audit-user">{{ entry.user_role || 'system' }}</span>
+              <span class="audit-action">{{ entry.action }}</span>
+              <span class="audit-target">{{ entry.resource_type }} {{ entry.resource_id }}</span>
+            </div>
+          }
+
+          @if (auditLog().length === 0) {
+            <div class="empty-state">
+              <div class="empty-icon">🔍</div>
+              <div class="empty-title">No audit entries found</div>
+              <div class="empty-subtitle">Try adjusting your date range, user, or event filters</div>
+            </div>
+          }
+        }
+
+        <div class="pagination-bar">
+          <button
+            class="btn-sm"
+            (click)="setAuditPage(auditPage() - 1)"
+            [disabled]="auditPage() === 1">
+            Previous
+          </button>
+          <span class="page-info">Page {{ auditPage() }} of {{ auditPages() }}</span>
+          <button
+            class="btn-sm"
+            (click)="setAuditPage(auditPage() + 1)"
+            [disabled]="auditPage() === auditPages()">
+            Next
+          </button>
+        </div>
       </div>
     }
 

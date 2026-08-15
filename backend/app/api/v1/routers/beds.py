@@ -24,6 +24,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+import sqlalchemy as sa
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +39,7 @@ from app.models.agent_task import AgentTask, AgentTaskStatus
 from app.models.bed import Bed
 from app.models.encounter import Encounter
 from app.models.patient import Patient
+from app.db.encryption import _decrypt
 from app.schemas.agent_task import AgentTaskResponse
 from app.services.audit_service import write_audit_log
 from app.services.medication_analysis_service import MedicationAnalysisService
@@ -57,7 +59,7 @@ router = APIRouter(prefix="/beds", tags=["beds"])
 class BedBoardEntry(BaseModel):
     """Single bed entry returned by GET /api/v1/beds.
 
-    Sourced from mv_bed_board (read replica) — no PHI included.
+    Sourced from mv_bed_board (read replica).
     """
 
     bed_id: str
@@ -69,6 +71,7 @@ class BedBoardEntry(BaseModel):
     isolation_required: bool
     gender_designation: str
     predicted_discharge_time: str | None = None  # populated by US-036
+    patient_name: str | None = None
 
 
 class BedStatusPatchRequest(BaseModel):
@@ -328,8 +331,24 @@ async def list_beds(
     
     Performance: p95 <500ms (US-035 AC Scenario 3, TR-001).
     """
+
+    def _safe_decrypt(ciphertext: str | None) -> str:
+        """Decrypt PHI, falling back to plaintext if the value was stored unencrypted."""
+        if not ciphertext:
+            return ""
+        try:
+            return _decrypt(ciphertext).decode("utf-8")
+        except Exception:
+            logger.warning("Failed to decrypt PHI value; treating as plaintext.")
+            return ciphertext
+
     # Build dynamic SQL query with filters
-    query = "SELECT * FROM mv_bed_board WHERE 1=1"
+    query = (
+        "SELECT bed_id, unit, room, bed_number, bed_type, status, "
+        "isolation_required, gender_designation, predicted_discharge_time, "
+        "patient_first_name_enc, patient_last_name_enc "
+        "FROM mv_bed_board WHERE 1=1"
+    )
     params: dict = {}
 
     if unit is not None:
@@ -337,7 +356,7 @@ async def list_beds(
         params["unit"] = unit
     if status is not None:
         query += " AND status = :status"
-        params["status"] = status.value.lower()
+        params["status"] = status.value.upper()
     if bed_type is not None:
         query += " AND bed_type = :bed_type"
         params["bed_type"] = bed_type
@@ -345,24 +364,33 @@ async def list_beds(
     result = await read_db.execute(text(query), params)
     rows = result.mappings().all()
 
-    return [
-        BedBoardEntry(
-            bed_id=str(row["bed_id"]),
-            unit=row["unit"],
-            room=row["room"],
-            bed_number=row["bed_number"],
-            bed_type=row["bed_type"],
-            status=BedStatus(row["status"]),
-            isolation_required=row["isolation_required"],
-            gender_designation=row["gender_designation"],
-            predicted_discharge_time=(
-                row["predicted_discharge_time"].isoformat()
-                if row.get("predicted_discharge_time")
-                else None
-            ),
+    entries = []
+    for row in rows:
+        first_name = _safe_decrypt(row.get("patient_first_name_enc"))
+        last_name = _safe_decrypt(row.get("patient_last_name_enc"))
+        patient_name = None
+        if last_name:
+            patient_name = f"{last_name}, {first_name[:1].upper()}." if first_name else last_name
+
+        entries.append(
+            BedBoardEntry(
+                bed_id=str(row["bed_id"]),
+                unit=row["unit"],
+                room=row["room"],
+                bed_number=row["bed_number"],
+                bed_type=row["bed_type"],
+                status=BedStatus(row["status"]),
+                isolation_required=row["isolation_required"],
+                gender_designation=row["gender_designation"],
+                predicted_discharge_time=(
+                    row["predicted_discharge_time"].isoformat()
+                    if row.get("predicted_discharge_time")
+                    else None
+                ),
+                patient_name=patient_name,
+            )
         )
-        for row in rows
-    ]
+    return entries
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -413,18 +441,17 @@ async def get_bed_details(
         bed_status = BedStatus(bed.status)
     except ValueError:
         bed_status = BedStatus.AVAILABLE
-    if bed_status == BedStatus.OCCUPIED and bed.current_encounter_id:
+    if bed_status in (BedStatus.OCCUPIED, BedStatus.RESERVED) and bed.current_encounter_id:
         occupant_result = await read_db.execute(
-            select(Encounter, Patient, Bed)
+            select(Encounter, Patient)
             .join(Patient, Encounter.patient_id == Patient.id)
-            .outerjoin(Bed, Bed.current_encounter_id == Encounter.id)
             .where(Encounter.id == bed.current_encounter_id)
             .where(Patient.deleted_at.is_(None))
             .where(Encounter.deleted_at.is_(None))
         )
         row = occupant_result.one_or_none()
         if row:
-            occupant_encounter, patient, _ = row
+            occupant_encounter, patient = row
             mrn = patient.mrn_encrypted or ""
             occupant = BedOccupant(
                 encounter_id=str(occupant_encounter.id),
@@ -545,7 +572,7 @@ async def list_discharge_predictions(
         select(Bed, Encounter, Patient)
         .join(Encounter, Bed.current_encounter_id == Encounter.id)
         .join(Patient, Encounter.patient_id == Patient.id)
-        .where(Bed.status == BedStatus.OCCUPIED.value)
+        .where(sa.func.upper(Bed.status) == BedStatus.OCCUPIED.value)
         .where(Encounter.deleted_at.is_(None))
         .where(Patient.deleted_at.is_(None))
     )
