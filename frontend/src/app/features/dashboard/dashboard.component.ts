@@ -30,7 +30,7 @@ import { PatientApiService } from '../patients/services/patient-api.service';
 import { PatientSummary } from '../patients/models/patient.model';
 import { LiveAdtFeedComponent } from './components/live-adt-feed/live-adt-feed.component';
 import { BedBoardService } from '../beds/services/bed-board.service';
-import { BedDto } from '../beds/models/bed.model';
+import { BedDto, BedSuggestion } from '../beds/models/bed.model';
 import { DocumentApiService, PendingDocument } from '../documents/services/document-api.service';
 import { MedicationApiService, PharmacistAlert } from '../medications/services/medication-api.service';
 
@@ -79,6 +79,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private documentCreatedSub?: Subscription;
   private alertCreatedSub?: Subscription;
   private bedStatusSub?: Subscription;
+  private bedSuggestionSub?: Subscription;
+  private boardingAlertSub?: Subscription;
   private pollSub?: Subscription;
   private readonly POLL_INTERVAL_MS = 30_000;
 
@@ -87,6 +89,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly tasks = signal<AgentTaskResponse[]>([]);
   readonly patients = signal<PatientSummary[]>([]);
   readonly beds = signal<BedDto[]>([]);
+  readonly pendingSuggestions = signal<BedSuggestion[]>([]);
   readonly pendingApprovals = signal<PendingDocument[]>([]);
   readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
   readonly isLoading = signal<boolean>(true);
@@ -201,7 +204,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ];
   });
 
-  readonly edBoardingList = computed(() => this.beds().filter(b => b.status === 'DIRTY' || b.status === 'MAINTENANCE'));
+  readonly edBoardingList = computed(() => this.pendingSuggestions());
 
   ngOnInit(): void {
     const user = this.authService.currentUser();
@@ -225,6 +228,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.bedStatusSub = this.signalR.bedStatusChanged$.subscribe(() => {
       if (this.canFetchBeds()) {
         this.bedBoardApi.getBeds().subscribe(beds => this.beds.set(beds));
+        this._fetchPendingSuggestions();
+      }
+    });
+
+    this.bedSuggestionSub = this.signalR.bedSuggestionCreated$.subscribe(() => {
+      if (this.canFetchBeds()) {
+        this._fetchPendingSuggestions();
+      }
+    });
+
+    this.boardingAlertSub = this.signalR.boardingAlertCreated$.subscribe(() => {
+      if (this.canFetchBeds()) {
+        this._fetchPendingSuggestions();
       }
     });
 
@@ -240,6 +256,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.documentCreatedSub?.unsubscribe();
     this.alertCreatedSub?.unsubscribe();
     this.bedStatusSub?.unsubscribe();
+    this.bedSuggestionSub?.unsubscribe();
+    this.boardingAlertSub?.unsubscribe();
     this.pollSub?.unsubscribe();
     void this.signalR.disconnect();
   }
@@ -276,8 +294,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/medications']);
   }
 
-  goToBedBoard(): void {
-    void this.router.navigate(['/beds']);
+  goToBedBoard(taskId?: string): void {
+    if (taskId) {
+      void this.router.navigate(['/beds'], { queryParams: { openAssign: taskId } });
+    } else {
+      void this.router.navigate(['/beds']);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -333,6 +355,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
       if (this.canFetchBeds()) {
         requests['beds'] = this.bedBoardApi.getBeds();
+        requests['pendingSuggestions'] = this.bedBoardApi.getSuggestions();
       }
       if (this.canFetchDocuments()) {
         requests['pendingApprovals'] = this._fetchPendingApprovals();
@@ -352,6 +375,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.tasks.set((result['tasks'] as AgentTaskResponse[]) ?? this.tasks());
           this.patients.set((result['patients'] as { items?: PatientSummary[] })?.items ?? this.patients());
           this.beds.set((result['beds'] as BedDto[]) ?? this.beds());
+          this.pendingSuggestions.set((result['pendingSuggestions'] as BedSuggestion[]) ?? this.pendingSuggestions());
           this.pendingApprovals.set((result['pendingApprovals'] as PendingDocument[]) ?? this.pendingApprovals());
 
           // Pharmacist alerts depend on the visible patient list, so load them after patients settle.
@@ -383,6 +407,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.medicationApi.getAlerts('ACTIVE').pipe(
       map(response => response.alerts ?? [])
     );
+  }
+
+  private _fetchPendingSuggestions(): void {
+    if (!this.canFetchBeds()) return;
+    this.bedBoardApi.getSuggestions().subscribe({
+      next: suggestions => this.pendingSuggestions.set(suggestions ?? []),
+      error: error => console.error('Failed to fetch pending bed suggestions:', error),
+    });
   }
 
   private _subscribeToTaskUpdates(): void {

@@ -155,11 +155,16 @@
             <!-- ED Boarding -->
             @case ('edBoarding') {
               <ul class="task-list">
-                @for (bed of edBoardingList(); track bed.bedId) {
-                  <li class="task-row clickable" (click)="goToBedBoard()" tabindex="0" (keydown.enter)="goToBedBoard()">
+                @for (suggestion of edBoardingList(); track suggestion.task_id) {
+                  <li class="task-row clickable"
+                      (click)="goToBedBoard(suggestion.task_id)"
+                      tabindex="0"
+                      (keydown.enter)="goToBedBoard(suggestion.task_id)">
                     <div class="task-info">
-                      <div class="task-title">{{ bed.bedId }} — {{ bed.status }}</div>
-                      <div class="task-subtitle">Unit {{ bed.unit }}</div>
+                      <div class="task-title">{{ suggestion.patient_name }} — Recommended {{ suggestion.best_bed_number }}</div>
+                      <div class="task-subtitle">
+                        Unit {{ suggestion.current_unit || 'ED' }} · Waiting {{ (suggestion.minutes_waiting ?? 0) >= 60 ? ((suggestion.minutes_waiting ?? 0) / 60 | number:'1.0-1') + 'h' : (suggestion.minutes_waiting ?? 0) + 'm' }} · Acuity {{ suggestion.acuity }}
+                      </div>
                     </div>
                     <div class="task-meta">
                       <span class="priority priority-urgent">BOARDING</span>
