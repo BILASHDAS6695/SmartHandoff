@@ -19,9 +19,13 @@ import {
   DocumentApprovalDialogComponent,
   DocumentApprovalDialogData,
 } from './document-approval-dialog.component';
+import {
+  MedicationManageDialogComponent,
+  MedicationManageDialogData,
+} from '@features/medications/components/medication-manage-dialog/medication-manage-dialog.component';
 import { ToastService } from '@core/notifications/toast.service';
 import { EncounterTasksApiService } from '@core/api';
-import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, PATIENT_DETAIL_TAB_ROLES, TaskStatus, roleCanFetchPatientDetail } from '@core/models';
+import { AgentTaskResponse, AGENT_TYPE_DISPLAY_NAME, PATIENT_DETAIL_TAB_ROLES, Role, TaskStatus, roleCanFetchPatientDetail } from '@core/models';
 import { AuthService } from '@core/auth/auth.service';
 import { PatientApiService } from '../../services/patient-api.service';
 import { DocumentApiService, BackendDocument } from '@features/documents/services/document-api.service';
@@ -132,6 +136,18 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
 
   /** Current user role in lowercase, reactive to real-time role switches. */
   readonly userRole = computed(() => this.auth.currentUser()?.role?.toLowerCase() ?? '');
+
+  /** Whether the current role may add or edit medications on this patient. */
+  readonly canManageMedications = computed(() => {
+    const role = this.userRole();
+    return role === Role.Admin || role === Role.Physician;
+  });
+
+  /** Whether the Active Alerts section (pharmacist alerts) should be shown. */
+  readonly showActiveAlerts = computed(() => {
+    const role = this.userRole();
+    return role === Role.Admin || role === Role.Physician || role === Role.Pharmacist;
+  });
 
   /** Tabs visible to the current role, derived from the RBAC matrix. */
   readonly visibleTabs = computed<string[]>(() => {
@@ -291,12 +307,11 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
 
   readonly activeAlertCount = computed(() => this.alerts().length);
 
-  readonly riskFactors = signal<RiskFactor[]>([
-    { text: 'History of CHF readmission within 30 days' },
-    { text: 'No primary care follow-up scheduled' },
-    { text: 'Complex medication regimen (8+ meds)' },
-    { text: 'Social determinants: transportation barrier' },
-  ]);
+  /** Readmission risk factors derived from the AI medication analysis. */
+  readonly riskFactors = signal<RiskFactor[]>([]);
+
+  readonly isLoadingReadmissionRisk = signal<boolean>(false);
+  readonly readmissionRiskError = signal<string | null>(null);
 
   readonly openTasks = signal<OpenTask[]>([
     { id: 't1', title: 'Confirm follow-up appointment', meta: 'Primary care within 7 days', owner: 'Transition', priority: 'HIGH', done: false },
@@ -334,6 +349,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       if (roleCanFetchPatientDetail(role, 'timeline')) {
         this.loadTimeline(patientId);
       }
+      this.loadReadmissionRisk(patientId);
     }
 
     // Restore the tab requested by a returning child view (e.g. document review).
@@ -522,6 +538,9 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       next: (analysis) => {
         this.aiAnalysis.set(analysis);
         this.isLoadingAiAnalysis.set(false);
+        this.riskFactors.set(
+          (analysis.predicted_issues ?? []).map((issue) => ({ text: issue })),
+        );
       },
       error: (err: Error) => {
         this.aiAnalysisError.set(err.message ?? 'Failed to generate AI analysis');
@@ -618,6 +637,30 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       error: (err: Error) => {
         this.timelineError.set(err.message ?? 'Failed to load timeline');
         this.isLoadingTimeline.set(false);
+      },
+    });
+  }
+
+  private loadReadmissionRisk(encounterId: string): void {
+    this.isLoadingReadmissionRisk.set(true);
+    this.readmissionRiskError.set(null);
+    this.medicationApi.analyzeMedications(encounterId).subscribe({
+      next: (analysis) => {
+        // Keep the numeric risk_score from the encounter data; update only the
+        // risk level and predicted factors from the AI medication analysis.
+        this.patient.update((p) => ({
+          ...p,
+          riskLevel: analysis.readmission_risk,
+        }));
+        this.riskFactors.set(
+          (analysis.predicted_issues ?? []).map((issue) => ({ text: issue })),
+        );
+        this.aiAnalysis.set(analysis);
+        this.isLoadingReadmissionRisk.set(false);
+      },
+      error: (err: Error) => {
+        this.readmissionRiskError.set(err.message ?? 'Failed to load readmission risk');
+        this.isLoadingReadmissionRisk.set(false);
       },
     });
   }
@@ -841,47 +884,50 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  readonly carePlanSections: CarePlanSection[] = [
-    {
-      title: 'Follow-up',
-      items: [
-        'Primary care visit within 7 days',
-        'Cardiology follow-up within 14 days',
-        'INR recheck within 48 hours',
-      ],
-    },
-    {
-      title: 'Medications',
-      items: [
-        'Continue Warfarin 5mg QD with monitoring',
-        'Continue Aspirin 81mg QD unless instructed otherwise',
-        'Resume Metformin 500mg BD with meals',
-      ],
-    },
-    {
-      title: 'Warning Signs',
-      items: [
-        'Bleeding, bruising, or black stools',
-        'Shortness of breath or chest pain',
-        'Rapid weight gain or swelling',
-      ],
-    },
-    {
-      title: 'Patient Education',
-      items: [
-        'Low sodium diet for CHF management',
-        'Daily weight logging',
-        'When to call the care team',
-      ],
-    },
-  ];
+  /** Builds care plan sections from the AI medication analysis recommendations. */
+  private buildCarePlanSections(): CarePlanSection[] {
+    const analysis = this.aiAnalysis();
+    const recommendations = analysis?.recommendations ?? [];
+    const predictedIssues = analysis?.predicted_issues ?? [];
+
+    return [
+      {
+        title: 'Follow-up Actions',
+        items: recommendations.length
+          ? recommendations
+          : ['Schedule follow-up as clinically indicated'],
+      },
+      {
+        title: 'Predicted Risk Areas',
+        items: predictedIssues.length
+          ? predictedIssues
+          : ['No specific risks predicted'],
+      },
+      {
+        title: 'Warning Signs',
+        items: [
+          'Worsening symptoms or new pain',
+          'Unexpected side effects from medications',
+          'Difficulty obtaining or taking prescribed medications',
+        ],
+      },
+      {
+        title: 'Patient Education',
+        items: [
+          'Review medication list and changes before discharge',
+          'Know when to contact the care team',
+          'Confirm follow-up appointments and transportation',
+        ],
+      },
+    ];
+  }
 
   onViewCarePlan(): void {
     this.dialog.open(CarePlanDialogComponent, {
       width: '560px',
       data: {
         patientName: this.patient().name,
-        sections: this.carePlanSections,
+        sections: this.buildCarePlanSections(),
       },
       ariaLabelledBy: 'care-plan-title',
     });
@@ -1113,6 +1159,35 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     if (patientId) {
       this.loadMedications(patientId);
     }
+  }
+
+  /**
+   * Open the medication manage dialog to add or edit a medication for the
+   * current encounter. Available to physician and admin roles from the
+   * Medications tab.
+   */
+  openMedicationManage(medication?: MedicationReconciliationResult): void {
+    const encounterId = this.patientId();
+    if (!encounterId) {
+      return;
+    }
+
+    const data: MedicationManageDialogData = {
+      encounterId,
+      patientName: this.patient().name,
+      medication: medication ?? null,
+    };
+
+    const ref = this.dialog.open(MedicationManageDialogComponent, {
+      width: '640px',
+      data,
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result?.action) {
+        this.refreshMedications();
+      }
+    });
   }
 
   refreshAlerts(): void {

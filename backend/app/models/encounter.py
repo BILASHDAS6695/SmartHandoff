@@ -127,8 +127,11 @@ class Encounter(Base, TimestampMixin, SoftDeleteMixin):
         server_default=RiskTier.UNKNOWN.value,
         comment="Readmission risk tier: HIGH / MEDIUM / LOW / UNKNOWN",
     )
-    # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)
-    # risk_score removed to prevent INSERT errors
+    risk_score: Mapped[float | None] = mapped_column(
+        sa.Float(),
+        nullable=True,
+        comment="Numeric readmission risk score (0.0-1.0)",
+    )
 
     # US-036: ML-predicted discharge time (TR-007 ML Inference Service)
     # TEMPORARILY REMOVED - Missing in current DB schema (will be added in migration)

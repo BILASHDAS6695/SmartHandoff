@@ -150,9 +150,14 @@ export class AuthService {
   /**
    * Store the JWT and start the 30-minute idle timer (US-059).
    * Token is stored ONLY in memory — never in localStorage or cookies.
+   * In local development mode the token is also mirrored to sessionStorage
+   * so role switches survive a page refresh.
    */
   #setSession(token: string): void {
     this.#tokenSignal.set(token);
+    if ((environment as any).devMode === true) {
+      sessionStorage.setItem('dev_access_token', token);
+    }
     // Start the 30-minute idle timer — resets on mousemove/keypress/scroll
     this.idleTimeoutService.start(() => {
       this.clearSession();  // discard in-memory JWT on timeout

@@ -1,0 +1,84 @@
+<h2 mat-dialog-title>{{ dialogTitle() }}</h2>
+<mat-dialog-content>
+  @if (data.patientName) {
+    <p class="patient-subtitle">{{ data.patientName }}</p>
+  }
+
+  <form [formGroup]="form" class="med-form" (ngSubmit)="onSubmit()">
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Medication name</mat-label>
+        <input matInput formControlName="name" placeholder="e.g. Metoprolol" />
+        @if (form.get('name')?.invalid && form.get('name')?.touched) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>RxNorm CUI</mat-label>
+        <input matInput formControlName="rxnorm_cui" placeholder="e.g. 6918" />
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Dose</mat-label>
+        <input matInput formControlName="dose" placeholder="e.g. 25 mg" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Route</mat-label>
+        <input matInput formControlName="route" placeholder="e.g. oral" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Frequency</mat-label>
+        <input matInput formControlName="frequency" placeholder="e.g. twice daily" />
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="reconciliation_category">
+          <mat-option value="">—</mat-option>
+          @for (cat of categories; track cat.value) {
+            <mat-option [value]="cat.value">{{ cat.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Interaction severity</mat-label>
+        <mat-select formControlName="interaction_severity">
+          <mat-option value="">—</mat-option>
+          @for (sev of severities; track sev.value) {
+            <mat-option [value]="sev.value">{{ sev.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row phase-row">
+      <mat-checkbox formControlName="pre_admit" color="primary">Pre-admit</mat-checkbox>
+      <mat-checkbox formControlName="inpatient" color="primary">Inpatient</mat-checkbox>
+      <mat-checkbox formControlName="discharge" color="primary">Discharge</mat-checkbox>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="isSaving()">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onSubmit()"
+    [disabled]="isSaving() || form.invalid">
+    @if (isSaving()) {
+      <mat-spinner diameter="18" class="inline-spinner"></mat-spinner>
+      <span>Saving…</span>
+    } @else {
+      <span>{{ isEdit() ? 'Update' : 'Add' }} Medication</span>
+    }
+  </button>
+</mat-dialog-actions>

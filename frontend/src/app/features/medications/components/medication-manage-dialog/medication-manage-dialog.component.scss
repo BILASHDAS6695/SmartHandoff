@@ -1,0 +1,36 @@
+.patient-subtitle {
+  margin: 0 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.med-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 520px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-field {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.phase-row {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.inline-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

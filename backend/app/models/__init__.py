@@ -16,6 +16,7 @@ from app.models.medication import (
 )
 from app.models.patient import Patient
 from app.models.pharmacist_alert import PharmacistAlert
+from app.models.physician_alert import PhysicianAlert
 from app.models.scheduled_notification import (
     DeliveryStatus,
     NotificationChannel,
@@ -49,6 +50,7 @@ __all__ = [
     "NotificationType",
     "Patient",
     "PharmacistAlert",
+    "PhysicianAlert",
     "ReconciliationCategory",
     "ReconciliationFlag",
     "RiskTier",

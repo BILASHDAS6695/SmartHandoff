@@ -83,44 +83,88 @@
   min-width: 260px;
 }
 
-.search-results {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 240px;
+.search-results-table {
+  max-height: 300px;
   overflow: auto;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 8px;
   background: #f9fafb;
-}
 
-.search-result-item {
-  padding: 10px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid transparent;
+  .patient-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
 
-  &:hover {
-    background: #eff6ff;
-    border-color: #bfdbfe;
+    ::ng-deep .mat-mdc-header-row {
+      background: #f3f4f6;
+      height: 40px;
+    }
+
+    ::ng-deep .mat-mdc-header-cell {
+      padding: 10px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #4b5563;
+    }
+
+    ::ng-deep .mat-mdc-row {
+      height: 48px;
+      cursor: pointer;
+
+      &:hover .mat-mdc-cell {
+        background: #eff6ff;
+      }
+
+      &.selected-row .mat-mdc-cell {
+        background: #eff6ff;
+      }
+    }
+
+    ::ng-deep .mat-mdc-cell {
+      padding: 10px 12px;
+      font-size: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
   }
 
-  &.selected {
-    background: #eff6ff;
-    border-color: #2563eb;
-  }
-
-  .result-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .result-meta {
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 9999px;
     font-size: 11px;
+    font-weight: 700;
+    background: #f3f4f6;
     color: #6b7280;
-    margin-top: 2px;
+
+    &.active {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+  }
+
+  .btn-select {
+    padding: 5px 12px;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: #1d4ed8;
+    }
+
+    &.selected {
+      background: #16a34a;
+    }
   }
 }
 
@@ -154,6 +198,16 @@
   align-items: center;
   gap: 12px;
   margin-top: 24px;
+}
+
+.info-banner {
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 13px;
 }
 
 .error-banner {

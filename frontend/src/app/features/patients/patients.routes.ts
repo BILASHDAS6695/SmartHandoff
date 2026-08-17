@@ -10,7 +10,7 @@ export const PATIENTS_ROUTES: Routes = [
       {
         path: '',
         loadComponent: () =>
-          import('./components/patient-list/patient-list.component').then((m) => m.PatientListComponent),
+          import('./components/unique-patients-list/unique-patients-list.component').then((m) => m.UniquePatientsListComponent),
       },
       {
         path: 'register',

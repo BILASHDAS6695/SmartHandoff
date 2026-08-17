@@ -3,6 +3,35 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
+/** Payload to create a medication on an encounter. */
+export interface MedicationCreateRequest {
+  encounter_id: string;
+  name: string;
+  rxnorm_cui?: string | null;
+  dose?: string | null;
+  route?: string | null;
+  frequency?: string | null;
+  pre_admit?: boolean;
+  inpatient?: boolean;
+  discharge?: boolean;
+  reconciliation_category?: 'CONTINUED' | 'NEW' | 'STOPPED' | 'DOSE_CHANGED' | null;
+  interaction_severity?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+}
+
+/** Payload to update an existing medication. */
+export interface MedicationUpdateRequest {
+  name?: string;
+  rxnorm_cui?: string | null;
+  dose?: string | null;
+  route?: string | null;
+  frequency?: string | null;
+  pre_admit?: boolean;
+  inpatient?: boolean;
+  discharge?: boolean;
+  reconciliation_category?: 'CONTINUED' | 'NEW' | 'STOPPED' | 'DOSE_CHANGED' | null;
+  interaction_severity?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+}
+
 /** Backend medication reconciliation row (US-030). */
 export interface MedicationReconciliationResult {
   id: string;
@@ -191,6 +220,28 @@ export class MedicationApiService {
   getMedicationHistory(encounterId: string): Observable<MedicationHistoryResponse> {
     return this.http.get<MedicationHistoryResponse>(
       `${this.base}/${encounterId}/medications/history`
+    );
+  }
+
+  /**
+   * Creates a new medication on an encounter.
+   * POST /api/v1/medications
+   */
+  createMedication(payload: MedicationCreateRequest): Observable<MedicationReconciliationResult> {
+    return this.http.post<MedicationReconciliationResult>(this.medicationsBase, payload);
+  }
+
+  /**
+   * Updates an existing medication.
+   * PATCH /api/v1/medications/{medicationId}
+   */
+  updateMedication(
+    medicationId: string,
+    payload: MedicationUpdateRequest,
+  ): Observable<MedicationReconciliationResult> {
+    return this.http.patch<MedicationReconciliationResult>(
+      `${this.medicationsBase}/${medicationId}`,
+      payload,
     );
   }
 }

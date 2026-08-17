@@ -9,21 +9,24 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { CdkDrag, CdkDropList, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Subscription, forkJoin, interval, Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { SignalRService, TaskUpdatedPayload, JoinGroupsRequest } from '../../core/signalr';
-import { EncounterTasksApiService } from '../../core/api';
+import { EncounterTasksApiService, PhysicianAlertsApiService } from '../../core/api';
 import {
   AgentTaskResponse,
   DASHBOARD_AGENTS,
   DASHBOARD_CARDS,
   DashboardCardConfig,
+  Role,
   TaskStatus,
   roleCanFetchDashboard,
   dashboardCardOrderForRole,
   quickLinksForRole,
   patientDetailTabForRole,
+  PhysicianAlert,
 } from '../../core/models';
 import { AuthService } from '../../core/auth/auth.service';
 import { PatientApiService } from '../patients/services/patient-api.service';
@@ -33,6 +36,8 @@ import { BedBoardService } from '../beds/services/bed-board.service';
 import { BedDto, BedSuggestion } from '../beds/models/bed.model';
 import { DocumentApiService, PendingDocument } from '../documents/services/document-api.service';
 import { MedicationApiService, PharmacistAlert } from '../medications/services/medication-api.service';
+import { MatDialog } from '@angular/material/dialog';
+import { MedicationManageDialogComponent } from '../medications/components/medication-manage-dialog/medication-manage-dialog.component';
 
 /** Active patient risk overview item. */
 export interface ActivePatient {
@@ -57,10 +62,13 @@ export interface BedCensusRow {
   cssClass: string;
 }
 
+/** localStorage key prefix for per-role dashboard card order. */
+const CARD_ORDER_STORAGE_KEY = 'dashboard-card-order';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, LiveAdtFeedComponent],
+  imports: [CommonModule, RouterModule, MatIconModule, LiveAdtFeedComponent, CdkDropList, CdkDrag],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -73,7 +81,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly bedBoardApi = inject(BedBoardService);
   private readonly documentApi = inject(DocumentApiService);
   private readonly medicationApi = inject(MedicationApiService);
+  private readonly physicianAlertsApi = inject(PhysicianAlertsApiService);
   private readonly authService = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
 
   private taskSub?: Subscription;
   private documentCreatedSub?: Subscription;
@@ -92,9 +102,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly pendingSuggestions = signal<BedSuggestion[]>([]);
   readonly pendingApprovals = signal<PendingDocument[]>([]);
   readonly pharmacistAlerts = signal<PharmacistAlert[]>([]);
+  readonly physicianAlerts = signal<PhysicianAlert[]>([]);
   readonly isLoading = signal<boolean>(true);
   readonly isReconnecting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
+
+  /** Show-all toggles for compact dashboard cards. */
+  readonly showAllPendingTasks = signal<boolean>(false);
+  readonly showAllPendingApprovals = signal<boolean>(false);
+  readonly showAllPharmacistAlerts = signal<boolean>(false);
+  readonly showAllPhysicianAlerts = signal<boolean>(false);
+  readonly showAllActivePatients = signal<boolean>(false);
+
+  /** User-defined card order override persisted in localStorage. */
+  readonly customCardOrder = signal<string[] | null>(null);
 
   // User and timestamp signals
   readonly currentUserName = signal<string>('Nancy');
@@ -109,11 +130,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly canFetchBeds = computed(() => roleCanFetchDashboard(this.userRole(), 'beds'));
   readonly canFetchDocuments = computed(() => roleCanFetchDashboard(this.userRole(), 'documents'));
   readonly canFetchAlerts = computed(() => roleCanFetchDashboard(this.userRole(), 'alerts'));
+  readonly canFetchPhysicianAlerts = computed(() => roleCanFetchDashboard(this.userRole(), 'physicianAlerts'));
+  readonly canManageMedications = computed(() => {
+    const role = this.userRole();
+    return role === Role.Admin || role === Role.Physician;
+  });
 
   readonly visibleCards = computed<DashboardCardConfig[]>(() => {
     const role = this.userRole();
     const allowed = new Set(DASHBOARD_CARDS.filter(c => c.roles.includes(role)).map(c => c.id));
-    return dashboardCardOrderForRole(role)
+    const baseOrder = dashboardCardOrderForRole(role);
+    const customOrder = this.customCardOrder();
+    // Merge any persisted order on top of the default order while keeping new cards visible.
+    const mergedOrder = customOrder && customOrder.length > 0
+      ? Array.from(new Set([...customOrder.filter(id => baseOrder.includes(id)), ...baseOrder]))
+      : baseOrder;
+    return mergedOrder
       .map(id => DASHBOARD_CARDS.find(c => c.id === id)!)
       .filter(c => allowed.has(c.id));
   });
@@ -163,6 +195,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly completedTasks = computed(() =>
     this.tasks().filter(t => t.status === TaskStatus.COMPLETED)
   );
+
+  /** Compact card preview limits. */
+  readonly listPreviewLimit = 5;
+
+  readonly visiblePendingTasks = computed(() => {
+    const all = this.pendingTasks();
+    return this.showAllPendingTasks() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visiblePendingApprovals = computed(() => {
+    const all = this.pendingApprovals();
+    return this.showAllPendingApprovals() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visiblePharmacistAlerts = computed(() => {
+    const all = this.pharmacistAlerts();
+    return this.showAllPharmacistAlerts() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visiblePhysicianAlerts = computed(() => {
+    const all = this.physicianAlerts();
+    return this.showAllPhysicianAlerts() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visibleActivePatients = computed(() => {
+    const all = this.activePatients();
+    return this.showAllActivePatients() ? all : all.slice(0, this.listPreviewLimit);
+  });
 
   /** Live agent health derived from the current task list. */
   readonly agentStatusList = computed<AgentStatus[]>(() => {
@@ -219,9 +279,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.alertCreatedSub = this.signalR.alertCreated$.subscribe(() => {
+    this.alertCreatedSub = this.signalR.alertCreated$.subscribe((payload) => {
       if (this.canFetchAlerts()) {
         this._fetchPharmacistAlerts().subscribe(alerts => this.pharmacistAlerts.set(alerts));
+      }
+      if (this.canFetchPhysicianAlerts()) {
+        this._fetchPhysicianAlerts().subscribe(alerts => this.physicianAlerts.set(alerts));
       }
     });
 
@@ -294,6 +357,44 @@ export class DashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/medications']);
   }
 
+  /**
+   * Open the medication manage dialog for a physician review alert.
+   * After save, refresh both the physician alert list and medications.
+   */
+  openMedicationManage(encounterId: string, medication?: unknown): void {
+    const ref = this.dialog.open(MedicationManageDialogComponent, {
+      width: '640px',
+      data: {
+        encounterId,
+        patientName: this.getPatientName(encounterId),
+        medication: medication ?? null,
+      },
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result?.action) {
+        this._fetchPhysicianAlerts().subscribe(alerts => this.physicianAlerts.set(alerts));
+      }
+    });
+  }
+
+  /**
+   * Resolve a physician review alert when the user chooses to dismiss it.
+   */
+  dismissPhysicianAlert(alert: PhysicianAlert, event: MouseEvent): void {
+    event.stopPropagation();
+    this.physicianAlertsApi
+      .resolveAlert(alert.id, { resolution_type: 'DISMISSED', resolution_note: 'Dismissed from dashboard' })
+      .subscribe({
+        next: () => {
+          this.physicianAlerts.update((items) => items.filter((a) => a.id !== alert.id));
+        },
+        error: (err: Error) => {
+          this.errorMessage.set(err.message ?? 'Failed to dismiss alert');
+        },
+      });
+  }
+
   goToBedBoard(taskId?: string): void {
     if (taskId) {
       void this.router.navigate(['/beds'], { queryParams: { openAssign: taskId } });
@@ -315,6 +416,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const currentUser = this.authService.currentUser();
       if (!currentUser) {
         throw new Error('User not authenticated');
+      }
+
+      // Restore any previously saved card order for this role.
+      const savedOrder = this._loadCardOrder(currentUser.role ?? '');
+      if (savedOrder) {
+        this.customCardOrder.set(savedOrder);
       }
 
       await this._loadDashboardData();
@@ -360,6 +467,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (this.canFetchDocuments()) {
         requests['pendingApprovals'] = this._fetchPendingApprovals();
       }
+      if (this.canFetchPhysicianAlerts()) {
+        requests['physicianAlerts'] = this._fetchPhysicianAlerts();
+      }
       // Alerts are fetched after patients are known so we can scope them to visible encounters.
 
       // Edge case: a role with zero authorized data sources (should not happen) just resolves.
@@ -377,6 +487,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.beds.set((result['beds'] as BedDto[]) ?? this.beds());
           this.pendingSuggestions.set((result['pendingSuggestions'] as BedSuggestion[]) ?? this.pendingSuggestions());
           this.pendingApprovals.set((result['pendingApprovals'] as PendingDocument[]) ?? this.pendingApprovals());
+          this.physicianAlerts.set((result['physicianAlerts'] as PhysicianAlert[]) ?? this.physicianAlerts());
 
           // Pharmacist alerts depend on the visible patient list, so load them after patients settle.
           if (this.canFetchAlerts()) {
@@ -407,6 +518,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.medicationApi.getAlerts('ACTIVE').pipe(
       map(response => response.alerts ?? [])
     );
+  }
+
+  private _fetchPhysicianAlerts(): Observable<PhysicianAlert[]> {
+    if (!this.canFetchPhysicianAlerts()) return of([]);
+    return this.physicianAlertsApi.listAlerts('ACTIVE');
   }
 
   private _fetchPendingSuggestions(): void {
@@ -543,6 +659,61 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   trackByCardId(_: number, card: DashboardCardConfig): string {
     return card.id;
+  }
+
+  /**
+   * Reorder dashboard cards after a drag-drop event and persist the new order
+   * in localStorage keyed by the current user's role.
+   */
+  onCardDropped(event: CdkDragDrop<DashboardCardConfig[]>): void {
+    const currentCards = this.visibleCards();
+    if (currentCards.length <= 1) return;
+
+    const reordered = [...currentCards];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+
+    const role = this.userRole();
+    const newOrder = reordered.map(c => c.id);
+    this.customCardOrder.set(newOrder);
+    this._saveCardOrder(role, newOrder);
+  }
+
+  /** Reset the dashboard card order to the role default. */
+  resetCardOrder(): void {
+    const role = this.userRole();
+    this.customCardOrder.set(null);
+    this._clearCardOrder(role);
+  }
+
+  private _cardOrderStorageKey(role: string): string {
+    return `${CARD_ORDER_STORAGE_KEY}-${role.toLowerCase()}`;
+  }
+
+  private _loadCardOrder(role: string): string[] | null {
+    try {
+      const raw = localStorage.getItem(this._cardOrderStorageKey(role));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as string[];
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private _saveCardOrder(role: string, order: string[]): void {
+    try {
+      localStorage.setItem(this._cardOrderStorageKey(role), JSON.stringify(order));
+    } catch (error) {
+      console.warn('Failed to persist dashboard card order:', error);
+    }
+  }
+
+  private _clearCardOrder(role: string): void {
+    try {
+      localStorage.removeItem(this._cardOrderStorageKey(role));
+    } catch (error) {
+      console.warn('Failed to clear dashboard card order:', error);
+    }
   }
 
   #formatError(error: unknown): string {

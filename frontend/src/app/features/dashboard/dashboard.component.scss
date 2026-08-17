@@ -143,6 +143,23 @@ $radius: 0.75rem;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  cursor: default;
+
+  // Ensure the card remains visible while being dragged.
+  &.cdk-drag-preview {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    opacity: 0.95;
+  }
+
+  &.cdk-drag-placeholder {
+    opacity: 0.35;
+    border: 2px dashed $primary;
+    background: #eff6ff;
+  }
+
+  &:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
 
   .card-header {
     display: flex;
@@ -151,6 +168,7 @@ $radius: 0.75rem;
     padding: 14px 18px;
     border-bottom: 1px solid $border-color;
     margin-bottom: 0;
+    gap: 10px;
 
     h2 {
       font-size: 13px;
@@ -159,6 +177,35 @@ $radius: 0.75rem;
       letter-spacing: 0.04em;
       color: $text-secondary;
       margin: 0;
+      flex: 1;
+    }
+
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: $text-muted;
+      cursor: grab;
+      padding: 2px;
+      margin-left: -6px;
+      border-radius: 4px;
+
+      &:hover {
+        color: $text-secondary;
+        background: #f3f4f6;
+      }
+
+      &:active {
+        cursor: grabbing;
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
     }
 
     .task-count {
@@ -243,6 +290,29 @@ $radius: 0.75rem;
       flex-direction: column;
       align-items: flex-end;
       gap: 4px;
+
+      .btn-dismiss-alert {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: $text-muted;
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 4px;
+
+        &:hover {
+          color: #dc2626;
+          background: #fef2f2;
+        }
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+      }
 
       .priority {
         font-size: 10px;
@@ -529,6 +599,77 @@ $radius: 0.75rem;
   text-align: center;
   color: $text-muted;
   font-size: 14px;
+}
+
+// Drag-and-drop container styles
+.dashboard-grid.cdk-drop-list-dragging {
+  .dashboard-card:not(.cdk-drag-placeholder) {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.dashboard-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+
+  .link-reset-order {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: $primary;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// Compact scrollable list bodies with See more toggle
+.scrollable-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+}
+
+.see-more-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-top: 1px solid $border-color;
+  color: $primary;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+    text-decoration: underline;
+  }
 }
 
 // Count badge in card headers

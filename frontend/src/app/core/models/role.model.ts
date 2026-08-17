@@ -73,7 +73,7 @@ export const PATIENT_DETAIL_TAB_ROLES: {
  * Dashboard data source visibility by role. Prevents unauthorized API calls.
  * Must stay in sync with backend/config/rbac_permissions.yaml.
  */
-export function roleCanFetchDashboard(role: string, source: 'tasks' | 'patients' | 'beds' | 'documents' | 'alerts' | 'medications' | 'analytics'): boolean {
+export function roleCanFetchDashboard(role: string, source: 'tasks' | 'patients' | 'beds' | 'documents' | 'alerts' | 'medications' | 'physicianAlerts' | 'analytics'): boolean {
   const matrix: Record<string, string[]> = {
     tasks: [Role.Nurse, Role.Physician, Role.Admin],
     patients: [Role.Nurse, Role.Physician, Role.Pharmacist, Role.Admin],
@@ -81,6 +81,7 @@ export function roleCanFetchDashboard(role: string, source: 'tasks' | 'patients'
     documents: [Role.Physician, Role.Admin],
     alerts: [Role.Nurse, Role.Physician, Role.Pharmacist, Role.BedManager, Role.Admin],
     medications: [Role.Physician, Role.Pharmacist, Role.Admin],
+    physicianAlerts: [Role.Physician, Role.Admin],
     analytics: [Role.Admin],
   };
   return matrix[source]?.includes(role.toLowerCase()) ?? false;
@@ -124,6 +125,15 @@ export const DASHBOARD_CARDS: DashboardCardConfig[] = [
     emptyText: 'No active medication alerts',
     viewAllRoute: '/medications',
     actionLabel: 'Medication review',
+  },
+  {
+    id: 'physicianAlerts',
+    title: 'Physician Reviews',
+    icon: 'assignment_late',
+    roles: [Role.Physician, Role.Admin],
+    emptyText: 'No pending physician reviews',
+    viewAllRoute: '/tasks',
+    actionLabel: 'View reviews',
   },
   {
     id: 'riskOverview',
@@ -182,8 +192,8 @@ export const DASHBOARD_CARDS: DashboardCardConfig[] = [
 /** Ordered list of card IDs to render for a given role. */
 export function dashboardCardOrderForRole(role: string): string[] {
   const order: Record<string, string[]> = {
-    [Role.Admin]: ['agentStatus', 'pendingTasks', 'pendingApprovals', 'pharmacistAlerts', 'riskOverview', 'bedCensus', 'adtFeed', 'quickLinks'],
-    [Role.Physician]: ['pendingApprovals', 'pendingTasks', 'pharmacistAlerts', 'riskOverview', 'quickLinks'],
+    [Role.Admin]: ['agentStatus', 'pendingTasks', 'pendingApprovals', 'physicianAlerts', 'pharmacistAlerts', 'riskOverview', 'bedCensus', 'adtFeed', 'quickLinks'],
+    [Role.Physician]: ['pendingApprovals', 'physicianAlerts', 'pendingTasks', 'pharmacistAlerts', 'riskOverview', 'quickLinks'],
     [Role.Nurse]: ['pendingTasks', 'riskOverview', 'pharmacistAlerts', 'quickLinks'],
     [Role.Pharmacist]: ['pharmacistAlerts', 'pendingTasks', 'quickLinks'],
     [Role.BedManager]: ['bedCensus', 'adtFeed', 'edBoarding', 'quickLinks'],

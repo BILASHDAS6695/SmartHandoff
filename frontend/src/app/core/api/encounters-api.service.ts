@@ -9,6 +9,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { AdtEventPayload } from '@core/signalr/signalr.models';
+import { PatientListQuery, PatientListResponse } from '../../features/patients/models/patient.model';
 
 export interface RecentEventsResponse {
   events: AdtEventPayload[];
@@ -22,6 +23,14 @@ export interface EncounterCreateRequest {
   status: 'REGISTERED' | 'PRE_ADMISSION' | 'ADMITTED' | 'TRANSFERRED' | 'DISCHARGED';
   unit: string;
   risk_tier: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  event_type?: 'A01' | 'A02' | 'A03' | 'A04' | 'A08' | null;
+}
+
+/** Encounter update request payload. */
+export interface EncounterUpdateRequest {
+  status?: 'REGISTERED' | 'PRE_ADMISSION' | 'ADMITTED' | 'TRANSFERRED' | 'DISCHARGED';
+  unit?: string;
+  risk_tier?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
   event_type?: 'A01' | 'A02' | 'A03' | 'A04' | 'A08' | null;
 }
 
@@ -40,6 +49,35 @@ export interface EncounterWriteResponse {
 export class EncountersApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/v1/encounters`;
+
+  /**
+   * Fetches paginated encounter-level records (one row per encounter/registration).
+   * @param query - Unit, optional search term, status, page, and page_size
+   */
+  listEncounters(query: PatientListQuery): Observable<PatientListResponse> {
+    let params = new HttpParams()
+      .set('unit', query.unit)
+      .set('page', String(query.page ?? 1))
+      .set('page_size', String(query.page_size ?? 25));
+
+    if (query.search?.trim()) {
+      params = params.set('search', query.search.trim());
+    }
+
+    if (query.status?.trim()) {
+      params = params.set('status', query.status.trim());
+    }
+
+    if (query.patient_id?.trim()) {
+      params = params.set('patient_id', query.patient_id.trim());
+    }
+
+    if (query.mrn?.trim()) {
+      params = params.set('mrn', query.mrn.trim());
+    }
+
+    return this.http.get<PatientListResponse>(this.baseUrl, { params });
+  }
 
   /**
    * Fetches ADT events that occurred after the given ISO-8601 timestamp.
@@ -61,5 +99,13 @@ export class EncountersApiService {
    */
   createEncounter(payload: EncounterCreateRequest): Observable<EncounterWriteResponse> {
     return this.http.post<EncounterWriteResponse>(this.baseUrl, payload);
+  }
+
+  /**
+   * Updates an existing encounter (transfer, discharge, or update).
+   * PATCH /api/v1/encounters/{encounter_id}
+   */
+  updateEncounter(encounterId: string, payload: EncounterUpdateRequest): Observable<EncounterWriteResponse> {
+    return this.http.patch<EncounterWriteResponse>(`${this.baseUrl}/${encounterId}`, payload);
   }
 }

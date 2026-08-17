@@ -32,10 +32,12 @@ from app.services.medication_generator import (
 )
 from app.schemas.medication import (
     MedicationAnalysisResponse,
+    MedicationCreateRequest,
     MedicationHistoryEncounter,
     MedicationHistoryResponse,
     MedicationReconciliationResponse,
     MedicationReconciliationResult,
+    MedicationUpdateRequest,
 )
 from app.services.medication_analysis_service import MedicationAnalysisService
 
@@ -75,21 +77,92 @@ async def get_medication(
     return {"medication_id": str(medication_id), "user": current_user.sub}
 
 
-@router.post("")
+@router.post("", response_model=MedicationReconciliationResult, status_code=status.HTTP_201_CREATED)
 async def create_medication(
+    payload: MedicationCreateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("medication", "write"))],
-) -> dict:
-    """Create a medication — requires medication:write permission."""
-    return {"created": True, "user": current_user.sub}
+    db: AsyncSession = Depends(get_write_db),
+) -> Medication:
+    """Create a medication on an encounter — requires medication:write permission.
+
+    Used by the physician medication management dialog to add medications
+    surfaced by a physician review alert.
+    """
+    encounter = await db.get(Encounter, payload.encounter_id)
+    if encounter is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encounter not found")
+
+    sources: list[MedicationListSource] = []
+    if payload.pre_admit:
+        sources.append(MedicationListSource.PRE_ADMIT)
+    if payload.inpatient:
+        sources.append(MedicationListSource.INPATIENT)
+    if payload.discharge:
+        sources.append(MedicationListSource.DISCHARGE)
+
+    medication = Medication(
+        encounter_id=payload.encounter_id,
+        drug_name=payload.name,
+        rxnorm_cui=payload.rxnorm_cui,
+        dose=payload.dose,
+        route=payload.route,
+        frequency=payload.frequency,
+        sources=sources,
+        reconciliation_category=payload.reconciliation_category,
+        interaction_severity=payload.interaction_severity,
+        reconciliation_status="reconciled",
+    )
+    db.add(medication)
+    await db.commit()
+    await db.refresh(medication)
+    return _to_result(medication)
 
 
-@router.patch("/{medication_id}")
+@router.patch("/{medication_id}", response_model=MedicationReconciliationResult)
 async def update_medication(
     medication_id: uuid.UUID,
+    payload: MedicationUpdateRequest,
     current_user: Annotated[TokenClaims, Depends(require_permission("medication", "write"))],
-) -> dict:
-    """Update a medication — requires medication:write permission."""
-    return {"medication_id": str(medication_id), "user": current_user.sub}
+    db: AsyncSession = Depends(get_write_db),
+) -> Medication:
+    """Update a medication — requires medication:write permission.
+
+    Used by the physician medication management dialog to edit medications
+    surfaced by a physician review alert.
+    """
+    medication: Medication | None = await db.get(Medication, medication_id)
+    if medication is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
+
+    if payload.name is not None:
+        medication.drug_name = payload.name
+    if payload.rxnorm_cui is not None:
+        medication.rxnorm_cui = payload.rxnorm_cui
+    if payload.dose is not None:
+        medication.dose = payload.dose
+    if payload.route is not None:
+        medication.route = payload.route
+    if payload.frequency is not None:
+        medication.frequency = payload.frequency
+    if payload.reconciliation_category is not None:
+        medication.reconciliation_category = payload.reconciliation_category
+    if payload.interaction_severity is not None:
+        medication.interaction_severity = payload.interaction_severity
+
+    if payload.pre_admit is not None or payload.inpatient is not None or payload.discharge is not None:
+        sources: list[MedicationListSource] = []
+        if payload.pre_admit if payload.pre_admit is not None else MedicationListSource.PRE_ADMIT in medication.sources:
+            sources.append(MedicationListSource.PRE_ADMIT)
+        if payload.inpatient if payload.inpatient is not None else MedicationListSource.INPATIENT in medication.sources:
+            sources.append(MedicationListSource.INPATIENT)
+        if payload.discharge if payload.discharge is not None else MedicationListSource.DISCHARGE in medication.sources:
+            sources.append(MedicationListSource.DISCHARGE)
+        medication.sources = sources
+
+    db.add(medication)
+    await db.commit()
+    await db.refresh(medication)
+    return _to_result(medication)
 
 
 # ============================================================================
@@ -496,7 +569,7 @@ def _to_result(med) -> MedicationReconciliationResult:
         dose=(
             f"{med.dose_value} {med.dose_unit}".strip()
             if med.dose_value
-            else None
+            else med.dose
         ),
         route=med.route,
         frequency=med.frequency,

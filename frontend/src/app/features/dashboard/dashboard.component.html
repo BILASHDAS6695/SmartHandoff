@@ -30,10 +30,15 @@
   }
 
   @if (!isLoading()) {
-    <div class="dashboard-grid">
+    <div class="dashboard-grid"
+         cdkDropList
+         (cdkDropListDropped)="onCardDropped($event)">
       @for (card of visibleCards(); track card.id) {
-        <section class="dashboard-card" [class]="'card-' + card.id" [attr.aria-labelledby]="card.id + '-title'">
+        <section class="dashboard-card" [class]="'card-' + card.id" [attr.aria-labelledby]="card.id + '-title'" cdkDrag>
           <div class="card-header">
+            <button type="button" class="drag-handle" cdkDragHandle [attr.aria-label]="'Drag to reorder ' + card.title" title="Drag to reorder">
+              <mat-icon aria-hidden="true">drag_indicator</mat-icon>
+            </button>
             <h2 [id]="card.id + '-title'">
               <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
               {{ card.title }}
@@ -42,14 +47,15 @@
               @case ('pendingTasks') { <span class="count-badge">{{ pendingTasks().length }}</span> }
               @case ('pendingApprovals') { <span class="count-badge">{{ pendingApprovals().length }}</span> }
               @case ('pharmacistAlerts') { <span class="count-badge">{{ pharmacistAlerts().length }}</span> }
+              @case ('physicianAlerts') { <span class="count-badge">{{ physicianAlerts().length }}</span> }
             }
           </div>
 
           @switch (card.id) {
             <!-- My Pending Tasks -->
             @case ('pendingTasks') {
-              <ul class="task-list">
-                @for (task of pendingTasks(); track task.id) {
+              <ul class="task-list scrollable-list">
+                @for (task of visiblePendingTasks(); track task.id) {
                   <li class="task-row clickable" (click)="goToPatient(task.encounter_id, 'Tasks')" tabindex="0" (keydown.enter)="goToPatient(task.encounter_id, 'Tasks')">
                     <div class="task-info">
                       <div class="task-title">{{ taskDisplayName[task.agent_type] || (task.agent_type | titlecase) }}</div>
@@ -65,12 +71,17 @@
                   <li class="empty-state">{{ card.emptyText }}</li>
                 }
               </ul>
+              @if (pendingTasks().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllPendingTasks.set(!showAllPendingTasks())">
+                  {{ showAllPendingTasks() ? 'See less' : 'See more' }} ({{ pendingTasks().length }})
+                </button>
+              }
             }
 
             <!-- Pending Document Approvals -->
             @case ('pendingApprovals') {
-              <ul class="task-list">
-                @for (doc of pendingApprovals(); track doc.documentId) {
+              <ul class="task-list scrollable-list">
+                @for (doc of visiblePendingApprovals(); track doc.documentId) {
                   <li class="task-row clickable" (click)="goToDocuments()" tabindex="0" (keydown.enter)="goToDocuments()">
                     <div class="task-info">
                       <div class="task-title">{{ doc.documentType | titlecase }} — {{ getDocumentPatientName(doc) }}</div>
@@ -85,12 +96,17 @@
                   <li class="empty-state">{{ card.emptyText }}</li>
                 }
               </ul>
+              @if (pendingApprovals().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllPendingApprovals.set(!showAllPendingApprovals())">
+                  {{ showAllPendingApprovals() ? 'See less' : 'See more' }} ({{ pendingApprovals().length }})
+                </button>
+              }
             }
 
             <!-- Medication Alerts -->
             @case ('pharmacistAlerts') {
-              <ul class="task-list">
-                @for (alert of pharmacistAlerts(); track alert.id) {
+              <ul class="task-list scrollable-list">
+                @for (alert of visiblePharmacistAlerts(); track alert.id) {
                   <li class="task-row clickable" (click)="goToMedications()" tabindex="0" (keydown.enter)="goToMedications()">
                     <div class="task-info">
                       <div class="task-title">{{ alert.alert_type | titlecase }}</div>
@@ -105,12 +121,49 @@
                   <li class="empty-state">{{ card.emptyText }}</li>
                 }
               </ul>
+              @if (pharmacistAlerts().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllPharmacistAlerts.set(!showAllPharmacistAlerts())">
+                  {{ showAllPharmacistAlerts() ? 'See less' : 'See more' }} ({{ pharmacistAlerts().length }})
+                </button>
+              }
+            }
+
+            <!-- Physician Medication Reviews -->
+            @case ('physicianAlerts') {
+              <ul class="task-list scrollable-list">
+                @for (alert of visiblePhysicianAlerts(); track alert.id) {
+                  <li class="task-row" [class.clickable]="canManageMedications()" [attr.tabindex]="canManageMedications() ? 0 : -1" (click)="canManageMedications() && openMedicationManage(alert.encounter_id)" (keydown.enter)="canManageMedications() && openMedicationManage(alert.encounter_id)">
+                    <div class="task-info">
+                      <div class="task-title">{{ alert.title }}</div>
+                      <div class="task-subtitle">{{ getPatientName(alert.encounter_id) }} — {{ alert.message || 'Physician review required' }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority" [class]="'priority-' + (alert.severity | lowercase)">{{ alert.severity }}</span>
+                      <button
+                        class="btn-dismiss-alert"
+                        mat-icon-button
+                        (click)="dismissPhysicianAlert(alert, $event)"
+                        aria-label="Dismiss review">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  </li>
+                }
+                @if (physicianAlerts().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+              @if (physicianAlerts().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllPhysicianAlerts.set(!showAllPhysicianAlerts())">
+                  {{ showAllPhysicianAlerts() ? 'See less' : 'See more' }} ({{ physicianAlerts().length }})
+                </button>
+              }
             }
 
             <!-- Active Patients — Risk Overview -->
             @case ('riskOverview') {
-              <ul class="risk-list">
-                @for (patient of activePatients(); track patient.id) {
+              <ul class="risk-list scrollable-list">
+                @for (patient of visibleActivePatients(); track patient.id) {
                   <li class="risk-row clickable" (click)="goToPatient(patient.id)" tabindex="0" (keydown.enter)="goToPatient(patient.id)">
                     <div class="risk-patient">
                       <span class="status-dot" [class]="'risk-' + patient.riskLevel.toLowerCase()"></span>
@@ -129,6 +182,11 @@
                   <li class="empty-state">{{ card.emptyText }}</li>
                 }
               </ul>
+              @if (activePatients().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllActivePatients.set(!showAllActivePatients())">
+                  {{ showAllActivePatients() ? 'See less' : 'See more' }} ({{ activePatients().length }})
+                </button>
+              }
             }
 
             <!-- Bed Census Summary -->
@@ -219,6 +277,13 @@
           }
         </section>
       }
+    </div>
+
+    <div class="dashboard-footer">
+      <button type="button" class="link-reset-order" (click)="resetCardOrder()">
+        <mat-icon aria-hidden="true">restart_alt</mat-icon>
+        Reset dashboard order
+      </button>
     </div>
   }
 </main>
