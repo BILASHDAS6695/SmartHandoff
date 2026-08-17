@@ -9,6 +9,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { CdkDrag, CdkDropList, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Subscription, forkJoin, interval, Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -57,10 +58,13 @@ export interface BedCensusRow {
   cssClass: string;
 }
 
+/** localStorage key prefix for per-role dashboard card order. */
+const CARD_ORDER_STORAGE_KEY = 'dashboard-card-order';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, LiveAdtFeedComponent],
+  imports: [CommonModule, RouterModule, MatIconModule, LiveAdtFeedComponent, CdkDropList, CdkDrag],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -96,6 +100,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly isReconnecting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
 
+  /** Show-all toggles for compact dashboard cards. */
+  readonly showAllPendingTasks = signal<boolean>(false);
+  readonly showAllPendingApprovals = signal<boolean>(false);
+  readonly showAllPharmacistAlerts = signal<boolean>(false);
+  readonly showAllActivePatients = signal<boolean>(false);
+
+  /** User-defined card order override persisted in localStorage. */
+  readonly customCardOrder = signal<string[] | null>(null);
+
   // User and timestamp signals
   readonly currentUserName = signal<string>('Nancy');
   readonly lastUpdated = signal<string>(new Date().toLocaleTimeString());
@@ -113,7 +126,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly visibleCards = computed<DashboardCardConfig[]>(() => {
     const role = this.userRole();
     const allowed = new Set(DASHBOARD_CARDS.filter(c => c.roles.includes(role)).map(c => c.id));
-    return dashboardCardOrderForRole(role)
+    const baseOrder = dashboardCardOrderForRole(role);
+    const customOrder = this.customCardOrder();
+    // Merge any persisted order on top of the default order while keeping new cards visible.
+    const mergedOrder = customOrder && customOrder.length > 0
+      ? Array.from(new Set([...customOrder.filter(id => baseOrder.includes(id)), ...baseOrder]))
+      : baseOrder;
+    return mergedOrder
       .map(id => DASHBOARD_CARDS.find(c => c.id === id)!)
       .filter(c => allowed.has(c.id));
   });
@@ -163,6 +182,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly completedTasks = computed(() =>
     this.tasks().filter(t => t.status === TaskStatus.COMPLETED)
   );
+
+  /** Compact card preview limits. */
+  readonly listPreviewLimit = 5;
+
+  readonly visiblePendingTasks = computed(() => {
+    const all = this.pendingTasks();
+    return this.showAllPendingTasks() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visiblePendingApprovals = computed(() => {
+    const all = this.pendingApprovals();
+    return this.showAllPendingApprovals() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visiblePharmacistAlerts = computed(() => {
+    const all = this.pharmacistAlerts();
+    return this.showAllPharmacistAlerts() ? all : all.slice(0, this.listPreviewLimit);
+  });
+
+  readonly visibleActivePatients = computed(() => {
+    const all = this.activePatients();
+    return this.showAllActivePatients() ? all : all.slice(0, this.listPreviewLimit);
+  });
 
   /** Live agent health derived from the current task list. */
   readonly agentStatusList = computed<AgentStatus[]>(() => {
@@ -315,6 +357,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const currentUser = this.authService.currentUser();
       if (!currentUser) {
         throw new Error('User not authenticated');
+      }
+
+      // Restore any previously saved card order for this role.
+      const savedOrder = this._loadCardOrder(currentUser.role ?? '');
+      if (savedOrder) {
+        this.customCardOrder.set(savedOrder);
       }
 
       await this._loadDashboardData();
@@ -543,6 +591,61 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   trackByCardId(_: number, card: DashboardCardConfig): string {
     return card.id;
+  }
+
+  /**
+   * Reorder dashboard cards after a drag-drop event and persist the new order
+   * in localStorage keyed by the current user's role.
+   */
+  onCardDropped(event: CdkDragDrop<DashboardCardConfig[]>): void {
+    const currentCards = this.visibleCards();
+    if (currentCards.length <= 1) return;
+
+    const reordered = [...currentCards];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+
+    const role = this.userRole();
+    const newOrder = reordered.map(c => c.id);
+    this.customCardOrder.set(newOrder);
+    this._saveCardOrder(role, newOrder);
+  }
+
+  /** Reset the dashboard card order to the role default. */
+  resetCardOrder(): void {
+    const role = this.userRole();
+    this.customCardOrder.set(null);
+    this._clearCardOrder(role);
+  }
+
+  private _cardOrderStorageKey(role: string): string {
+    return `${CARD_ORDER_STORAGE_KEY}-${role.toLowerCase()}`;
+  }
+
+  private _loadCardOrder(role: string): string[] | null {
+    try {
+      const raw = localStorage.getItem(this._cardOrderStorageKey(role));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as string[];
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private _saveCardOrder(role: string, order: string[]): void {
+    try {
+      localStorage.setItem(this._cardOrderStorageKey(role), JSON.stringify(order));
+    } catch (error) {
+      console.warn('Failed to persist dashboard card order:', error);
+    }
+  }
+
+  private _clearCardOrder(role: string): void {
+    try {
+      localStorage.removeItem(this._cardOrderStorageKey(role));
+    } catch (error) {
+      console.warn('Failed to clear dashboard card order:', error);
+    }
   }
 
   #formatError(error: unknown): string {

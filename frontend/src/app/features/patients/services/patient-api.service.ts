@@ -2,7 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { PatientDetail, PatientListQuery, PatientListResponse, PatientSummary } from '../models/patient.model';
+import {
+  PatientDetail,
+  PatientListQuery,
+  PatientListResponse,
+  PatientSummary,
+  UniquePatientListResponse,
+} from '../models/patient.model';
 
 /**
  * HTTP client for the patient list API endpoint.
@@ -26,9 +32,11 @@ export class PatientApiService {
 
   /**
    * Fetches paginated patient list for the specified unit.
-   * @param query - Unit, optional search term, status, page, and page_size
+   * @param query - Unit, optional search term, status, page, page_size, and unique flag
    */
-  getPatients(query: PatientListQuery): Observable<PatientListResponse> {
+  getPatients(query: PatientListQuery & { unique: true }): Observable<UniquePatientListResponse>;
+  getPatients(query: PatientListQuery): Observable<PatientListResponse>;
+  getPatients(query: PatientListQuery): Observable<PatientListResponse | UniquePatientListResponse> {
     let params = new HttpParams()
       .set('unit', query.unit)
       .set('page', String(query.page ?? 1))
@@ -40,6 +48,11 @@ export class PatientApiService {
 
     if (query.status?.trim()) {
       params = params.set('status', query.status.trim());
+    }
+
+    if (query.unique) {
+      params = params.set('unique', 'true');
+      return this.http.get<UniquePatientListResponse>(this.baseUrl, { params });
     }
 
     return this.http.get<PatientListResponse>(this.baseUrl, { params });

@@ -26,6 +26,12 @@ export const routes: Routes = [
       import('./features/patients/patients.routes').then((m) => m.PATIENTS_ROUTES),
   },
   {
+    path: 'encounters',
+    canActivate: [AuthGuard],
+    loadChildren: () =>
+      import('./features/patients/encounters.routes').then((m) => m.ENCOUNTERS_ROUTES),
+  },
+  {
     path: 'tasks',
     canActivate: [AuthGuard],
     loadChildren: () =>
