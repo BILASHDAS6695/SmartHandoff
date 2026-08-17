@@ -253,6 +253,39 @@ class SignalRBroadcaster:
         arguments = [payload.model_dump(mode="json")]
         await self._send_to_group("role-bed_manager", "boarding_alert_created", arguments)
 
+    async def broadcast_alert_created(
+        self,
+        alert_id: str,
+        encounter_id: str,
+        patient_unit: str,
+        severity: str,
+        title: str,
+        message: str,
+        target_role: str = "physician",
+    ) -> None:
+        """Broadcast alert_created to a role group and the encounter group.
+
+        Used for physician review alerts, pharmacist alerts, and any other
+        clinical alert that needs to appear in real time on the dashboard.
+        """
+        from datetime import datetime, timezone
+
+        payload = {
+            "alertId": alert_id,
+            "encounterId": encounter_id,
+            "patientUnit": patient_unit or "unknown",
+            "severity": severity,
+            "title": title,
+            "message": message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        arguments = [payload]
+        groups = [f"role-{target_role}"]
+        if encounter_id:
+            groups.append(f"encounter-{encounter_id}")
+        for group in groups:
+            await self._send_to_group(group, "alert_created", arguments)
+
     async def broadcast_adt_event(self, payload: dict) -> None:
         """Broadcast adt_event_received to a unit group.
 
@@ -327,6 +360,24 @@ class SignalRBroadcasterStub:
             "SignalR stub: boarding_alert_created encounter=%s unit=%s",
             payload.encounter_id,
             payload.patient_unit,
+        )
+
+    async def broadcast_alert_created(
+        self,
+        alert_id: str,
+        encounter_id: str,
+        patient_unit: str,
+        severity: str,
+        title: str,
+        message: str,
+        target_role: str = "physician",
+    ) -> None:
+        """Log the payload instead of broadcasting."""
+        logger.debug(
+            "SignalR stub: alert_created alert=%s role=%s encounter=%s",
+            alert_id,
+            target_role,
+            encounter_id,
         )
 
     async def broadcast_adt_event(self, payload: dict) -> None:

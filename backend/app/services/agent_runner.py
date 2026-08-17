@@ -48,6 +48,7 @@ from app.models.bed import Bed
 from app.models.document import Document
 from app.models.encounter import Encounter, RiskTier
 from app.models.patient import Patient
+from app.models.physician_alert import PhysicianAlert
 from app.models.scheduled_notification import (
     DeliveryStatus,
     NotificationChannel,
@@ -60,7 +61,7 @@ from app.services.medication_generator import (
 )
 from app.services.task_status_service import TaskStatusTransitionService
 from app.signalr.broadcaster import SignalRBroadcaster, SignalRBroadcasterStub
-from app.signalr.schemas import BedSuggestionPayload
+from app.signalr.schemas import BedStatusChangedPayload, BedSuggestionPayload
 
 logger = logging.getLogger(__name__)
 
@@ -418,6 +419,10 @@ class AgentRunner:
             "reason": fhir_error,
         }
 
+        # Surface a physician review alert so the care team can verify/update
+        # discharge medications before the patient leaves.
+        await self._create_physician_medication_alert(db, task, medications)
+
     async def _run_bed_management(self, db: AsyncSession, task: AgentTask) -> None:
         """Score vacant beds and publish ranked suggestion(s) for bed manager review.
 
@@ -425,9 +430,63 @@ class AgentRunner:
         the best-matching vacant beds using the BedScoringAlgorithm and leaves the
         task in PENDING_APPROVAL so a bed manager can confirm or decline the
         recommendation. This supports the ED boarding alert workflow.
+
+        For discharge (A03) events, the agent releases the occupied bed so
+        housekeeping can clean it and the bed board reflects availability.
         """
         encounter = await self._load_encounter_with_adt(db, task.encounter_id)
         patient = encounter.patient
+
+        # Discharge path: release the occupied bed if still assigned.
+        if encounter.status == EncounterStatus.DISCHARGED.value:
+            bed_result = await db.execute(
+                select(Bed).where(Bed.current_encounter_id == encounter.id)
+            )
+            occupied_bed = bed_result.scalar_one_or_none()
+            if occupied_bed is not None:
+                occupied_bed.status = "cleaning"
+                occupied_bed.current_encounter_id = None
+                db.add(occupied_bed)
+                await db.flush()
+
+                if self._broadcaster is not None:
+                    try:
+                        await self._broadcaster.broadcast_bed_status_changed(
+                            BedStatusChangedPayload(
+                                bed_id=str(occupied_bed.id),
+                                bed_number=occupied_bed.bed_number,
+                                patient_unit=occupied_bed.unit or encounter.unit or "unknown",
+                                status="CLEANING",
+                                encounter_id=None,
+                                timestamp=datetime.now(timezone.utc),
+                            )
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to broadcast bed release for encounter %s: %s",
+                            encounter.id,
+                            exc,
+                        )
+
+                task.output = {
+                    "action": "bed_released",
+                    "bed_id": str(occupied_bed.id),
+                    "bed_number": occupied_bed.bed_number,
+                    "unit": occupied_bed.unit,
+                    "reason": "Patient discharged — bed sent to cleaning",
+                }
+                logger.info(
+                    "Bed %s released by bed management agent for discharged encounter %s",
+                    occupied_bed.id,
+                    encounter.id,
+                )
+            else:
+                task.output = {
+                    "action": "bed_released",
+                    "bed_id": None,
+                    "reason": "No occupied bed found for discharged encounter",
+                }
+            return
 
         # Build a profile from encounter + latest ADT event. Unknown values are
         # represented with neutral defaults so scoring remains deterministic.
@@ -632,6 +691,76 @@ class AgentRunner:
         if encounter is None:
             raise RuntimeError(f"Encounter {encounter_id} not found")
         return encounter
+
+    async def _create_physician_medication_alert(
+        self,
+        db: AsyncSession,
+        task: AgentTask,
+        medications: list[Any],
+    ) -> None:
+        """Create a physician review alert after medication reconciliation.
+
+        Alerts physicians that discharge medications have been reconciled and
+        may need review, update, or additions before the encounter is closed.
+        """
+        try:
+            encounter = await self._load_encounter(db, task.encounter_id)
+            patient = encounter.patient
+            patient_name = "Patient"
+            if patient is not None:
+                patient_name = (
+                    f"{patient.first_name} {patient.last_name}".strip() or "Patient"
+                )
+
+            title = "Medication reconciliation complete — physician review needed"
+            message = (
+                f"{len(medications)} medication(s) reconciled for {patient_name}. "
+                "Please review, update, or add discharge medications for this encounter."
+            )
+
+            alert = PhysicianAlert(
+                encounter_id=task.encounter_id,
+                patient_id=patient.id if patient else None,
+                alert_type="MEDICATION_REVIEW",
+                severity="MEDIUM",
+                title=title,
+                message=message,
+                status="ACTIVE",
+            )
+            db.add(alert)
+            await db.flush()
+            await db.refresh(alert)
+
+            if self._broadcaster is not None:
+                try:
+                    await self._broadcaster.broadcast_alert_created(
+                        alert_id=str(alert.id),
+                        encounter_id=str(task.encounter_id),
+                        patient_unit=encounter.unit or "unknown",
+                        severity="MEDIUM",
+                        title=title,
+                        message=message,
+                        target_role="physician",
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to broadcast physician alert for encounter %s: %s",
+                        task.encounter_id,
+                        exc,
+                    )
+
+            logger.info(
+                "Physician medication review alert created encounter=%s alert=%s",
+                task.encounter_id,
+                alert.id,
+            )
+        except Exception as exc:
+            # Alert creation must never fail the agent task.
+            logger.warning(
+                "Failed to create physician medication alert for encounter %s: %s",
+                task.encounter_id,
+                exc,
+            )
 
     async def _run_documentation(self, db: AsyncSession, task: AgentTask) -> None:
         """Generate a template discharge summary document for the encounter."""

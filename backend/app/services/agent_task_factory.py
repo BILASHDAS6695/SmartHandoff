@@ -24,6 +24,7 @@ ADT_EVENT_AGENT_MAP: dict[str, tuple[str, ...]] = {
     "A03": (
         "documentation",
         "medication_reconciliation",
+        "bed_management",
         "follow_up_care",
         "patient_communication",
     ),
@@ -43,6 +44,7 @@ ENCOUNTER_STATUS_AGENT_MAP: dict[str, tuple[str, ...]] = {
     EncounterStatus.DISCHARGED.value: (
         "documentation",
         "medication_reconciliation",
+        "bed_management",
         "follow_up_care",
         "patient_communication",
     ),

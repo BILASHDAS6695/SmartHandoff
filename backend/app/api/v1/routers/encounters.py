@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.jwt import TokenClaims
@@ -32,6 +33,7 @@ from app.services.encounter_orchestrator import EncounterOrchestratorService
 from app.services.patient_notification_publisher import PatientNotificationPublisher
 from app.signalr import SignalRHub
 from app.signalr.broadcaster import SignalRBroadcaster
+from app.signalr.schemas import BedStatusChangedPayload
 
 logger = logging.getLogger(__name__)
 
@@ -316,6 +318,7 @@ async def update_encounter(
         encounter.risk_tier = body.risk_tier
 
     discharged = False
+    released_bed_id: str | None = None
     if status_changed or unit_changed:
         publisher = AdtEventPublisher()
         await publisher.publish_for_encounter(db, encounter, patient)
@@ -323,8 +326,46 @@ async def update_encounter(
             status_changed and encounter.status == EncounterStatus.DISCHARGED.value
         )
 
+    # If the patient is being discharged, release the occupied bed so
+    # housekeeping can clean it and the bed board reflects availability.
+    if discharged:
+        bed_result = await db.execute(
+            select(Bed).where(Bed.current_encounter_id == encounter.id)
+        )
+        occupied_bed = bed_result.scalar_one_or_none()
+        if occupied_bed is not None:
+            occupied_bed.status = "cleaning"
+            occupied_bed.current_encounter_id = None
+            released_bed_id = str(occupied_bed.id)
+            db.add(occupied_bed)
+            logger.info(
+                "Bed %s released for discharged encounter %s",
+                occupied_bed.id,
+                encounter.id,
+            )
+
     await db.commit()
     await db.refresh(encounter)
+
+    # Broadcast bed status change immediately so the bed board refreshes.
+    if released_bed_id and occupied_bed is not None and broadcaster is not None:
+        try:
+            await broadcaster.broadcast_bed_status_changed(
+                BedStatusChangedPayload(
+                    bed_id=released_bed_id,
+                    bed_number=occupied_bed.bed_number,
+                    patient_unit=occupied_bed.unit or encounter.unit or "unknown",
+                    status="CLEANING",
+                    encounter_id=None,
+                    timestamp=datetime.now(timezone.utc),
+                )
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to broadcast bed status change for discharged encounter %s: %s",
+                encounter.id,
+                exc,
+            )
 
     # Create/update agent tasks when the encounter changed.
     if status_changed or unit_changed:
