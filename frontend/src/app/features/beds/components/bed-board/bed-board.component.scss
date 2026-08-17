@@ -12,18 +12,55 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .back-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
 
   h1 {
     font-size: 20px;
     font-weight: 700;
     color: #111827;
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-right {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-shrink: 0;
   }
 
   .live-dot {
@@ -653,16 +690,165 @@
 }
 
 @media (max-width: 768px) {
+  .bed-board-container {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+
+    .back-btn {
+      display: inline-flex;
+    }
+
+    h1 {
+      font-size: 16px;
+    }
+
+    .header-right {
+      width: 100%;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .refresh-btn span {
+      display: none;
+    }
+  }
+
   .filter-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+  }
+
+  .filter-select {
+    min-width: 0;
+    width: 100%;
   }
 
   .legend {
     margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .legend-item {
+      font-size: 10px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+    }
   }
 
   .ed-alert {
     flex-direction: column;
+    padding: 14px;
+    gap: 12px;
+
+    .ed-alert-title {
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+
+    .ed-alert-meta {
+      font-size: 11px;
+    }
+
+    .ed-alert-recs {
+      strong {
+        font-size: 11px;
+      }
+
+      .rec-bed {
+        font-size: 11px;
+        padding: 4px 8px;
+        margin-bottom: 6px;
+      }
+    }
+
+    .ed-alert-actions {
+      flex-direction: column;
+      align-items: stretch;
+
+      .btn-assign,
+      .btn-ghost-small {
+        justify-content: center;
+        width: 100%;
+      }
+    }
+  }
+
+  .bed-grid,
+  .bed-board__grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+  }
+
+  .bed-tile {
+    padding: 8px;
+    border-radius: 10px;
+
+    .bed-id {
+      font-size: 12px;
+    }
+
+    .bed-status {
+      font-size: 8px;
+    }
+
+    .bed-patient,
+    .bed-risk,
+    .bed-dc,
+    .hk-label,
+    .available-label,
+    .blocked-label {
+      font-size: 9px;
+    }
+  }
+
+  .predictions {
+    padding: 12px;
+
+    &__header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    &__filter {
+      width: 100%;
+      justify-content: space-between;
+
+      .prediction-horizon-toggle {
+        --mat-standard-button-toggle-height: 28px;
+
+        ::ng-deep .mat-button-toggle {
+          min-width: 38px;
+
+          .mat-button-toggle-label-content {
+            padding: 0 8px;
+            font-size: 11px;
+            line-height: 28px;
+          }
+        }
+      }
+    }
+
+    .pred-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+
+      &__time {
+        width: 100%;
+        justify-content: flex-start;
+        text-align: left;
+      }
+    }
   }
 }

@@ -6,11 +6,17 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f9fafb;
   min-height: calc(100vh - 56px);
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    gap: 16px;
+  }
 }
 
 .back-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background: none;
   border: none;
@@ -30,6 +36,29 @@
   &:hover {
     text-decoration: underline;
   }
+
+  .back-text {
+    display: inline;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #374151;
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+
+    &:hover {
+      background: #f3f4f6;
+      text-decoration: none;
+    }
+  }
 }
 
 .patient-header {
@@ -38,6 +67,10 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   padding: 20px 24px;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 }
 
 .patient-name {
@@ -45,6 +78,7 @@
   font-weight: 700;
   margin-bottom: 6px;
   color: #111827;
+  word-break: break-word;
 
   .ann {
     background: #fefce8;
@@ -63,6 +97,14 @@
       content: attr(data-id);
       font-weight: 700;
     }
+
+    @media (max-width: 768px) {
+      margin-left: 0;
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      width: fit-content;
+    }
   }
 
   .reveal-link {
@@ -73,6 +115,10 @@
     &:hover {
       text-decoration: underline;
     }
+  }
+
+  @media (max-width: 768px) {
+    font-size: 18px;
   }
 }
 
@@ -93,18 +139,32 @@
   strong {
     color: #111827;
   }
+
+  @media (max-width: 768px) {
+    gap: 10px;
+    font-size: 12px;
+  }
 }
 
 .risk-score-display {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    gap: 6px;
+  }
 }
 
 .risk-label {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
+
+  @media (max-width: 768px) {
+    font-size: 12px;
+  }
 }
 
 .risk-bar-large {
@@ -113,6 +173,11 @@
   background: #f3f4f6;
   border-radius: 9999px;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: 100px;
+    height: 6px;
+  }
 }
 
 .risk-bar-fill {
@@ -133,12 +198,23 @@
   &.high { background: #fef2f2; color: #dc2626; }
   &.med { background: #fffbeb; color: #d97706; }
   &.low { background: #f0fdf4; color: #16a34a; }
+
+  @media (max-width: 768px) {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
 }
 
 .tabs {
   display: flex;
   gap: 0;
   border-bottom: 2px solid #e5e7eb;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .tab {
@@ -154,6 +230,8 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     color: #2563eb;
@@ -163,6 +241,11 @@
     color: #2563eb;
     border-bottom-color: #2563eb;
     font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 14px;
+    font-size: 12px;
   }
 }
 
@@ -182,6 +265,10 @@
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    border-radius: 10px;
+  }
 }
 
 .card-header {
@@ -198,11 +285,23 @@
     letter-spacing: 0.05em;
     color: #4b5563;
     margin: 0;
+
+    @media (max-width: 768px) {
+      font-size: 11px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 14px;
   }
 }
 
 .card-body {
   padding: 14px 18px;
+
+  @media (max-width: 768px) {
+    padding: 12px 14px;
+  }
 }
 
 .approval-card {
@@ -494,6 +593,33 @@
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
+
+    @media (max-width: 768px) {
+      height: 36px;
+      padding: 0 28px 0 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      color: #374151;
+      font-size: 14px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='%236b7280'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      min-width: 280px;
+
+      &:disabled {
+        background-color: #f3f4f6;
+        color: #9ca3af;
+        cursor: not-allowed;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      }
+    }
   }
 }
 
@@ -529,6 +655,10 @@
 .documents-table {
   display: table;
   width: 100%;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
 }
 
 .documents-table-header {
@@ -777,17 +907,17 @@
       }
     }
   }
-}
 
-.documents-table {
-  .col-title { width: 38%; }
-  .col-type { width: 18%; }
-  .col-status { width: 14%; }
-  .col-date { width: 18%; }
-  .col-actions {
-    width: 220px;
-    text-align: right;
-    white-space: nowrap;
+  @media (max-width: 768px) {
+    .col-title { width: 38%; }
+    .col-type { width: 18%; }
+    .col-status { width: 14%; }
+    .col-date { width: 18%; }
+    .col-actions {
+      width: 220px;
+      text-align: right;
+      white-space: nowrap;
+    }
   }
 }
 
@@ -1172,6 +1302,10 @@
   &.has-detail {
     grid-template-columns: 1.4fr 0.6fr;
   }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .agent-tasks-card {
@@ -1215,6 +1349,10 @@
   tr:hover {
     background: #f3f4f6;
     cursor: pointer;
+  }
+
+  @media (max-width: 768px) {
+    display: block;
   }
 }
 

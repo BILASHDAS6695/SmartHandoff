@@ -1,7 +1,12 @@
 <div class="bed-board-container">
   <!-- Page Header -->
   <div class="page-header">
-    <h1>Bed Board — Live View</h1>
+    <div class="header-left">
+      <button type="button" class="back-btn" (click)="goBack()" aria-label="Go back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1>Bed Board — Live View</h1>
+    </div>
     <div class="header-right">
       <span class="live-dot" title="Live SignalR connection"></span>
       <span class="last-updated">
