@@ -178,6 +178,55 @@ class MedicationHistoryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class MedicationCreateRequest(BaseModel):
+    """Request body for creating or updating a medication on an encounter.
+
+    Used by the physician medication management dialog to add or edit
+    medications after a physician review alert is surfaced.
+    """
+
+    encounter_id: UUID = Field(
+        ...,
+        description="Encounter UUID to which the medication belongs",
+    )
+    name: str = Field(..., min_length=1, max_length=255, description="Drug display name")
+    rxnorm_cui: Optional[str] = Field(default=None, max_length=20, description="RxNorm CUI")
+    dose: Optional[str] = Field(default=None, max_length=64, description="Dose string e.g. 500mg")
+    route: Optional[str] = Field(default=None, max_length=64, description="Route e.g. oral")
+    frequency: Optional[str] = Field(default=None, max_length=64, description="Frequency e.g. BID")
+    pre_admit: bool = Field(default=False, description="True if on pre-admission list")
+    inpatient: bool = Field(default=False, description="True if on inpatient list")
+    discharge: bool = Field(default=False, description="True if on discharge list")
+    reconciliation_category: Optional[ReconciliationCategory] = Field(
+        default=None,
+        description="CONTINUED | NEW | STOPPED | DOSE_CHANGED",
+    )
+    interaction_severity: Optional[str] = Field(
+        default=None,
+        max_length=16,
+        description="HIGH | MEDIUM | LOW from RxNav",
+    )
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationUpdateRequest(BaseModel):
+    """Request body for updating an existing medication."""
+
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    rxnorm_cui: Optional[str] = Field(default=None, max_length=20)
+    dose: Optional[str] = Field(default=None, max_length=64)
+    route: Optional[str] = Field(default=None, max_length=64)
+    frequency: Optional[str] = Field(default=None, max_length=64)
+    pre_admit: Optional[bool] = None
+    inpatient: Optional[bool] = None
+    discharge: Optional[bool] = None
+    reconciliation_category: Optional[ReconciliationCategory] = None
+    interaction_severity: Optional[str] = Field(default=None, max_length=16)
+
+    model_config = {"from_attributes": True}
+
+
 class MedicationAnalysisResponse(BaseModel):
     """AI-powered medication change analysis and readmission prediction."""
 

@@ -134,6 +134,7 @@
 
     <div class="grid-2">
       <!-- Active Alerts -->
+      @if (showActiveAlerts()) {
       <div class="card">
         <div class="card-header">
           <h3>Active Alerts</h3>
@@ -164,27 +165,35 @@
           }
         </div>
       </div>
+      }
 
       <!-- Readmission Risk Detail -->
       <div class="card">
         <div class="card-header">
           <h3>Readmission Risk Detail</h3>
+          @if (isLoadingReadmissionRisk()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
         </div>
         <div class="card-body">
-          <div class="risk-big" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskScore | number:'1.2-2' }}</div>
-          <div class="risk-bar-large" style="width: 100%; margin: 8px 0;">
-            <div class="risk-bar-fill" [class]="getRiskClass(patient().riskLevel)" [style.width.%]="getRiskBarWidth(patient().riskScore)"></div>
-          </div>
-          <div class="risk-subtitle" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskLevel }} RISK — Follow-up mandatory within 7 days</div>
-          <ul class="risk-factors">
-            @for (factor of riskFactors(); track factor.text) {
-              <li>
-                <span class="rf-dot"></span>
-                {{ factor.text }}
-              </li>
-            }
-          </ul>
-          <a class="view-plan" (click)="onViewCarePlan()" (keydown.enter)="onViewCarePlan()" tabindex="0" role="button">View Care Plan →</a>
+          @if (readmissionRiskError()) {
+            <div class="agent-error">{{ readmissionRiskError() }}</div>
+          } @else {
+            <div class="risk-big" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskScore | number:'1.2-2' }}</div>
+            <div class="risk-bar-large" style="width: 100%; margin: 8px 0;">
+              <div class="risk-bar-fill" [class]="getRiskClass(patient().riskLevel)" [style.width.%]="getRiskBarWidth(patient().riskScore)"></div>
+            </div>
+            <div class="risk-subtitle" [class]="getRiskClass(patient().riskLevel)">{{ patient().riskLevel }} RISK — Follow-up mandatory within 7 days</div>
+            <ul class="risk-factors">
+              @for (factor of riskFactors(); track factor.text) {
+                <li>
+                  <span class="rf-dot"></span>
+                  {{ factor.text }}
+                </li>
+              }
+            </ul>
+            <a class="view-plan" (click)="onViewCarePlan()" (keydown.enter)="onViewCarePlan()" tabindex="0" role="button">View Care Plan →</a>
+          }
         </div>
       </div>
     </div>
@@ -323,6 +332,15 @@
       <div class="card-header">
         <h3>Medication Reconciliation</h3>
         <div class="header-actions">
+          @if (canManageMedications()) {
+            <button
+              mat-stroked-button
+              (click)="openMedicationManage()"
+              aria-label="Add or edit medications">
+              <mat-icon>edit_note</mat-icon>
+              Manage Medications
+            </button>
+          }
           <button
             mat-stroked-button
             (click)="analyzeMedicationChanges()"
@@ -421,6 +439,14 @@
                 <ng-container matColumnDef="actions">
                   <th mat-header-cell *matHeaderCellDef></th>
                   <td mat-cell *matCellDef="let med">
+                    @if (canManageMedications()) {
+                      <button
+                        mat-icon-button
+                        (click)="openMedicationManage(med); $event.stopPropagation()"
+                        aria-label="Edit medication">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                    }
                     <button
                       mat-icon-button
                       (click)="toggleMedDetail(med); $event.stopPropagation()"

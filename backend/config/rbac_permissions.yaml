@@ -34,7 +34,7 @@ roles:
     patient:    [list, read]
     encounter:  [list, read]
     document:   [list, read, write, approve]
-    medication: [list, read]
+    medication: [list, read, write]
     alert:      [list, read]
     bed:        []
     analytics:  []
@@ -56,9 +56,9 @@ roles:
 
   PHARMACIST:
     patient:    [list, read]
-    encounter:  [read]
+    encounter:  [list, read]
     document:   []
-    medication: [list, read, write]
+    medication: [list, read]
     alert:      [list, read, write, resolve]
     bed:        []
     analytics:  []

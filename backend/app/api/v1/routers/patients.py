@@ -92,9 +92,9 @@ async def _list_unique_patients(
             Encounter.id.label("encounter_id"),
             Encounter.status.label("latest_status"),
             Encounter.risk_tier.label("latest_risk_tier"),
-            Encounter.created_at.label("latest_created_at"),
+            Encounter.updated_at.label("latest_updated_at"),
             func.row_number()
-            .over(partition_by=Encounter.patient_id, order_by=Encounter.created_at.desc())
+            .over(partition_by=Encounter.patient_id, order_by=Encounter.updated_at.desc())
             .label("rn"),
             func.count(Encounter.id)
             .filter(Encounter.status.in_(active_statuses))
@@ -225,6 +225,7 @@ async def _list_encounter_patients(
             Encounter.status.label("status"),
             Bed.bed_number.label("room_number"),
             Encounter.risk_tier,
+            Encounter.risk_score,
             Encounter.created_at.label("admission_date"),
         )
         .outerjoin(Bed, Bed.current_encounter_id == Encounter.id)
@@ -234,7 +235,7 @@ async def _list_encounter_patients(
     if not search_term:
         offset = (page - 1) * page_size
         data_query = data_query.offset(offset).limit(page_size)
-    data_query = data_query.order_by(Encounter.created_at.desc())
+    data_query = data_query.order_by(Encounter.updated_at.desc())
 
     result = await db.execute(data_query)
     rows = result.all()
@@ -256,7 +257,7 @@ async def _list_encounter_patients(
             "room_number": row.room_number or "",
             "mrn_masked": mrn_masked,
             "risk_tier": row.risk_tier or "UNKNOWN",
-            "risk_score": None,
+            "risk_score": row.risk_score,
             "admission_date": row.admission_date.isoformat() if row.admission_date else "",
             "status": row.status or "",
         })
@@ -303,6 +304,7 @@ async def get_patient(
                 Encounter.unit.label("current_unit"),
                 Encounter.status.label("status"),
                 Encounter.risk_tier,
+                Encounter.risk_score,
                 Bed.bed_number.label("room_number"),
                 Encounter.created_at.label("admission_date"),
             )
@@ -332,7 +334,7 @@ async def get_patient(
             "mrn_masked": mrn_masked,
             "mrn": mrn_masked,
             "risk_tier": row.risk_tier or "UNKNOWN",
-            "risk_score": None,
+            "risk_score": row.risk_score,
             "status": row.status or "",
             "admission_date": row.admission_date.isoformat() if row.admission_date else "",
         }

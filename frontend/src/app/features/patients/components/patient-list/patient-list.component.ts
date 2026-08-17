@@ -41,7 +41,7 @@ const DISPLAYED_COLUMNS = [
   'mrn_masked',
   'name',
   'current_unit',
-  'admission_date',
+  'updated_at',
   'status',
   'risk_score',
   'actions',
@@ -317,6 +317,14 @@ export class PatientListComponent implements OnInit, OnDestroy {
       case 'LOW': return '✓';
       default: return '✓';
     }
+  }
+
+  getDateValue(patient: PatientSummary): string {
+    const status = patient.status?.toUpperCase();
+    if (status === 'ADMITTED') {
+      return patient.admission_date || '';
+    }
+    return patient.updated_at || patient.admission_date || '';
   }
 
 }

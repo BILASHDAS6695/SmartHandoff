@@ -72,6 +72,10 @@ export class EncountersApiService {
       params = params.set('patient_id', query.patient_id.trim());
     }
 
+    if (query.mrn?.trim()) {
+      params = params.set('mrn', query.mrn.trim());
+    }
+
     return this.http.get<PatientListResponse>(this.baseUrl, { params });
   }
 

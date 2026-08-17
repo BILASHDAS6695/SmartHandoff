@@ -26,11 +26,16 @@ class PhysicianAlertCreate(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-class PhysicianAlertRead(PhysicianAlertCreate):
+class PhysicianAlertRead(BaseModel):
     """Response body for a physician alert."""
 
     id: uuid.UUID
     encounter_id: uuid.UUID
+    alert_type: Literal["MEDICATION_REVIEW"] = "MEDICATION_REVIEW"
+    severity: Literal["HIGH", "MEDIUM", "LOW"] = "MEDIUM"
+    title: str = Field(..., max_length=255)
+    message: str | None = Field(default=None, max_length=4000)
+    patient_id: uuid.UUID | None = None
     status: str
     resolved_by_user_id: uuid.UUID | None = None
     resolved_at: datetime | None = None

@@ -48,7 +48,6 @@ from app.models.bed import Bed
 from app.models.document import Document
 from app.models.encounter import Encounter, RiskTier
 from app.models.patient import Patient
-from app.models.physician_alert import PhysicianAlert
 from app.models.scheduled_notification import (
     DeliveryStatus,
     NotificationChannel,
@@ -60,6 +59,7 @@ from app.services.medication_generator import (
     generate_medications_for_encounter,
 )
 from app.services.task_status_service import TaskStatusTransitionService
+from app.services.physician_alert_service import create_physician_medication_review_alert
 from app.signalr.broadcaster import SignalRBroadcaster, SignalRBroadcasterStub
 from app.signalr.schemas import BedStatusChangedPayload, BedSuggestionPayload
 
@@ -718,41 +718,12 @@ class AgentRunner:
                 "Please review, update, or add discharge medications for this encounter."
             )
 
-            alert = PhysicianAlert(
-                encounter_id=task.encounter_id,
-                patient_id=patient.id if patient else None,
-                alert_type="MEDICATION_REVIEW",
-                severity="MEDIUM",
+            await create_physician_medication_review_alert(
+                db=db,
+                encounter=encounter,
                 title=title,
                 message=message,
-                status="ACTIVE",
-            )
-            db.add(alert)
-            await db.flush()
-            await db.refresh(alert)
-
-            if self._broadcaster is not None:
-                try:
-                    await self._broadcaster.broadcast_alert_created(
-                        alert_id=str(alert.id),
-                        encounter_id=str(task.encounter_id),
-                        patient_unit=encounter.unit or "unknown",
-                        severity="MEDIUM",
-                        title=title,
-                        message=message,
-                        target_role="physician",
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to broadcast physician alert for encounter %s: %s",
-                        task.encounter_id,
-                        exc,
-                    )
-
-            logger.info(
-                "Physician medication review alert created encounter=%s alert=%s",
-                task.encounter_id,
-                alert.id,
+                broadcaster=self._broadcaster,
             )
         except Exception as exc:
             # Alert creation must never fail the agent task.

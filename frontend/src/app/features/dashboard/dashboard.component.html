@@ -47,6 +47,7 @@
               @case ('pendingTasks') { <span class="count-badge">{{ pendingTasks().length }}</span> }
               @case ('pendingApprovals') { <span class="count-badge">{{ pendingApprovals().length }}</span> }
               @case ('pharmacistAlerts') { <span class="count-badge">{{ pharmacistAlerts().length }}</span> }
+              @case ('physicianAlerts') { <span class="count-badge">{{ physicianAlerts().length }}</span> }
             }
           </div>
 
@@ -123,6 +124,38 @@
               @if (pharmacistAlerts().length > listPreviewLimit) {
                 <button class="see-more-btn" (click)="showAllPharmacistAlerts.set(!showAllPharmacistAlerts())">
                   {{ showAllPharmacistAlerts() ? 'See less' : 'See more' }} ({{ pharmacistAlerts().length }})
+                </button>
+              }
+            }
+
+            <!-- Physician Medication Reviews -->
+            @case ('physicianAlerts') {
+              <ul class="task-list scrollable-list">
+                @for (alert of visiblePhysicianAlerts(); track alert.id) {
+                  <li class="task-row" [class.clickable]="canManageMedications()" [attr.tabindex]="canManageMedications() ? 0 : -1" (click)="canManageMedications() && openMedicationManage(alert.encounter_id)" (keydown.enter)="canManageMedications() && openMedicationManage(alert.encounter_id)">
+                    <div class="task-info">
+                      <div class="task-title">{{ alert.title }}</div>
+                      <div class="task-subtitle">{{ getPatientName(alert.encounter_id) }} — {{ alert.message || 'Physician review required' }}</div>
+                    </div>
+                    <div class="task-meta">
+                      <span class="priority" [class]="'priority-' + (alert.severity | lowercase)">{{ alert.severity }}</span>
+                      <button
+                        class="btn-dismiss-alert"
+                        mat-icon-button
+                        (click)="dismissPhysicianAlert(alert, $event)"
+                        aria-label="Dismiss review">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  </li>
+                }
+                @if (physicianAlerts().length === 0) {
+                  <li class="empty-state">{{ card.emptyText }}</li>
+                }
+              </ul>
+              @if (physicianAlerts().length > listPreviewLimit) {
+                <button class="see-more-btn" (click)="showAllPhysicianAlerts.set(!showAllPhysicianAlerts())">
+                  {{ showAllPhysicianAlerts() ? 'See less' : 'See more' }} ({{ physicianAlerts().length }})
                 </button>
               }
             }

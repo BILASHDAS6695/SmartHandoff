@@ -31,6 +31,7 @@ from app.services.cancellation_service import CancellationService
 from app.services.cancellation_dispatcher import CancellationDispatcher
 from app.services.encounter_orchestrator import EncounterOrchestratorService
 from app.services.patient_notification_publisher import PatientNotificationPublisher
+from app.services.physician_alert_service import create_physician_medication_review_alert
 from app.signalr import SignalRHub
 from app.signalr.broadcaster import SignalRBroadcaster
 from app.signalr.schemas import BedStatusChangedPayload
@@ -95,6 +96,7 @@ async def list_encounters(
     search: str = Query(""),
     status: str = Query(""),
     patient_id: uuid.UUID | None = Query(None, description="Filter encounters by patient UUID"),
+    mrn: str = Query("", description="Filter encounters by patient MRN (partial match on masked MRN)"),
     db: AsyncSession = Depends(get_write_db),
 ) -> dict:
     """List encounter-level records — requires encounter:list permission.
@@ -104,6 +106,7 @@ async def list_encounters(
     patient rows.
     """
     search_term = search.strip().lower()
+    mrn_term = mrn.strip().lower()
 
     def _base_filter(query):
         query = (
@@ -135,16 +138,19 @@ async def list_encounters(
             Encounter.status.label("status"),
             Bed.bed_number.label("room_number"),
             Encounter.risk_tier,
+            Encounter.risk_score,
             Encounter.created_at.label("admission_date"),
+            Encounter.updated_at.label("updated_at"),
         )
         .outerjoin(Bed, Bed.current_encounter_id == Encounter.id)
     )
 
+    filter_term = search_term or mrn_term
     offset = 0
-    if not search_term:
+    if not filter_term:
         offset = (page - 1) * page_size
         data_query = data_query.offset(offset).limit(page_size)
-    data_query = data_query.order_by(Encounter.created_at.desc())
+    data_query = data_query.order_by(Encounter.updated_at.desc())
 
     result = await db.execute(data_query)
     rows = result.all()
@@ -166,17 +172,23 @@ async def list_encounters(
             "room_number": row.room_number or "",
             "mrn_masked": mrn_masked,
             "risk_tier": row.risk_tier or "UNKNOWN",
-            "risk_score": None,
+            "risk_score": row.risk_score,
             "admission_date": row.admission_date.isoformat() if row.admission_date else "",
+            "updated_at": row.updated_at.isoformat() if row.updated_at else "",
             "status": row.status or "",
         })
 
-    if search_term:
+    if search_term or mrn_term:
         filtered_items = []
         for item in encounter_items:
             full_name = f"{item.get('first_name', '')} {item.get('last_name', '')}".lower()
             mrn_display = item.get("mrn_masked", "").lower()
-            if search_term in full_name or search_term in mrn_display:
+            match = True
+            if search_term and search_term not in full_name and search_term not in mrn_display:
+                match = False
+            if mrn_term and mrn_term not in mrn_display:
+                match = False
+            if match:
                 filtered_items.append(item)
         total = len(filtered_items)
         offset = (page - 1) * page_size
@@ -325,6 +337,22 @@ async def update_encounter(
         discharged = (
             status_changed and encounter.status == EncounterStatus.DISCHARGED.value
         )
+
+    # Whenever the encounter status or unit changes, physicians must review
+    # medications for the updated encounter state.
+    if status_changed or unit_changed:
+        try:
+            await create_physician_medication_review_alert(
+                db=db,
+                encounter=encounter,
+                broadcaster=broadcaster,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to auto-create physician alert for encounter update %s: %s",
+                encounter.id,
+                exc,
+            )
 
     # If the patient is being discharged, release the occupied bed so
     # housekeeping can clean it and the bed board reflects availability.

@@ -15,6 +15,7 @@ export interface PatientSummary {
   risk_tier: RiskTier;
   risk_score: number | null;
   admission_date: string; // ISO 8601
+  updated_at?: string; // ISO 8601
 }
 
 /** De-duplicated patient record as returned by GET /api/v1/patients?unique=true */
@@ -56,6 +57,7 @@ export interface PatientListQuery {
   page_size?: number;
   unique?: boolean;
   patient_id?: string;
+  mrn?: string;
 }
 
 /** Detailed patient/encounter record as returned by GET /api/v1/patients/{id} */
