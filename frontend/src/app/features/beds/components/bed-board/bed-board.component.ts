@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, inject, ChangeDetectionStrategy, OnDestroy, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -49,6 +49,7 @@ export class BedBoardComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly destroy$ = new Subject<void>();
 
   // State signals
@@ -456,6 +457,10 @@ export class BedBoardComponent implements OnInit, OnDestroy {
     if (this.canManageSuggestions()) {
       this.loadSuggestions();
     }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 
   openAssignDialog(suggestion: BedSuggestion, preselectedBedId?: string): void {

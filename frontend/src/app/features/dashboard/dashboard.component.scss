@@ -410,7 +410,7 @@ $radius: 0.75rem;
   .risk-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     padding: 10px 0;
     border-bottom: 1px solid $border-color;
 
@@ -425,8 +425,14 @@ $radius: 0.75rem;
       font-size: 13px;
       font-weight: 500;
       color: $text-main;
-      flex: 0 0 100px;
-      min-width: 100px;
+      flex: 1 1 auto;
+      min-width: 0;
+
+      .patient-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
 
     .risk-bar {
@@ -451,7 +457,7 @@ $radius: 0.75rem;
       font-size: 12px;
       font-weight: 700;
       color: $text-main;
-      flex: 1;
+      flex: 0 0 auto;
 
       .risk-label {
         font-size: 10px;
@@ -832,5 +838,25 @@ $radius: 0.75rem;
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 16px;
+  }
+
+  .risk-list .risk-row {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+
+    .risk-patient {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    .risk-bar {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 60px;
+    }
+
+    .risk-score {
+      flex: 0 0 auto;
+    }
   }
 }
