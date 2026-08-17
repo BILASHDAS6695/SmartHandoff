@@ -1,0 +1,28 @@
+# Cloud Build pipeline for the SmartHandoff monolithic backend.
+# Builds the backend image and pushes it to Artifact Registry.
+
+substitutions:
+  _PROJECT_ID: 'smarthandoff'
+  _REGION: 'us-central1'
+  _REPO: 'smarthandoff'
+  _IMAGE_NAME: 'smarthandoff-backend'
+  _TAG: 'latest'
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-build'
+    args:
+      - 'build'
+      - '--tag'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}'
+      - '--tag'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:latest'
+      - '.'
+    dir: 'backend'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO}/${_IMAGE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -98,3 +98,14 @@ variable "data_team_alert_email" {
   type        = string
   description = "Email for data team alert notifications on BigQuery export failure"
 }
+
+variable "scheduled_notifications_container_image" {
+  type        = string
+  description = "Full URI for the scheduled notification dispatcher Cloud Run job container image"
+}
+
+variable "scheduled_notifications_schedule" {
+  type        = string
+  description = "Cloud Scheduler cron expression for the scheduled notification dispatcher"
+  default     = "*/1 * * * *"
+}

@@ -64,6 +64,8 @@ from app.db.encryption_key import get_phi_encryption_key
 from app.db.session import create_db_engines, dispose_db_engines, get_write_session
 from app.agents.bed_management.boarding_monitor import BoardingMonitor
 from app.agents.bed_management.boarding_publisher import BoardingAlertPublisher
+from app.services.patient_notification_publisher import PatientNotificationPublisher
+from app.services.scheduled_notification_dispatcher import ScheduledNotificationDispatcher
 # from app.db.ensure_schema import ensure_schema  # REMOVED - file does not exist
 # from app.db.add_missing_encounter_columns import add_missing_encounter_columns  # REMOVED - file does not exist
 from app.middleware.audit import HIPAAAuditMiddleware
@@ -124,6 +126,7 @@ async def lifespan(app: FastAPI):
         # 4. Initialize SignalR broadcaster (US-022) - optional
         settings = get_settings()
         broadcaster: SignalRBroadcaster | SignalRBroadcasterStub | None = None
+        scheduler: AsyncIOScheduler | None = None
         if settings.AZURE_SIGNALR_CONNECTION_STRING:
             logger.warning("🔧 Startup Step 4/4: Initializing SignalR broadcaster...")
             broadcaster = SignalRBroadcaster(settings.AZURE_SIGNALR_CONNECTION_STRING)
@@ -132,11 +135,15 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("🔧 Startup Step 4/4: SignalR broadcaster not configured (skipped)")
 
-        # 4.1 Register ED boarding monitor (local dev / test fallback w/o Pub/Sub)
-        if os.environ.get("ENABLE_BOARDING_MONITOR", "false").lower() == "true":
-            logger.warning("🔧 Startup Step 4.1/4: Registering ED boarding monitor...")
+        # 4.1/4.2 Register background scheduler jobs (boarding monitor + scheduled notification dispatcher)
+        enable_boarding = os.environ.get("ENABLE_BOARDING_MONITOR", "false").lower() == "true"
+        enable_dispatcher = os.environ.get("ENABLE_SCHEDULED_NOTIFICATION_DISPATCHER", "false").lower() == "true"
+        if enable_boarding or enable_dispatcher:
             from apscheduler.schedulers.asyncio import AsyncIOScheduler
             scheduler = AsyncIOScheduler()
+
+        if enable_boarding:
+            logger.warning("🔧 Startup Step 4.1/4: Registering ED boarding monitor...")
             publisher = BoardingAlertPublisher(
                 pubsub_client=None,  # type: ignore[arg-type]
                 db_session_factory=get_write_session,
@@ -146,10 +153,26 @@ async def lifespan(app: FastAPI):
             )
             monitor = BoardingMonitor(publisher=publisher, scheduler=scheduler)
             monitor.register()
-            scheduler.start()
             logger.warning("✓ ED boarding monitor registered")
         else:
             logger.warning("🔧 Startup Step 4.1/4: ED boarding monitor disabled (ENABLE_BOARDING_MONITOR not true)")
+
+        if enable_dispatcher:
+            logger.warning("🔧 Startup Step 4.2/4: Registering scheduled notification dispatcher...")
+            dispatcher_publisher = PatientNotificationPublisher()
+            dispatcher = ScheduledNotificationDispatcher(
+                session_factory=get_write_session,
+                publisher=dispatcher_publisher,
+                scheduler=scheduler,
+            )
+            dispatcher.register()
+            logger.warning("✓ Scheduled notification dispatcher registered")
+        else:
+            logger.warning("🔧 Startup Step 4.2/4: Scheduled notification dispatcher disabled (ENABLE_SCHEDULED_NOTIFICATION_DISPATCHER not true)")
+
+        if scheduler:
+            scheduler.start()
+            logger.warning("✓ Background scheduler started")
         
         logger.warning("=" * 80)
         logger.warning("✅ FastAPI application startup COMPLETE - READY TO ACCEPT REQUESTS")
@@ -171,7 +194,14 @@ async def lifespan(app: FastAPI):
         # Shutdown: close SignalR broadcaster HTTP client
         if broadcaster:
             await broadcaster.aclose()
-        logger.warning("✓ FastAPI lifespan shutdown completed")
+        # Shutdown: stop APScheduler gracefully
+        if scheduler:
+            try:
+                scheduler.shutdown(wait=False)
+                logger.warning("✓ Background scheduler shut down")
+            except Exception as exc:
+                logger.error("❌ Error shutting down background scheduler: %s", exc)
+        logger.warning("✓ FastAPI application shutdown completed")
     except Exception as exc:
         logger.error("❌ Error during shutdown: %s", exc)
 

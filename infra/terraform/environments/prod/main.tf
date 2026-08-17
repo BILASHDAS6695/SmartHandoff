@@ -224,6 +224,30 @@ module "bq_export" {
   depends_on = [module.cloud_sql, google_project_service.apis]
 }
 
+# ── Scheduled Notification Dispatcher Job ────────────────────────────────────
+module "scheduled_notifications" {
+  source = "../../modules/scheduled_notifications"
+
+  project_id                          = var.project_id
+  environment                         = var.environment
+  region                              = var.region
+  container_image                     = var.scheduled_notifications_container_image
+  cloud_sql_connection_name           = module.cloud_sql.primary_connection_name
+  db_name                             = var.db_name
+  db_user                             = var.db_user
+  db_password_secret_id               = module.cloud_sql.db_password_secret_id
+  phi_encryption_key_secret_id        = "phi-encryption-key"
+  twilio_account_sid_secret_id        = "twilio-account-sid"
+  twilio_auth_token_secret_id         = "twilio-auth-token"
+  twilio_phone_number_secret_id       = "twilio-phone-number"
+  twilio_verify_service_sid_secret_id = "twilio-verify-service-sid"
+  sendgrid_api_key_secret_id          = "sendgrid-api-key"
+  sendgrid_from_email_secret_id       = "sendgrid-from-email"
+  schedule                            = var.scheduled_notifications_schedule
+
+  depends_on = [module.cloud_sql, google_project_service.apis]
+}
+
 module "monitoring" {
   source      = "../../modules/monitoring"
   project_id  = var.project_id
