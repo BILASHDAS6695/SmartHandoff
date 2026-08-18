@@ -28,19 +28,19 @@ roles:
     analytics:  [list, read]
     audit_log:  [list, read]
     user:       [list, read, write]
-    agent_task: [list, read]
+    agent_task: [list, read, write]
 
   PHYSICIAN:
     patient:    [list, read]
     encounter:  [list, read]
     document:   [list, read, write, approve]
     medication: [list, read, write]
-    alert:      [list, read]
+    alert:      [list, read, resolve]
     bed:        []
     analytics:  []
     audit_log:  []
     user:       []
-    agent_task: [list, read]
+    agent_task: [list, read, write]
 
   NURSE:
     patient:    [list, read]
@@ -52,7 +52,7 @@ roles:
     analytics:  []
     audit_log:  []
     user:       []
-    agent_task: [list, read]
+    agent_task: [list, read, write]
 
   PHARMACIST:
     patient:    [list, read]

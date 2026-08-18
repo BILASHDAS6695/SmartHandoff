@@ -1,0 +1,110 @@
+.patient-name {
+  margin: 0 0 4px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.review-message {
+  margin: 0 0 16px;
+  color: #4b5563;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 120px;
+  color: #4b5563;
+}
+
+.error-message {
+  color: #b91c1c;
+}
+
+.review-summary {
+  margin-bottom: 8px;
+  color: #4b5563;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.medication-list {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.medication-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.medication-row strong,
+.medication-row span {
+  display: block;
+}
+
+.medication-row span {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.stage-list {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.stage {
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.stage.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.empty-state {
+  color: #6b7280;
+}
+
+mat-dialog-actions mat-spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.approval-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .review-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .medication-row {
+    flex-direction: column;
+  }
+
+  .stage-list {
+    justify-content: flex-start;
+  }
+}

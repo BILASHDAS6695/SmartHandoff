@@ -226,6 +226,17 @@ export class PatientListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/patients', encounterId]);
   }
 
+  manageEncounter(patient: PatientSummary): void {
+    this.router.navigate(['/patients/register'], {
+      queryParams: { encounter: patient.encounter_id },
+    });
+  }
+
+  canManageEncounter(patient: PatientSummary): boolean {
+    return ['REGISTERED', 'PRE_ADMISSION', 'ADMITTED', 'TRANSFERRED']
+      .includes(patient.status?.toUpperCase());
+  }
+
   getStartIndex(): number {
     return this.totalCount() === 0 ? 0 : this.currentPage * this.pageSize + 1;
   }

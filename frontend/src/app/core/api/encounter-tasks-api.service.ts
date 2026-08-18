@@ -78,6 +78,13 @@ export class EncounterTasksApiService {
       );
   }
 
+  /** Queue a new execution for a failed agent task. */
+  retryFailedTask(taskId: string): Observable<AgentTaskResponse> {
+    return this.http
+      .post<AgentTaskResponse>(`${this.baseUrl}/tasks/${taskId}/retry`, {})
+      .pipe(catchError(this._handleError));
+  }
+
   /**
    * Fetches tasks filtered by status.
    *

@@ -30,14 +30,14 @@ import {
 } from '../../core/models';
 import { AuthService } from '../../core/auth/auth.service';
 import { PatientApiService } from '../patients/services/patient-api.service';
-import { PatientSummary } from '../patients/models/patient.model';
+import { UniquePatientSummary } from '../patients/models/patient.model';
 import { LiveAdtFeedComponent } from './components/live-adt-feed/live-adt-feed.component';
 import { BedBoardService } from '../beds/services/bed-board.service';
 import { BedDto, BedSuggestion } from '../beds/models/bed.model';
 import { DocumentApiService, PendingDocument } from '../documents/services/document-api.service';
 import { MedicationApiService, PharmacistAlert } from '../medications/services/medication-api.service';
 import { MatDialog } from '@angular/material/dialog';
-import { MedicationManageDialogComponent } from '../medications/components/medication-manage-dialog/medication-manage-dialog.component';
+import { PhysicianMedicationReviewDialogComponent } from '../medications/components/physician-medication-review-dialog/physician-medication-review-dialog.component';
 
 /** Active patient risk overview item. */
 export interface ActivePatient {
@@ -97,7 +97,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Reactive state using signals
   readonly encounterId = signal<string>('');
   readonly tasks = signal<AgentTaskResponse[]>([]);
-  readonly patients = signal<PatientSummary[]>([]);
+  readonly patients = signal<UniquePatientSummary[]>([]);
   readonly beds = signal<BedDto[]>([]);
   readonly pendingSuggestions = signal<BedSuggestion[]>([]);
   readonly pendingApprovals = signal<PendingDocument[]>([]);
@@ -129,7 +129,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly canFetchPatients = computed(() => roleCanFetchDashboard(this.userRole(), 'patients'));
   readonly canFetchBeds = computed(() => roleCanFetchDashboard(this.userRole(), 'beds'));
   readonly canFetchDocuments = computed(() => roleCanFetchDashboard(this.userRole(), 'documents'));
-  readonly canFetchAlerts = computed(() => roleCanFetchDashboard(this.userRole(), 'alerts'));
+  readonly canFetchPharmacistAlerts = computed(() => {
+    const role = this.userRole();
+    return role === Role.Admin || role === Role.Pharmacist;
+  });
   readonly canFetchPhysicianAlerts = computed(() => roleCanFetchDashboard(this.userRole(), 'physicianAlerts'));
   readonly canManageMedications = computed(() => {
     const role = this.userRole();
@@ -168,7 +171,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly patientNameMap = computed<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const p of this.patients()) {
-      map[p.encounter_id] = `${p.last_name}, ${p.first_name}`;
+      if (p.active_encounter_id) {
+        map[p.active_encounter_id] = `${p.last_name}, ${p.first_name}`;
+      }
     }
     return map;
   });
@@ -176,10 +181,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   /** Active patients derived from the live patient list. */
   readonly activePatients = computed<ActivePatient[]>(() =>
     this.patients().map(p => ({
-      id: p.encounter_id,
+      id: p.active_encounter_id ?? p.patient_id,
       name: `${p.first_name} ${p.last_name}`,
-      riskScore: p.risk_score ?? this._defaultRiskScore(p.risk_tier),
-      riskLevel: this._riskTierToLevel(p.risk_tier),
+      riskScore: this._defaultRiskScore(p.latest_risk_tier),
+      riskLevel: this._riskTierToLevel(p.latest_risk_tier),
     }))
   );
 
@@ -280,7 +285,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
 
     this.alertCreatedSub = this.signalR.alertCreated$.subscribe((payload) => {
-      if (this.canFetchAlerts()) {
+      if (this.canFetchPharmacistAlerts()) {
         this._fetchPharmacistAlerts().subscribe(alerts => this.pharmacistAlerts.set(alerts));
       }
       if (this.canFetchPhysicianAlerts()) {
@@ -357,22 +362,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     void this.router.navigate(['/medications']);
   }
 
-  /**
-   * Open the medication manage dialog for a physician review alert.
-   * After save, refresh both the physician alert list and medications.
-   */
-  openMedicationManage(encounterId: string, medication?: unknown): void {
-    const ref = this.dialog.open(MedicationManageDialogComponent, {
-      width: '640px',
+  goToPatientMedications(encounterId: string): void {
+    this.goToPatient(encounterId, 'Medications');
+  }
+
+  openPhysicianMedicationReview(alert: PhysicianAlert): void {
+    const ref = this.dialog.open(PhysicianMedicationReviewDialogComponent, {
+      width: '760px',
+      maxWidth: '95vw',
       data: {
-        encounterId,
-        patientName: this.getPatientName(encounterId),
-        medication: medication ?? null,
+        alert,
+        patientName: this.getPatientName(alert.encounter_id),
       },
     });
 
     ref.afterClosed().subscribe((result) => {
-      if (result?.action) {
+      if (result?.action === 'approved') {
         this._fetchPhysicianAlerts().subscribe(alerts => this.physicianAlerts.set(alerts));
       }
     });
@@ -458,7 +463,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
           : this.tasksApi.getMyTasks();
       }
       if (this.canFetchPatients()) {
-        requests['patients'] = this.patientApi.getPatients({ unit, page: 1, page_size: 100 });
+        requests['patients'] = this.patientApi.getPatients({
+          unit,
+          page: 1,
+          page_size: 100,
+          unique: true,
+        });
       }
       if (this.canFetchBeds()) {
         requests['beds'] = this.bedBoardApi.getBeds();
@@ -483,14 +493,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       forkJoin(requests).subscribe({
         next: (result: Record<string, unknown>) => {
           this.tasks.set((result['tasks'] as AgentTaskResponse[]) ?? this.tasks());
-          this.patients.set((result['patients'] as { items?: PatientSummary[] })?.items ?? this.patients());
+          this.patients.set((result['patients'] as { items?: UniquePatientSummary[] })?.items ?? this.patients());
           this.beds.set((result['beds'] as BedDto[]) ?? this.beds());
           this.pendingSuggestions.set((result['pendingSuggestions'] as BedSuggestion[]) ?? this.pendingSuggestions());
           this.pendingApprovals.set((result['pendingApprovals'] as PendingDocument[]) ?? this.pendingApprovals());
           this.physicianAlerts.set((result['physicianAlerts'] as PhysicianAlert[]) ?? this.physicianAlerts());
 
           // Pharmacist alerts depend on the visible patient list, so load them after patients settle.
-          if (this.canFetchAlerts()) {
+          if (this.canFetchPharmacistAlerts()) {
             this._fetchPharmacistAlerts().subscribe(alerts => this.pharmacistAlerts.set(alerts));
           }
 
@@ -513,7 +523,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private _fetchPharmacistAlerts(): Observable<PharmacistAlert[]> {
-    if (!this.canFetchAlerts()) return of([]);
+    if (!this.canFetchPharmacistAlerts()) return of([]);
     // Bulk fetch all active alerts for the caller in a single request.
     return this.medicationApi.getAlerts('ACTIVE').pipe(
       map(response => response.alerts ?? [])

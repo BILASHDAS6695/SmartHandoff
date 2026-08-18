@@ -67,8 +67,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
         { icon: 'dashboard', label: 'Dashboard', route: '/dashboard' },
         { icon: 'people', label: 'Patients', route: '/patients', badge: () => this.uniquePatientCount(), roles: [Role.Admin] },
         { icon: 'folder_copy', label: 'Encounters', route: '/encounters', badge: () => this.encounterCount() },
-        { icon: 'assignment_add', label: 'Register Encounter', route: '/patients/register' },
-        { icon: 'assignment', label: 'Task Monitor', route: '/tasks', roles: [Role.Nurse, Role.Physician, Role.Admin] },
+        { icon: 'assignment_add', label: 'Register Encounter', route: '/patients/register', roles: [Role.Admin] },
+        { icon: 'assignment', label: 'Task Monitor', route: '/tasks', roles: [Role.Admin] },
       ],
     },
     {

@@ -129,7 +129,7 @@ async def _list_unique_patients(
             latest_encounter.c.latest_status,
             latest_encounter.c.latest_risk_tier,
         )
-        .join(latest_encounter, latest_encounter.c.patient_id == Patient.id)
+        .outerjoin(latest_encounter, latest_encounter.c.patient_id == Patient.id)
         .where(Patient.deleted_at.is_(None))
         .order_by(Patient.created_at.desc())
     )

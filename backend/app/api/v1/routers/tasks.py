@@ -8,14 +8,14 @@ import uuid
 from typing import Annotated
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.dependencies import require_role
 from app.core.auth.jwt import TokenClaims
 from app.core.auth.rbac import require_permission
 from app.db.deps import get_read_db, get_write_db
-from app.models.agent_task import AgentTask
+from app.models.agent_task import AgentTask, AgentTaskStatus
 from app.repositories.agent_task_repository import (
     AgentTaskRepository,
     InvalidTaskTypeError,
@@ -24,6 +24,7 @@ from app.repositories.agent_task_repository import (
 )
 from app.schemas.agent_task import AgentTaskResponse
 from app.schemas.task_override import TaskOverrideRequest, TaskOverrideResponse
+from app.services.agent_runner import run_agent_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -59,6 +60,39 @@ async def get_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task {task_id} not found.",
         )
+    return AgentTaskResponse.model_validate(task)
+
+
+@router.post(
+    "/{task_id}/retry",
+    response_model=AgentTaskResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Retry a failed agent task",
+)
+async def retry_failed_task(
+    task_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    current_user: Annotated[TokenClaims, Depends(require_permission("agent_task", "write"))],
+    db: AsyncSession = Depends(get_write_db),
+) -> AgentTaskResponse:
+    """Queue one failed task for a fresh agent execution."""
+    task = await db.get(AgentTask, task_id)
+    if task is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found.",
+        )
+    if task.status != AgentTaskStatus.FAILED.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Only failed tasks can be retried (status={task.status}).",
+        )
+
+    task.retry_count += 1
+    task.error_message = None
+    await db.commit()
+    await db.refresh(task)
+    background_tasks.add_task(run_agent_task, task.id)
     return AgentTaskResponse.model_validate(task)
 
 

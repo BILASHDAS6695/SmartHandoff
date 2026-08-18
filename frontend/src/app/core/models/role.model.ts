@@ -121,10 +121,8 @@ export const DASHBOARD_CARDS: DashboardCardConfig[] = [
     id: 'pharmacistAlerts',
     title: 'Medication Alerts',
     icon: 'medication',
-    roles: [Role.Physician, Role.Pharmacist, Role.Admin],
+    roles: [Role.Pharmacist, Role.Admin],
     emptyText: 'No active medication alerts',
-    viewAllRoute: '/medications',
-    actionLabel: 'Medication review',
   },
   {
     id: 'physicianAlerts',
@@ -193,8 +191,8 @@ export const DASHBOARD_CARDS: DashboardCardConfig[] = [
 export function dashboardCardOrderForRole(role: string): string[] {
   const order: Record<string, string[]> = {
     [Role.Admin]: ['agentStatus', 'pendingTasks', 'pendingApprovals', 'physicianAlerts', 'pharmacistAlerts', 'riskOverview', 'bedCensus', 'adtFeed', 'quickLinks'],
-    [Role.Physician]: ['pendingApprovals', 'physicianAlerts', 'pendingTasks', 'pharmacistAlerts', 'riskOverview', 'quickLinks'],
-    [Role.Nurse]: ['pendingTasks', 'riskOverview', 'pharmacistAlerts', 'quickLinks'],
+    [Role.Physician]: ['pendingApprovals', 'physicianAlerts', 'pendingTasks', 'riskOverview', 'quickLinks'],
+    [Role.Nurse]: ['pendingTasks', 'riskOverview', 'quickLinks'],
     [Role.Pharmacist]: ['pharmacistAlerts', 'pendingTasks', 'quickLinks'],
     [Role.BedManager]: ['bedCensus', 'adtFeed', 'edBoarding', 'quickLinks'],
   };
@@ -220,7 +218,6 @@ export function quickLinksForRole(role: string): { label: string; route: string;
       { label: 'Medications', route: '/medications', icon: 'medication' },
     ],
     [Role.Nurse]: [
-      { label: 'Register Encounter', route: '/patients/register', icon: 'assignment_add' },
       { label: 'Medications', route: '/medications', icon: 'medication' },
     ],
     [Role.Pharmacist]: [
@@ -228,7 +225,6 @@ export function quickLinksForRole(role: string): { label: string; route: string;
     ],
     [Role.BedManager]: [
       { label: 'Bed Board', route: '/beds', icon: 'hotel' },
-      { label: 'Register Encounter', route: '/patients/register', icon: 'assignment_add' },
     ],
   };
   return [...(roleLinks[role.toLowerCase()] ?? []), ...common];

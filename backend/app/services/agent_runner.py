@@ -27,7 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import case, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -46,7 +46,7 @@ from app.models.agent_task import (
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.bed import Bed
 from app.models.document import Document
-from app.models.encounter import Encounter, RiskTier
+from app.models.encounter import Encounter, EncounterStatus, RiskTier
 from app.models.patient import Patient
 from app.models.scheduled_notification import (
     DeliveryStatus,
@@ -158,7 +158,10 @@ async def run_agent_task(
             logger.warning("Agent task %s not found; skipping execution", task_id)
             return
 
-        if task.status != AgentTaskStatus.PENDING.value:
+        if task.status not in {
+            AgentTaskStatus.PENDING.value,
+            AgentTaskStatus.FAILED.value,
+        }:
             logger.info(
                 "Agent task %s has status %s; skipping execution",
                 task_id,
@@ -242,13 +245,14 @@ class AgentRunner:
                 # complete when the status is still IN_PROGRESS.
                 if task.status == AgentTaskStatus.IN_PROGRESS.value:
                     await self._transition.transition(db, task, AgentTaskStatus.COMPLETED)
-            except Exception:
+            except Exception as exc:
                 logger.exception(
                     "Agent %s execution failed for task %s encounter %s",
                     task.agent_type,
                     task.id,
                     task.encounter_id,
                 )
+                task.error_message = str(exc)
                 try:
                     await self._transition.transition(db, task, AgentTaskStatus.FAILED)
                 except Exception:
@@ -494,7 +498,9 @@ class AgentRunner:
 
         # Fetch all currently vacant beds from the primary DB (not the mat view).
         result = await db.execute(
-            select(Bed).where(Bed.status.in_(("available", "cleaning", "vacant")))
+            select(Bed).where(
+                func.lower(Bed.status).in_(("available", "cleaning", "vacant"))
+            )
         )
         vacant_beds = result.scalars().all()
 

@@ -14,6 +14,8 @@ export const PATIENTS_ROUTES: Routes = [
       },
       {
         path: 'register',
+        canActivate: [RoleGuard],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./components/encounter-register/encounter-register.component').then((m) => m.EncounterRegisterComponent),
       },

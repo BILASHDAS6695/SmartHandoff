@@ -1,6 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -39,8 +39,9 @@ import { UniquePatientSummary } from '../../models';
   templateUrl: './encounter-register.component.html',
   styleUrl: './encounter-register.component.scss',
 })
-export class EncounterRegisterComponent {
+export class EncounterRegisterComponent implements OnInit {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
   private readonly patientApi = inject(PatientApiService);
   private readonly encountersApi = inject(EncountersApiService);
@@ -88,10 +89,17 @@ export class EncounterRegisterComponent {
     this.selectedSearchPatient()?.active_encounter_id ?? null
   );
 
+  readonly activeEncounterStatus = computed(() =>
+    this.selectedSearchPatient()?.latest_status?.toUpperCase() ?? ''
+  );
+
   /** Submit label changes based on create vs update flow. */
   readonly submitLabel = computed(() => {
     if (this.isRegistering()) return this.hasActiveEncounter() ? 'Updating…' : 'Registering…';
-    return this.hasActiveEncounter() ? 'Update Encounter' : 'Register Encounter';
+    if (!this.hasActiveEncounter()) return 'Register Encounter';
+    return ['REGISTERED', 'PRE_ADMISSION'].includes(this.activeEncounterStatus())
+      ? 'Admit Patient'
+      : 'Update Encounter';
   });
 
   /** Dynamic status options based on whether the patient already has an active encounter. */
@@ -99,9 +107,19 @@ export class EncounterRegisterComponent {
     const patient = this.selectedSearchPatient();
     if (!patient) return ['REGISTERED', 'PRE_ADMISSION', 'ADMITTED', 'TRANSFERRED', 'DISCHARGED'];
 
-    return this.hasActiveEncounter()
-      ? ['TRANSFERRED', 'DISCHARGED']
-      : ['REGISTERED', 'PRE_ADMISSION', 'ADMITTED'];
+    if (!this.hasActiveEncounter()) return ['REGISTERED', 'PRE_ADMISSION', 'ADMITTED'];
+
+    switch (this.activeEncounterStatus()) {
+      case 'REGISTERED':
+      case 'PRE_ADMISSION':
+        return ['ADMITTED'];
+      case 'ADMITTED':
+        return ['TRANSFERRED', 'DISCHARGED'];
+      case 'TRANSFERRED':
+        return ['DISCHARGED'];
+      default:
+        return [];
+    }
   });
 
   /** Dynamic ADT event type options based on whether the patient already has an active encounter. */
@@ -116,16 +134,62 @@ export class EncounterRegisterComponent {
       ];
     }
 
-    return this.hasActiveEncounter()
-      ? [
-          { value: 'A02', label: 'A02 - Transfer' },
-          { value: 'A03', label: 'A03 - Discharge' },
-        ]
-      : [
+    if (!this.hasActiveEncounter()) {
+      return [
           { value: 'A04', label: 'A04 - Registration' },
           { value: 'A01', label: 'A01 - Admit' },
+      ];
+    }
+
+    switch (this.activeEncounterStatus()) {
+      case 'REGISTERED':
+      case 'PRE_ADMISSION':
+        return [{ value: 'A01', label: 'A01 - Admit' }];
+      case 'ADMITTED':
+        return [
+          { value: 'A02', label: 'A02 - Transfer' },
+          { value: 'A03', label: 'A03 - Discharge' },
         ];
+      case 'TRANSFERRED':
+        return [{ value: 'A03', label: 'A03 - Discharge' }];
+      default:
+        return [];
+    }
   });
+
+  ngOnInit(): void {
+    const encounterId = this.route.snapshot.queryParamMap.get('encounter');
+    if (encounterId) {
+      this.loadEncounterForManagement(encounterId);
+    }
+  }
+
+  private loadEncounterForManagement(encounterId: string): void {
+    this.isSearching.set(true);
+    this.searchError.set(null);
+    this.patientApi.getPatientByEncounter(encounterId).subscribe({
+      next: (encounter) => {
+        const patient: UniquePatientSummary = {
+          patient_id: encounter.patient_id,
+          mrn_masked: encounter.mrn_masked,
+          first_name: encounter.first_name,
+          last_name: encounter.last_name,
+          date_of_birth: encounter.date_of_birth,
+          active_encounter_count: 1,
+          active_encounter_id: encounter.encounter_id,
+          latest_status: encounter.status,
+          latest_risk_tier: encounter.risk_tier,
+        };
+        this.searchResults.set([patient]);
+        this.selectSearchPatient(patient);
+        this.isSearching.set(false);
+      },
+      error: (err: Error) => {
+        this.searchError.set(err.message || 'Failed to load encounter for management.');
+        this.isSearching.set(false);
+      },
+    });
+  }
 
   onSearchPatients(): void {
     const query = this.searchQuery().trim();
@@ -160,8 +224,21 @@ export class EncounterRegisterComponent {
     this.selectedSearchPatient.set(patient);
 
     // Default status/ADT type depends on whether the patient already has an active encounter.
-    const nextStatus = this.hasActiveEncounter() ? 'TRANSFERRED' : 'REGISTERED';
-    const nextEventType = this.hasActiveEncounter() ? 'A02' : 'A04';
+    const encounterStatus = patient.latest_status?.toUpperCase();
+    const nextStatus = encounterStatus === 'REGISTERED' || encounterStatus === 'PRE_ADMISSION'
+      ? 'ADMITTED'
+      : encounterStatus === 'ADMITTED'
+        ? 'TRANSFERRED'
+        : encounterStatus === 'TRANSFERRED'
+          ? 'DISCHARGED'
+          : 'REGISTERED';
+    const nextEventType = nextStatus === 'ADMITTED'
+      ? 'A01'
+      : nextStatus === 'TRANSFERRED'
+        ? 'A02'
+        : nextStatus === 'DISCHARGED'
+          ? 'A03'
+          : 'A04';
 
     // Patch after a tick so computed option lists have propagated to the template.
     setTimeout(() => {

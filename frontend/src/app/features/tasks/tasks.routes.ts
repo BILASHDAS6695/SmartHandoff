@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { RoleGuard } from '../../core/auth/role.guard';
 
 export const TASKS_ROUTES: Routes = [
   {
@@ -8,6 +9,8 @@ export const TASKS_ROUTES: Routes = [
     children: [
       {
         path: '',
+        canActivate: [RoleGuard],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./task-monitor/task-monitor.component').then((m) => m.TaskMonitorComponent),
       },

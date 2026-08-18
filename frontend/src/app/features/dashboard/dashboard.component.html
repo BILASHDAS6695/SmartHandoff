@@ -107,7 +107,7 @@
             @case ('pharmacistAlerts') {
               <ul class="task-list scrollable-list">
                 @for (alert of visiblePharmacistAlerts(); track alert.id) {
-                  <li class="task-row clickable" (click)="goToMedications()" tabindex="0" (keydown.enter)="goToMedications()">
+                  <li class="task-row clickable" (click)="goToPatientMedications(alert.encounter_id)" tabindex="0" (keydown.enter)="goToPatientMedications(alert.encounter_id)">
                     <div class="task-info">
                       <div class="task-title">{{ alert.alert_type | titlecase }}</div>
                       <div class="task-subtitle">{{ getPatientName(alert.encounter_id) }} — {{ alert.drug_name || (alert.drug_pair?.join(' + ') || 'N/A') }}</div>
@@ -132,7 +132,7 @@
             @case ('physicianAlerts') {
               <ul class="task-list scrollable-list">
                 @for (alert of visiblePhysicianAlerts(); track alert.id) {
-                  <li class="task-row" [class.clickable]="canManageMedications()" [attr.tabindex]="canManageMedications() ? 0 : -1" (click)="canManageMedications() && openMedicationManage(alert.encounter_id)" (keydown.enter)="canManageMedications() && openMedicationManage(alert.encounter_id)">
+                  <li class="task-row clickable" tabindex="0" (click)="openPhysicianMedicationReview(alert)" (keydown.enter)="openPhysicianMedicationReview(alert)">
                     <div class="task-info">
                       <div class="task-title">{{ alert.title }}</div>
                       <div class="task-subtitle">{{ getPatientName(alert.encounter_id) }} — {{ alert.message || 'Physician review required' }}</div>

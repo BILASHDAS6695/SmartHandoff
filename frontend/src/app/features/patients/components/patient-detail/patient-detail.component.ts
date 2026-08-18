@@ -190,6 +190,7 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
   readonly isLoadingAgentTasks = signal<boolean>(false);
   readonly agentTaskError = signal<string | null>(null);
   readonly selectedAgentTaskId = signal<string | null>(null);
+  readonly retryingAgentTaskId = signal<string | null>(null);
 
   readonly agentTasks = computed<AgentTaskView[]>(() => {
     const tasks = this.agentTaskResponses();
@@ -1122,6 +1123,29 @@ export class PatientDetailComponent implements OnInit, OnDestroy {
     if (patientId) {
       this.loadAgentTasks(patientId);
     }
+  }
+
+  canRetryAgentTask(task: AgentTaskResponse): boolean {
+    return task.status?.toUpperCase() === TaskStatus.FAILED;
+  }
+
+  retryAgentTask(task: AgentTaskResponse): void {
+    if (!this.canRetryAgentTask(task) || this.retryingAgentTaskId()) {
+      return;
+    }
+
+    this.retryingAgentTaskId.set(task.id);
+    this.tasksApi.retryFailedTask(task.id).subscribe({
+      next: () => {
+        this.toast.success('Agent task retry queued.');
+        this.retryingAgentTaskId.set(null);
+        this.refreshAgentTasks();
+      },
+      error: (err: Error) => {
+        this.toast.error(err.message);
+        this.retryingAgentTaskId.set(null);
+      },
+    });
   }
 
   refreshDocuments(): void {

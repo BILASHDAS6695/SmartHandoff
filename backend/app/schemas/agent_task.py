@@ -27,12 +27,18 @@ class AgentTaskResponse(BaseModel):
     """
 
     id: UUID
+    encounter_id: UUID
+    unit_id: str | None = None
     agent_type: str
+    target_role: str | None = None
     status: str
     start_time: datetime = Field(alias="created_at")
     completed_time: datetime | None = Field(None, alias="completed_at")
+    started_at: datetime | None = None
     sla_threshold_minutes: int | None
     sla_breached: bool
+    error_message: str | None = None
+    retry_count: int = 0
     
     # US-023: AI-generated or template handoff checklist fields
     checklist: list[dict[str, Any]] | None = Field(

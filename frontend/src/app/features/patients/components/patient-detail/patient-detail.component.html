@@ -817,9 +817,21 @@
               <h3>{{ agentDisplayName(task.agent_type) }}</h3>
               <span class="status-badge" [class]="agentStatusClass(task.status)">{{ task.status }}</span>
             </div>
-            <button mat-icon-button (click)="selectedAgentTaskId.set(null)" aria-label="Close details">
-              <mat-icon>close</mat-icon>
-            </button>
+            <div>
+              @if (canRetryAgentTask(task)) {
+                <button
+                  mat-icon-button
+                  [disabled]="retryingAgentTaskId() === task.id"
+                  (click)="retryAgentTask(task)"
+                  aria-label="Retry failed agent task"
+                >
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              }
+              <button mat-icon-button (click)="selectedAgentTaskId.set(null)" aria-label="Close details">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
           </div>
           <div class="card-body">
             <dl class="detail-grid">

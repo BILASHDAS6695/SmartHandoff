@@ -178,7 +178,11 @@
 
         @if (hasActiveEncounter()) {
           <div class="info-banner">
-            This patient already has an active encounter. Only <strong>transfer</strong> or <strong>discharge</strong> actions are allowed.
+            @if (activeEncounterStatus() === 'REGISTERED' || activeEncounterStatus() === 'PRE_ADMISSION') {
+              This patient has a registered encounter. Submit to <strong>admit</strong> the existing encounter.
+            } @else {
+              This patient already has an active encounter. Only valid next lifecycle actions are available.
+            }
           </div>
         }
 

@@ -158,12 +158,21 @@
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let row">
               <button
-                class="btn-view"
+                mat-icon-button
                 (click)="navigateToDetail(row.encounter_id)"
                 [attr.aria-label]="'View details for ' + getFullName(row)"
               >
-                View
+                <mat-icon>visibility</mat-icon>
               </button>
+              @if (canManageEncounter(row)) {
+                <button
+                  mat-icon-button
+                  (click)="manageEncounter(row)"
+                  [attr.aria-label]="'Manage encounter for ' + getFullName(row)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+              }
             </td>
           </ng-container>
 

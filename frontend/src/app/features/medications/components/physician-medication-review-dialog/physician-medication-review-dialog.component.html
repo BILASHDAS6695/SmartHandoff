@@ -1,0 +1,63 @@
+<h2 mat-dialog-title>Medication Review</h2>
+<mat-dialog-content>
+  <p class="patient-name">{{ data.patientName }}</p>
+  <p class="review-message">{{ data.alert.message || 'Review the current medications and approve the applicable encounter stage.' }}</p>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <mat-spinner diameter="28"></mat-spinner>
+      <span>Loading current medications...</span>
+    </div>
+  } @else if (error()) {
+    <p class="error-message" role="alert">{{ error() }}</p>
+  } @else {
+    <div class="review-summary">
+      <span>{{ totalMedicationCount() }} current medication{{ totalMedicationCount() === 1 ? '' : 's' }}</span>
+      <button mat-stroked-button color="primary" (click)="manageMedication()">
+        <mat-icon>add</mat-icon>
+        Add medication
+      </button>
+    </div>
+    <div class="medication-list">
+      @for (medication of medications(); track medication.id) {
+        <article class="medication-row">
+          <div>
+            <strong>{{ medication.name }}</strong>
+            <span>{{ medication.dose || 'Dose not recorded' }}{{ medication.route ? ' · ' + medication.route : '' }}{{ medication.frequency ? ' · ' + medication.frequency : '' }}</span>
+          </div>
+          <div class="stage-list" aria-label="Medication encounter stages">
+            @for (stage of stageOptions; track stage.value) {
+              <span class="stage" [class.active]="hasStage(medication, stage.value)">{{ stage.label }}</span>
+            }
+          </div>
+          <button mat-icon-button (click)="manageMedication(medication)" [attr.aria-label]="'Manage ' + medication.name">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </article>
+      } @empty {
+        <p class="empty-state">No current medications are available for this encounter.</p>
+      }
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()" [disabled]="!!approvingStage()">Close</button>
+  @for (stage of stageOptions; track stage.value) {
+    <button
+      mat-stroked-button
+      color="primary"
+      (click)="approveStage(stage.value)"
+      [disabled]="loading() || !!error() || !!approvingStage()"
+    >
+      @if (approvingStage() === stage.value) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        <span class="approval-label">
+          <mat-icon>task_alt</mat-icon>
+          Approve {{ stage.label }}
+        </span>
+      }
+    </button>
+  }
+</mat-dialog-actions>

@@ -722,7 +722,7 @@ async def assign_suggested_bed(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Bed {body.bed_id} not found",
         )
-    if bed.status not in {"available", "cleaning", "vacant"}:
+    if (bed.status or "").lower() not in {"available", "cleaning", "vacant"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Bed {bed.bed_number} is no longer available (status={bed.status})",
